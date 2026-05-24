@@ -46,6 +46,94 @@ export interface Line {
   updated_at: string;
 }
 
+// ── Practice ─────────────────────────────────────────────────────────────────
+
+export type PracticeMode = "weakest" | "leech_drill" | "selected";
+
+export interface SessionStartResponse {
+  id: string;
+  mode: PracticeMode;
+  scope: Record<string, unknown>;
+  started_at: string;
+  seeded_positions: number;
+}
+
+export interface PrecedingMove {
+  san: string;
+  uci: string;
+  fen_after: string;
+  note?: string;
+}
+
+export interface NextPositionResponse {
+  done: false;
+  practice_position_id: string;
+  line_id: string;
+  line_name: string | null;
+  library_id: string;
+  library_name: string;
+  library_color: string;
+  move_index: number;
+  starting_fen: string;
+  fen_before: string;
+  turn_color: "white" | "black";
+  preceding_moves: PrecedingMove[];
+  is_new: boolean;
+  is_leech: boolean;
+  repetitions: number;
+  ease_factor: number;
+}
+
+export interface SessionDoneResponse {
+  done: true;
+  stats: { correct: number; wrong: number; positions_seen: number };
+}
+
+export interface SrsState {
+  ease_factor: number;
+  interval_days: number;
+  due_at: string;
+  repetitions: number;
+  leech_count: number;
+  is_leech: boolean;
+}
+
+export interface AnswerRequest {
+  practice_position_id: string;
+  move_uci: string;
+  ease?: "easy" | "hard" | null;
+  response_ms?: number;
+}
+
+export interface AnswerResponse {
+  correct: boolean;
+  expected_san: string;
+  expected_uci: string;
+  fen_after: string;
+  note?: string;
+  srs: SrsState;
+}
+
+export interface SessionStats {
+  correct: number;
+  wrong: number;
+  positions_seen: number;
+}
+
+export interface SessionEndResponse {
+  id: string;
+  ended_at: string;
+  stats: SessionStats;
+}
+
+export interface DueCountResponse {
+  count: number;
+  new: number;
+  leeches: number;
+}
+
+// ── Auth ──────────────────────────────────────────────────────────────────────
+
 export interface TokenResponse {
   access_token: string;
   refresh_token: string;

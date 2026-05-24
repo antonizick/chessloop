@@ -2,6 +2,39 @@ import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { librariesApi } from "@/api/libraries";
 
+/** Toggle switch — reused inline for the active/inactive state. */
+function ActiveToggle({
+  isActive,
+  onChange,
+  disabled,
+}: {
+  isActive: boolean;
+  onChange: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      onClick={onChange}
+      disabled={disabled}
+      title={isActive ? "Active — click to deactivate" : "Inactive — click to activate"}
+      className={[
+        "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 transition-colors duration-150",
+        isActive
+          ? "bg-green-500 border-green-500"
+          : "bg-ink-600 border-ink-600",
+        disabled ? "opacity-50 cursor-not-allowed" : "",
+      ].join(" ")}
+    >
+      <span
+        className={[
+          "inline-block h-4 w-4 rounded-full bg-white shadow transform transition-transform duration-150",
+          isActive ? "translate-x-4" : "translate-x-0",
+        ].join(" ")}
+      />
+    </button>
+  );
+}
+
 export function Libraries() {
   const qc = useQueryClient();
   const { data: libraries, isLoading } = useQuery({
@@ -12,7 +45,11 @@ export function Libraries() {
   const toggleActive = useMutation({
     mutationFn: ({ id, is_active }: { id: string; is_active: boolean }) =>
       librariesApi.setActive(id, is_active),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["libraries"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["libraries"] });
+      // Bust due-count cache so badge refreshes immediately
+      qc.invalidateQueries({ queryKey: ["due-count"] });
+    },
   });
 
   const remove = useMutation({
@@ -27,6 +64,12 @@ export function Libraries() {
         <Link to="/libraries/new" className="btn-primary">+ New library</Link>
       </div>
 
+      <p className="text-sm text-ink-400">
+        Only <span className="text-green-400 font-medium">active</span> libraries
+        are included in practice sessions. Toggle the switch on each card to
+        include or exclude it.
+      </p>
+
       {isLoading && <p className="text-ink-300">Loading…</p>}
 
       {libraries?.length === 0 && (
@@ -37,33 +80,80 @@ export function Libraries() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {libraries?.map((lib) => (
-          <div key={lib.id} className="card flex flex-col gap-2">
-            <div className="flex items-start justify-between">
-              <Link to={`/libraries/${lib.id}`} className="text-lg font-semibold text-gold-400">
+          <div
+            key={lib.id}
+            className={[
+              "card flex flex-col gap-3 transition-colors",
+              lib.is_active ? "border-green-500/30" : "border-ink-700",
+            ].join(" ")}
+          >
+            {/* Header row */}
+            <div className="flex items-start justify-between gap-2">
+              <Link
+                to={`/libraries/${lib.id}`}
+                className="text-lg font-semibold text-gold-400 hover:text-gold-300 leading-tight"
+              >
                 {lib.name}
               </Link>
-              <span className="text-xs px-2 py-0.5 rounded bg-ink-700 text-ink-200">
+
+              {/* Active toggle */}
+              <div className="flex items-center gap-2 shrink-0 mt-0.5">
+                <span
+                  className={[
+                    "text-xs font-medium",
+                    lib.is_active ? "text-green-400" : "text-ink-500",
+                  ].join(" ")}
+                >
+                  {lib.is_active ? "Active" : "Inactive"}
+                </span>
+                <ActiveToggle
+                  isActive={lib.is_active}
+                  onChange={() =>
+                    toggleActive.mutate({ id: lib.id, is_active: !lib.is_active })
+                  }
+                  disabled={toggleActive.isPending}
+                />
+              </div>
+            </div>
+
+            {/* Meta pills */}
+            <div className="flex flex-wrap items-center gap-1.5 text-xs">
+              <span className="px-2 py-0.5 rounded bg-ink-700 text-ink-200 capitalize">
                 {lib.color}
               </span>
+              {lib.eco_code && (
+                <span className="px-2 py-0.5 rounded bg-ink-700 text-ink-200">
+                  ECO {lib.eco_code}
+                </span>
+              )}
+              {lib.difficulty && (
+                <span className="px-2 py-0.5 rounded bg-ink-700 text-ink-200 capitalize">
+                  {lib.difficulty}
+                </span>
+              )}
+              {lib.is_public && (
+                <span className="px-2 py-0.5 rounded bg-ink-700 text-ink-200">public</span>
+              )}
             </div>
-            {lib.description && <p className="text-sm text-ink-300">{lib.description}</p>}
-            <div className="flex items-center gap-2 text-xs text-ink-400">
-              {lib.eco_code && <span>ECO {lib.eco_code}</span>}
-              {lib.difficulty && <span>· {lib.difficulty}</span>}
-              {lib.is_public && <span>· public</span>}
-            </div>
-            <div className="flex items-center gap-2 mt-2">
-              <Link to={`/libraries/${lib.id}/teach`} className="btn-ghost text-xs">Teach</Link>
+
+            {lib.description && (
+              <p className="text-sm text-ink-300">{lib.description}</p>
+            )}
+
+            {/* Action buttons */}
+            <div className="flex items-center gap-2 pt-1 border-t border-ink-700">
+              <Link to={`/libraries/${lib.id}/teach`} className="btn-ghost text-xs">
+                ✎ Teach
+              </Link>
+              <Link to={`/libraries/${lib.id}`} className="btn-ghost text-xs">
+                Lines
+              </Link>
               <button
-                className="btn-ghost text-xs"
-                onClick={() => toggleActive.mutate({ id: lib.id, is_active: !lib.is_active })}
-              >
-                {lib.is_active ? "Deactivate" : "Activate"}
-              </button>
-              <button
-                className="btn-ghost text-xs text-red-400"
+                className="btn-ghost text-xs text-red-400 ml-auto"
                 onClick={() => {
-                  if (confirm(`Delete library "${lib.name}"? This removes all its lines.`)) {
+                  if (
+                    confirm(`Delete library "${lib.name}"? This removes all its lines.`)
+                  ) {
                     remove.mutate(lib.id);
                   }
                 }}

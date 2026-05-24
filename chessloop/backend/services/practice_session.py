@@ -131,6 +131,13 @@ def select_next_position(
     """Pick the next position to drill, or None if nothing is due/available.
 
     `rng` lets tests pass in a seeded Random for determinism.
+
+    scope.start_position controls which positions are eligible:
+      "first"  — only the earliest move_index in the candidate set (start
+                 every line from the beginning).
+      "random" — uniform random pick; ignores SRS weights.
+      "mixed"  — 50/50 per round: either "first" or the normal SRS selection.
+      absent / anything else — normal SRS-weighted selection (default).
     """
     now = now or datetime.utcnow()
     rng = rng or random
@@ -150,10 +157,28 @@ def select_next_position(
         leeches.sort(key=lambda p: p.due_at)
         return leeches[0]
 
+    start_pos = scope.get("start_position", "auto")
+
+    # "mixed" flips a coin each round
+    if start_pos == "mixed":
+        start_pos = rng.choice(["first", "auto"])
+
     all_positions = db.exec(q).all()
     if not all_positions:
         return None
 
+    # "first" — filter to the earliest move_index in the candidate set, then
+    # pick uniformly so every line's opening position gets equal exposure.
+    if start_pos == "first":
+        min_idx = min(p.move_index for p in all_positions)
+        first_positions = [p for p in all_positions if p.move_index == min_idx]
+        return rng.choice(first_positions)
+
+    # "random" — uniform pick regardless of SRS state
+    if start_pos == "random":
+        return rng.choice(all_positions)
+
+    # Default: weighted SRS selection
     due = [p for p in all_positions if p.due_at <= now and p.repetitions > 0]
     new_items = [p for p in all_positions if p.repetitions == 0]
 

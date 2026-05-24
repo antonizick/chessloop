@@ -10,6 +10,7 @@ import { LineSelector } from "@/components/teaching/LineSelector";
 import { useTeaching } from "@/hooks/useTeaching";
 import { librariesApi } from "@/api/libraries";
 import { linesApi } from "@/api/lines";
+import { playMoveSound } from "@/utils/sounds";
 import type { Line } from "@/types";
 
 export function TeachingBoard() {
@@ -96,6 +97,8 @@ export function TeachingBoard() {
     }
 
     if (!result || !selectedLineId) return;
+
+    playMoveSound();
 
     // Chessground already shows the moved piece; update legal dests for next move
     cgRef.current?.set({

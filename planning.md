@@ -1,7 +1,7 @@
 # ChessLoop — Design & Implementation Plan
 
 > Last updated: 2026-05-24
-> Status: Pre-development planning
+> Status: Phase 3 complete — Phase 4 next
 
 ---
 
@@ -432,36 +432,60 @@ interface TeachingStore {
 
 ## 8. Phased Implementation Roadmap
 
-### Phase 1 — Foundation (Sprint 1-2, ~2 weeks)
+### Phase 1 — Foundation (Sprint 1-2, ~2 weeks) ✅ COMPLETE
 **Goal: Auth + Library CRUD working, boards render**
 
-- [ ] Project scaffold: Vite+React+TS frontend, FastAPI backend, Docker Compose
-- [ ] SQLite schema + SQLModel models
-- [ ] Auth: register, login, JWT middleware, MFA setup
-- [ ] Library CRUD API + frontend (no board yet)
-- [ ] Line CRUD API
-- [ ] Chessground renders in both Teaching and Practice pages (static)
-- [ ] Basic dark/gold Tailwind theme
+- [x] Project scaffold: Vite+React+TS frontend, FastAPI backend, Docker Compose
+- [x] SQLite schema + SQLModel models
+- [x] Auth: register, login, JWT middleware, MFA setup
+- [x] Library CRUD API + frontend (no board yet)
+- [x] Line CRUD API
+- [x] Chessground renders in both Teaching and Practice pages (static)
+- [x] Basic dark/gold Tailwind theme
 
-### Phase 2 — Teaching Mode (Sprint 3, ~1 week)
+### Phase 2 — Teaching Mode (Sprint 3, ~1 week) ✅ COMPLETE
 **Goal: Full teaching flow operational**
 
-- [ ] Teaching board: play moves → record to Line
-- [ ] Move list: display, delete individual moves
-- [ ] Move notes: per-move annotation
-- [ ] Lichess Explorer panel (proxy endpoint + frontend panel)
-- [ ] Auto-save on every move
+- [x] Teaching board: play moves → record to Line
+- [x] Move list: display, delete individual moves
+- [x] Move notes: per-move annotation
+- [ ] Lichess Explorer panel (proxy endpoint + frontend panel) ← deferred to Phase 4
+- [x] Auto-save on every move
 
-### Phase 3 — Practice Core (Sprint 4-5, ~2 weeks)
+### Phase 3 — Practice Core (Sprint 4-5, ~2 weeks) ✅ COMPLETE
 **Goal: Full SRS loop working**
 
-- [ ] SRSEngine: SM-2 implementation + leech detection
-- [ ] PositionKey: canonical FEN hash
-- [ ] Practice session API (start, next, answer, end)
-- [ ] Practice board UI: opponent auto-plays, wait for user move
-- [ ] Feedback overlay: red flash, correct move animation, forced re-play
-- [ ] Easy/Hard buttons post-correct
-- [ ] Session summary screen
+- [x] SRSEngine: SM-2 implementation + leech detection
+- [x] PositionKey: canonical FEN hash
+- [x] Practice session API (start, next, answer, end)
+- [x] Practice board UI: opponent auto-plays, wait for user move
+- [x] Feedback overlay: red flash, correct move animation, forced re-play
+- [x] Easy/Hard buttons post-correct
+- [x] Session summary screen
+- [x] Sound effects (move, capture)
+- [x] Service manager TUI (manage.sh interactive menu)
+
+**Critical engineering note — Chessground `bindBoard` orientation race:**
+Chessground 9.x registers `mousedown`/`touchstart` listeners in `bindBoard()`, which
+runs both at init AND whenever `api.set({ orientation })` triggers
+`toggleOrientation() → redrawAll() → renderWrap() + bindBoard()`. The problem:
+`bindBoard()` reads `state.viewOnly` **before** `configure(state, config)` updates it.
+If `state.viewOnly` is `true` at that moment, `bindBoard()` permanently skips listener
+registration — `api.set({ viewOnly: false })` later updates state but cannot re-run
+`bindBoard()`.
+
+**The fix** (`ChessboardWrapper.tsx` prop-sync effect):
+```typescript
+// Pre-set viewOnly:false so state is already false when any orientation-triggered
+// bindBoard() fires; then apply the final desired values.
+api.set({ viewOnly: false });
+api.set({ orientation, viewOnly });
+```
+
+**Why always-mounted board:** ChessboardWrapper stays in the DOM for the entire page
+lifetime (`visibility:hidden` during entry/done phases). This guarantees `cgRef.current`
+is set before any network requests resolve, eliminating all timing races between
+`useLayoutEffect` init and parent async code.
 
 ### Phase 4 — Stats & Discovery (Sprint 6, ~1 week)
 **Goal: Progress visible, public content explorable**
