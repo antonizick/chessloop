@@ -132,6 +132,89 @@ export interface DueCountResponse {
   leeches: number;
 }
 
+// ── Stats ─────────────────────────────────────────────────────────────────────
+
+export interface HeatmapBucket {
+  move_number: number;
+  total: number;
+  correct: number;
+  accuracy: number; // 0.0 – 1.0
+}
+
+export interface HeatmapResponse {
+  by_move_number: HeatmapBucket[];
+}
+
+export type MasteryBadge =
+  | "not_started"
+  | "learning"
+  | "developing"
+  | "advanced"
+  | "mastered";
+
+export interface MasteryEntry {
+  library_id: string;
+  library_name: string;
+  color: "white" | "black" | "both";
+  total_positions: number;
+  mastered_positions: number;
+  mastery_pct: number;
+  badge: MasteryBadge;
+}
+
+export interface MasteryResponse {
+  libraries: MasteryEntry[];
+}
+
+export interface LeechEntry {
+  practice_position_id: string;
+  line_id: string;
+  line_name: string | null;
+  library_id: string;
+  library_name: string;
+  move_index: number;
+  leech_count: number;
+  ease_factor: number;
+}
+
+export interface RecentSession {
+  id: string;
+  mode: string;
+  started_at: string;
+  ended_at: string | null;
+  correct: number;
+  wrong: number;
+  positions_seen: number;
+}
+
+// ── Public ────────────────────────────────────────────────────────────────────
+
+export interface PublicLibraryEntry {
+  id: string;
+  name: string;
+  color: "white" | "black" | "both";
+  description: string | null;
+  eco_code: string | null;
+  difficulty: "beginner" | "intermediate" | "advanced" | null;
+  owner_username: string;
+  published_at: string;
+  star_count: number;
+  line_count: number;
+  forked_from_id: string | null;
+}
+
+export interface CommentEntry {
+  id: string;
+  username: string;
+  content: string;
+  created_at: string;
+}
+
+export interface PublicLibraryDetail extends PublicLibraryEntry {
+  user_has_starred: boolean;
+  comments: CommentEntry[];
+}
+
 // ── Auth ──────────────────────────────────────────────────────────────────────
 
 export interface TokenResponse {

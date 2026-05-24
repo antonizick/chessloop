@@ -30,6 +30,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { Chess } from "chess.js";
 import type { Api } from "chessground/api";
 import type { Key } from "chessground/types";
@@ -94,6 +95,8 @@ function isPromotion(fen: string, from: string, to: string): boolean {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function PracticeBoard() {
+  const location = useLocation();
+
   // cgRef is set once when ChessboardWrapper mounts (at page load, not on Start).
   // It stays valid for the entire session — no timing race with network requests.
   const cgRef = useRef<Api | null>(null);
@@ -165,6 +168,18 @@ export function PracticeBoard() {
     if (phase !== "waiting" || !position) return;
     enableBoardForUser(position);
   }, [phase, position, enableBoardForUser]);
+
+  // ── Auto-start from Dashboard "Practice weakest now" ──────────────────────
+  // When navigated here with state.autoMode, skip the ModeEntry screen.
+  const autoStartedRef = useRef(false);
+  useEffect(() => {
+    const autoMode = (location.state as { autoMode?: string } | null)?.autoMode;
+    if (autoMode && phase === "entry" && !autoStartedRef.current) {
+      autoStartedRef.current = true;
+      startSession({ mode: autoMode as UiMode, startPosition: "auto" });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── Start session ──────────────────────────────────────────────────────────
 

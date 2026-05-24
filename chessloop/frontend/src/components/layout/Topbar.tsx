@@ -45,6 +45,14 @@ export function Topbar() {
             )}
           </Link>
 
+          <Link to="/stats" className="text-ink-200 hover:text-gold-400">
+            Stats
+          </Link>
+
+          <Link to="/public" className="text-ink-200 hover:text-gold-400">
+            Discover
+          </Link>
+
           <Link to="/settings" className="text-ink-200 hover:text-gold-400">
             Settings
           </Link>

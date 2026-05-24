@@ -487,14 +487,21 @@ lifetime (`visibility:hidden` during entry/done phases). This guarantees `cgRef.
 is set before any network requests resolve, eliminating all timing races between
 `useLayoutEffect` init and parent async code.
 
-### Phase 4 — Stats & Discovery (Sprint 6, ~1 week)
+### Phase 4 — Stats & Discovery (Sprint 6, ~1 week) ✅ COMPLETE
 **Goal: Progress visible, public content explorable**
 
-- [ ] Heatmap: accuracy by move number (recharts or custom SVG)
-- [ ] Mastery %: per-library calculation + badge thresholds
-- [ ] Dashboard: active openings, practice badge, weak lines teaser
-- [ ] Public library: publish, browse, search, fork
-- [ ] "Practice weakest now" button (Active libraries, most overdue)
+- [x] Heatmap: accuracy by move number (custom SVG bar chart, color-coded)
+- [x] Mastery %: per-library calculation + badge thresholds (not_started/learning/developing/advanced/mastered)
+- [x] Dashboard: active openings, practice badge, weak lines teaser, mastery badge strip
+- [x] Public library: publish (already in Phase 2), browse, search, fork, star, comment
+- [x] "Practice weakest now" button (CTA card, auto-starts weakest session)
+
+**Phase 4 notes:**
+- Stats backend: `/api/stats/heatmap`, `/api/stats/mastery`, `/api/stats/leeches`, `/api/stats/recent-sessions`
+- Public backend: `/api/public/libraries` (browse/filter/sort), detail, star toggle, comments
+- `PublicSignal` model added for stars + comments
+- Heatmap uses pure SVG (no recharts dep) — green ≥80%, yellow 50-79%, red <50%
+- "Practice weakest now" navigates to `/practice` with `state.autoMode="weakest"` for auto-start
 
 ### Phase 5 — Polish & Admin (Sprint 7, ~1 week)
 **Goal: Production-ready self-host**

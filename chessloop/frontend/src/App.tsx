@@ -9,6 +9,9 @@ import { LibraryNew } from "@/pages/LibraryNew";
 import { LibraryDetail } from "@/pages/LibraryDetail";
 import { TeachingBoard } from "@/pages/TeachingBoard";
 import { PracticeBoard } from "@/pages/PracticeBoard";
+import { Stats } from "@/pages/Stats";
+import { Public } from "@/pages/Public";
+import { PublicLibraryDetail } from "@/pages/PublicLibraryDetail";
 import { Settings } from "@/pages/Settings";
 
 function RequireAuth({ children }: { children: JSX.Element }) {
@@ -35,6 +38,9 @@ export default function App() {
         <Route path="/libraries/:id" element={<LibraryDetail />} />
         <Route path="/libraries/:id/teach" element={<TeachingBoard />} />
         <Route path="/practice" element={<PracticeBoard />} />
+        <Route path="/stats" element={<Stats />} />
+        <Route path="/public" element={<Public />} />
+        <Route path="/public/:id" element={<PublicLibraryDetail />} />
         <Route path="/settings" element={<Settings />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
