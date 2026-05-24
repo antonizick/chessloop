@@ -1,0 +1,41 @@
+@import "chessground/assets/chessground.base.css";
+@import "chessground/assets/chessground.brown.css";
+@import "chessground/assets/chessground.cburnett.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html, body, #root { height: 100%; }
+  body { @apply bg-ink-900 text-ink-100; }
+  a { @apply text-gold-400 hover:text-gold-300 transition-colors; }
+  h1 { @apply text-2xl font-semibold text-ink-100; }
+  h2 { @apply text-xl font-semibold text-ink-100; }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors;
+  }
+  .btn-primary {
+    @apply btn bg-gold-500 text-ink-900 hover:bg-gold-400 shadow-glow;
+  }
+  .btn-ghost {
+    @apply btn text-ink-200 hover:bg-ink-700;
+  }
+  .btn-danger {
+    @apply btn bg-red-700 text-ink-100 hover:bg-red-600;
+  }
+  .input {
+    @apply w-full rounded-md bg-ink-800 border border-ink-600 px-3 py-2 text-ink-100
+      focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent;
+  }
+  .card {
+    @apply rounded-lg bg-ink-800 border border-ink-700 p-4;
+  }
+  .label {
+    @apply block text-sm font-medium text-ink-200 mb-1;
+  }
+}
+
