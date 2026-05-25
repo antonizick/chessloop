@@ -18,8 +18,10 @@ const DIFF_LABEL: Record<string, string> = {
   advanced: "Advanced",
 };
 
-function LibraryCard({ lib }: { lib: PublicLibraryEntry }) {
+function LibraryCard({ lib, isAdmin }: { lib: PublicLibraryEntry; isAdmin: boolean }) {
   const qc = useQueryClient();
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
   const starMut = useMutation({
     mutationFn: () => publicApi.toggleStar(lib.id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["public-libraries"] }),
@@ -33,6 +35,18 @@ function LibraryCard({ lib }: { lib: PublicLibraryEntry }) {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["libraries"] });
+    },
+  });
+
+  const deleteMut = useMutation({
+    mutationFn: async () => {
+      const { adminApi } = await import("@/api/admin");
+      return adminApi.deleteOpening(lib.name);
+    },
+    onSuccess: () => {
+      setShowDeleteConfirm(false);
+      // Invalidate all public-libraries queries with different filters
+      qc.invalidateQueries({ queryKey: ["public-libraries"] });
     },
   });
 
@@ -83,6 +97,37 @@ function LibraryCard({ lib }: { lib: PublicLibraryEntry }) {
           >
             {forkMut.isSuccess ? "Forked ✓" : "Fork"}
           </button>
+          {isAdmin && (
+            <>
+              {!showDeleteConfirm ? (
+                <button
+                  onClick={() => setShowDeleteConfirm(true)}
+                  disabled={deleteMut.isPending}
+                  className="btn-ghost text-xs py-0.5 text-red-400 hover:text-red-300"
+                  title="Delete this opening"
+                >
+                  🗑
+                </button>
+              ) : (
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => deleteMut.mutate()}
+                    disabled={deleteMut.isPending}
+                    className="btn-ghost text-xs py-0.5 text-red-400 hover:bg-red-600/20"
+                  >
+                    {deleteMut.isPending ? "…" : "Confirm"}
+                  </button>
+                  <button
+                    onClick={() => setShowDeleteConfirm(false)}
+                    disabled={deleteMut.isPending}
+                    className="btn-ghost text-xs py-0.5"
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
+            </>
+          )}
         </div>
       </div>
     </div>
@@ -93,7 +138,7 @@ export function Public() {
   const [q, setQ] = useState("");
   const [color, setColor] = useState("");
   const [difficulty, setDifficulty] = useState("");
-  const [sort, setSort] = useState<"stars" | "newest">("stars");
+  const [sort, setSort] = useState<"stars" | "newest" | "name" | "lines">("stars");
   const user = useAuthStore((s) => s.user);
 
   const { data: libraries, isLoading } = useQuery({
@@ -147,11 +192,13 @@ export function Public() {
         </select>
         <select
           value={sort}
-          onChange={(e) => setSort(e.target.value as "stars" | "newest")}
-          className="input w-[130px]"
+          onChange={(e) => setSort(e.target.value as "stars" | "newest" | "name" | "lines")}
+          className="input w-[140px]"
         >
           <option value="stars">Most starred</option>
           <option value="newest">Newest</option>
+          <option value="lines">Most lines</option>
+          <option value="name">Name (A-Z)</option>
         </select>
       </div>
 
@@ -169,7 +216,7 @@ export function Public() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {libraries.map((lib) => (
-            <LibraryCard key={lib.id} lib={lib} />
+            <LibraryCard key={lib.id} lib={lib} isAdmin={user?.role === "admin"} />
           ))}
         </div>
       )}

@@ -55,7 +55,11 @@ def ensure_positions_for_library(
             if i == 0:
                 fen_before = line.starting_fen
             else:
-                fen_before = moves[i - 1].get("fen_after")
+                # Get fen_after from previous move
+                prev_move = moves[i - 1]
+                fen_before = prev_move.get("fen_after") if isinstance(prev_move, dict) else None
+
+            # Skip if we can't get a valid FEN position
             if not fen_before:
                 continue
 

@@ -90,7 +90,17 @@ def _build_next_response(db: Session, pos: PracticePosition) -> NextPositionResp
         raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, "Library vanished")
 
     moves = json.loads(line.moves or "[]")
-    fen_before = line.starting_fen if pos.move_index == 0 else moves[pos.move_index - 1].get("fen_after")
+
+    # Validate move structure and get fen_before
+    if pos.move_index == 0:
+        fen_before = line.starting_fen
+    else:
+        if pos.move_index > len(moves):
+            raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, "Move index out of range")
+        prev_move = moves[pos.move_index - 1]
+        fen_before = prev_move.get("fen_after")
+        if not fen_before:
+            raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, "Move missing fen_after field")
 
     return NextPositionResponse(
         practice_position_id=pos.id,

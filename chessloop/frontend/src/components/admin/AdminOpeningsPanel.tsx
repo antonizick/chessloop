@@ -272,6 +272,86 @@ function ImportOpeningSection() {
   );
 }
 
+// ── Section: Delete opening ────────────────────────────────────────────────
+
+function DeleteOpeningSection({ libraryNames }: { libraryNames: string[] }) {
+  const qc = useQueryClient();
+  const [selected, setSelected] = useState("");
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  const deleteMut = useMutation({
+    mutationFn: () => adminApi.deleteOpening(selected),
+    onSuccess: () => {
+      setSelected("");
+      setConfirmDelete(false);
+      qc.invalidateQueries({ queryKey: ["public-libraries"] });
+    },
+  });
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center gap-1">
+        <span className="text-sm font-medium text-ink-200">Delete Opening</span>
+        <Tooltip text="Permanently remove a public opening from the library. This cannot be undone. The opening will be deleted for all users.">
+          <InfoIcon />
+        </Tooltip>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <select
+          value={selected}
+          onChange={(e) => { setSelected(e.target.value); setConfirmDelete(false); }}
+          className="input text-sm py-1 flex-1 min-w-[200px]"
+        >
+          <option value="">— Select an opening to delete —</option>
+          {libraryNames.map((n) => (
+            <option key={n} value={n}>{n}</option>
+          ))}
+        </select>
+
+        {!confirmDelete ? (
+          <button
+            className="btn-ghost text-sm py-1.5 px-4 border border-red-600/50 text-red-400 hover:border-red-500 hover:text-red-300"
+            onClick={() => setConfirmDelete(true)}
+            disabled={!selected || deleteMut.isPending}
+          >
+            Delete
+          </button>
+        ) : (
+          <div className="flex items-center gap-1.5">
+            <button
+              className="btn-ghost text-xs py-1 px-3 border border-red-600 text-red-400 hover:bg-red-600/20"
+              onClick={() => deleteMut.mutate()}
+              disabled={deleteMut.isPending}
+            >
+              {deleteMut.isPending ? "Deleting…" : "Confirm Delete"}
+            </button>
+            <button
+              className="btn-ghost text-xs py-1 px-3 border border-ink-600"
+              onClick={() => setConfirmDelete(false)}
+              disabled={deleteMut.isPending}
+            >
+              Cancel
+            </button>
+          </div>
+        )}
+      </div>
+
+      {deleteMut.isError && (
+        <p className="text-xs text-red-400">
+          Error: {(deleteMut.error as Error).message}
+        </p>
+      )}
+
+      {deleteMut.isSuccess && (
+        <p className="text-xs text-gold-400">
+          ✓ Opening deleted successfully.
+        </p>
+      )}
+    </div>
+  );
+}
+
 // ── Root panel ────────────────────────────────────────────────────────────────
 
 export function AdminOpeningsPanel({ publicLibraryNames }: { publicLibraryNames: string[] }) {
@@ -298,6 +378,8 @@ export function AdminOpeningsPanel({ publicLibraryNames }: { publicLibraryNames:
           <PullVariationsSection libraryNames={publicLibraryNames} />
           <div className="border-t border-ink-700" />
           <ImportOpeningSection />
+          <div className="border-t border-ink-700" />
+          <DeleteOpeningSection libraryNames={publicLibraryNames} />
         </div>
       )}
     </div>

@@ -9,7 +9,7 @@ from pydantic import BaseModel
 from sqlmodel import Session, select
 
 from database import get_session
-from models import Backup
+from models import Backup, Library
 from models.user import User
 from auth.dependencies import get_current_user
 from services import backup_service
@@ -209,7 +209,7 @@ class ImportOpeningRequest(BaseModel):
     difficulty: str
     description: str
     moves: list[str]
-    publish: bool = True
+    publish: bool = False
 
 
 class ImportOpeningResponse(BaseModel):
@@ -283,7 +283,6 @@ def seed_openings(
             )
 
             if status_str == "created":
-                opening_import.publish_library(lib.id, session)
                 seeded += 1
             else:
                 skipped += 1
@@ -413,11 +412,52 @@ def pull_variations(
 
     if added:
         session.commit()
-        opening_import.publish_library(lib.id, session)
 
     return PullVariationsResponse(
         opening_name=body.opening_name,
         added=added,
         message=f"Added {added} variation(s) to '{body.opening_name}'." if added
                 else "All found variations already exist in this library.",
+    )
+
+
+class DeleteOpeningRequest(BaseModel):
+    name: str
+
+
+class DeleteOpeningResponse(BaseModel):
+    deleted: bool
+    message: str
+
+
+@router.delete("/openings/delete", response_model=DeleteOpeningResponse, status_code=status.HTTP_200_OK)
+def delete_opening(
+    body: DeleteOpeningRequest,
+    admin: User = Depends(require_admin),
+    session: Session = Depends(get_session),
+):
+    """
+    Delete a public opening library by name.
+    Only admins can delete openings. The library must be owned by the admin.
+    """
+    lib = session.exec(
+        select(Library).where(
+            Library.name == body.name,
+            Library.owner_user_id == admin.id,
+            Library.is_public == True,  # noqa: E712
+        )
+    ).first()
+
+    if not lib:
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND,
+            f"Public opening '{body.name}' not found or not owned by you"
+        )
+
+    session.delete(lib)
+    session.commit()
+
+    return DeleteOpeningResponse(
+        deleted=True,
+        message=f"Deleted opening '{body.name}'."
     )

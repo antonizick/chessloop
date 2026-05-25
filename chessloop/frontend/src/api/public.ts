@@ -6,7 +6,7 @@ export interface BrowseParams {
   eco?: string;
   color?: string;
   difficulty?: string;
-  sort?: "stars" | "newest";
+  sort?: "stars" | "newest" | "name" | "lines";
 }
 
 function buildQuery(params: BrowseParams): string {

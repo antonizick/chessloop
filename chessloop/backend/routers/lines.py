@@ -66,9 +66,11 @@ def create_line(
     existing_count = len(
         session.exec(select(Line).where(Line.library_id == lib_id)).all()
     )
+    # Generate default name if not provided
+    line_name = body.name or f"New Main Line [{existing_count + 1}]"
     line = Line(
         library_id=lib_id,
-        name=body.name,
+        name=line_name,
         starting_fen=body.starting_fen or STARTING_FEN,
         moves="[]",
         order_index=existing_count,

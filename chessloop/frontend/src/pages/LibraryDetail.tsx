@@ -29,7 +29,7 @@ export function LibraryDetail() {
   });
 
   const createLine = useMutation({
-    mutationFn: () => linesApi.create(id!, { name: "New line" }),
+    mutationFn: () => linesApi.create(id!, {}),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["lines", id] }),
   });
 

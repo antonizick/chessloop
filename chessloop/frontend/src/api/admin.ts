@@ -37,6 +37,11 @@ export interface PullVariationsResponse {
   message: string;
 }
 
+export interface DeleteOpeningResponse {
+  deleted: boolean;
+  message: string;
+}
+
 export const adminApi = {
   searchOpenings: (q: string) =>
     api<OpeningSearchResult[]>(`/admin/openings/search?q=${encodeURIComponent(q)}`),
@@ -54,5 +59,11 @@ export const adminApi = {
     api<PullVariationsResponse>("/admin/openings/pull-variations", {
       method: "POST",
       body: JSON.stringify({ opening_name, count }),
+    }),
+
+  deleteOpening: (name: string) =>
+    api<DeleteOpeningResponse>("/admin/openings/delete", {
+      method: "DELETE",
+      body: JSON.stringify({ name }),
     }),
 };

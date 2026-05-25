@@ -84,10 +84,18 @@ export function TeachingBoard() {
 
   // ── Mutations ────────────────────────────────────────────────────────────
   const createLine = useMutation({
-    mutationFn: (name: string) => linesApi.create(libId!, { name }),
+    mutationFn: (name: string | null) => linesApi.create(libId!, { name: name || undefined }),
     onSuccess: (line) => {
       qc.invalidateQueries({ queryKey: ["lines", libId] });
       setSelectedLineId(line.id);
+    },
+  });
+
+  const renameLine = useMutation({
+    mutationFn: ({ lineId, newName }: { lineId: string; newName: string }) =>
+      linesApi.update(lineId, { name: newName }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["lines", libId] });
     },
   });
 
@@ -186,6 +194,7 @@ export function TeachingBoard() {
         selectedId={selectedLineId}
         onSelect={setSelectedLineId}
         onCreateNew={(name) => createLine.mutate(name)}
+        onRename={(lineId, newName) => renameLine.mutateAsync({ lineId, newName })}
         isCreating={createLine.isPending}
       />
 

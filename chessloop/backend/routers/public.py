@@ -44,7 +44,7 @@ def browse_public(
     eco: str = Query(default=""),
     color: str = Query(default=""),
     difficulty: str = Query(default=""),
-    sort: str = Query(default="stars"),   # 'stars' | 'newest'
+    sort: str = Query(default="stars"),   # 'stars' | 'newest' | 'name' | 'lines'
     db: Session = Depends(get_session),
     user: User = Depends(get_current_user),
 ):
@@ -61,7 +61,12 @@ def browse_public(
     libraries = db.exec(stmt).all()
 
     result = []
+    seen_ids = set()  # Deduplicate by library ID
     for lib in libraries:
+        if lib.id in seen_ids:
+            continue
+        seen_ids.add(lib.id)
+
         owner = db.get(User, lib.owner_user_id)
         result.append(PublicLibraryEntry(
             id=lib.id,
@@ -77,9 +82,14 @@ def browse_public(
             forked_from_id=lib.forked_from_id,
         ))
 
+    # Sort by the specified criteria
     if sort == "newest":
         result.sort(key=lambda x: x.published_at, reverse=True)
-    else:
+    elif sort == "name":
+        result.sort(key=lambda x: x.name.lower())
+    elif sort == "lines":
+        result.sort(key=lambda x: x.line_count, reverse=True)
+    else:  # default to stars
         result.sort(key=lambda x: x.star_count, reverse=True)
 
     return result
