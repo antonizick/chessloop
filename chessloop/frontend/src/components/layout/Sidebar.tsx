@@ -1,8 +1,10 @@
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { librariesApi } from "@/api/libraries";
+import { useAuthStore } from "@/stores/auth";
 
 export function Sidebar() {
+  const user = useAuthStore((s) => s.user);
   const { data: libraries } = useQuery({
     queryKey: ["libraries"],
     queryFn: librariesApi.list,
@@ -32,6 +34,17 @@ export function Sidebar() {
           </li>
         ))}
       </ul>
+
+      {user?.role === "admin" && (
+        <div className="mt-auto pt-4 border-t border-ink-700">
+          <Link
+            to="/admin"
+            className="block px-2 py-1.5 rounded text-xs text-ink-400 hover:bg-ink-700 hover:text-gold-400 transition-colors"
+          >
+            ⚙ Admin panel
+          </Link>
+        </div>
+      )}
     </aside>
   );
 }

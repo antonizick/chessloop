@@ -44,6 +44,12 @@ class RefreshRequest(BaseModel):
     refresh_token: str
 
 
+class PreferencesRequest(BaseModel):
+    piece_set: Optional[str] = None
+    board_theme: Optional[str] = None
+    sounds_on: Optional[bool] = None
+
+
 class UserResponse(BaseModel):
     id: UUID
     email: EmailStr

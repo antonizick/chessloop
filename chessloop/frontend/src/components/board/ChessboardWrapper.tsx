@@ -19,6 +19,10 @@ interface Props {
   /** Expose the Chessground Api so parents can call .set() imperatively */
   cgRef?: React.MutableRefObject<Api | null>;
   className?: string;
+  /** Board color theme — maps to .board-theme-{name} CSS class */
+  boardTheme?: string;
+  /** Piece set — maps to .pieces-{name} CSS class (cburnett = no extra class) */
+  pieceSet?: string;
 }
 
 export function ChessboardWrapper({
@@ -30,6 +34,8 @@ export function ChessboardWrapper({
   onMove,
   cgRef,
   className,
+  boardTheme,
+  pieceSet,
 }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const apiRef = useRef<Api | null>(null);
@@ -121,11 +127,20 @@ export function ChessboardWrapper({
     api.set({ orientation, viewOnly });      // apply final state (may trigger toggleOrientation)
   }, [orientation, viewOnly]);
 
+  // Build theme class names — board-theme-{name} and pieces-{name} (skip cburnett, no extra class)
+  const themeClasses = [
+    boardTheme && boardTheme !== "brown" ? `board-theme-${boardTheme}` : "",
+    pieceSet && pieceSet !== "cburnett" ? `pieces-${pieceSet}` : "",
+    className ?? "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   return (
     <div
       ref={containerRef}
       style={{ width: size, height: size }}
-      className={className}
+      className={themeClasses || undefined}
     />
   );
 }

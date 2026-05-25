@@ -2,6 +2,67 @@
 @import "chessground/assets/chessground.brown.css";
 @import "chessground/assets/chessground.cburnett.css";
 
+/* ═══════════════════════════════════════════════════════════
+   BOARD THEMES — applied via .board-theme-{name} on cg-wrap
+   The brown theme comes from chessground.brown.css (default).
+   All others override cg-board background-color / background-image.
+   ═══════════════════════════════════════════════════════════ */
+
+/* Blue — slate blue-gray squares */
+.board-theme-blue cg-board {
+  background-color: #dee3e6;
+  background-image: conic-gradient(#8ca2ad 90deg, #dee3e6 90deg) 0 0 / 12.5% 12.5%;
+}
+.board-theme-blue cg-board square.last-move { background-color: rgba(0, 120, 200, 0.35); }
+.board-theme-blue cg-board square.selected  { background-color: rgba(0, 120, 200, 0.45); }
+
+/* Green — classic tournament green */
+.board-theme-green cg-board {
+  background-color: #ffffdd;
+  background-image: conic-gradient(#86a666 90deg, #ffffdd 90deg) 0 0 / 12.5% 12.5%;
+}
+.board-theme-green cg-board square.last-move { background-color: rgba(20, 140, 40, 0.4); }
+.board-theme-green cg-board square.selected  { background-color: rgba(20, 140, 40, 0.5); }
+
+/* Ice — light cream/off-white */
+.board-theme-ice cg-board {
+  background-color: #fffef8;
+  background-image: conic-gradient(#c8c365 90deg, #fffef8 90deg) 0 0 / 12.5% 12.5%;
+}
+.board-theme-ice cg-board square.last-move { background-color: rgba(200, 195, 100, 0.5); }
+.board-theme-ice cg-board square.selected  { background-color: rgba(200, 195, 100, 0.6); }
+
+/* Purple — dark violet */
+.board-theme-purple cg-board {
+  background-color: #e8d1f7;
+  background-image: conic-gradient(#7b4fa6 90deg, #e8d1f7 90deg) 0 0 / 12.5% 12.5%;
+}
+.board-theme-purple cg-board square.last-move { background-color: rgba(120, 60, 180, 0.35); }
+.board-theme-purple cg-board square.selected  { background-color: rgba(120, 60, 180, 0.45); }
+
+/* ═══════════════════════════════════════════════════════════
+   PIECE SETS — applied via .pieces-{name} on .cg-wrap
+   cburnett:  the default from chessground (no extra class needed)
+   alpha:     high-contrast flat look via CSS filter
+   mono:      grayscale
+   shadow:    drop-shadow for a 3-D feel
+   ═══════════════════════════════════════════════════════════ */
+
+/* alpha — clean, high-contrast flat style */
+.pieces-alpha .cg-wrap piece {
+  filter: contrast(1.5) saturate(0.6) brightness(1.1);
+}
+
+/* mono — full grayscale with boosted contrast */
+.pieces-mono .cg-wrap piece {
+  filter: grayscale(1) contrast(1.4) brightness(1.05);
+}
+
+/* shadow — drop-shadow gives a subtle 3-D lift */
+.pieces-shadow .cg-wrap piece {
+  filter: drop-shadow(1px 3px 3px rgba(0, 0, 0, 0.55));
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

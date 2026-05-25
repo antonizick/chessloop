@@ -10,12 +10,17 @@ import { LineSelector } from "@/components/teaching/LineSelector";
 import { useTeaching } from "@/hooks/useTeaching";
 import { librariesApi } from "@/api/libraries";
 import { linesApi } from "@/api/lines";
+import { useAuthStore } from "@/stores/auth";
 import { playMoveSound } from "@/utils/sounds";
 import type { Line } from "@/types";
 
 export function TeachingBoard() {
   const { id: libId } = useParams<{ id: string }>();
   const qc = useQueryClient();
+  const user = useAuthStore((s) => s.user);
+  const soundsOn = user?.sounds_on ?? true;
+  const boardTheme = user?.board_theme ?? "brown";
+  const pieceSet = user?.piece_set ?? "cburnett";
 
   // ── Data ─────────────────────────────────────────────────────────────────
   const { data: lib } = useQuery({
@@ -98,7 +103,7 @@ export function TeachingBoard() {
 
     if (!result || !selectedLineId) return;
 
-    playMoveSound();
+    playMoveSound(soundsOn);
 
     // Chessground already shows the moved piece; update legal dests for next move
     cgRef.current?.set({
@@ -192,6 +197,8 @@ export function TeachingBoard() {
             viewOnly={!teaching.isAtEnd}
             onMove={onMove}
             cgRef={cgRef}
+            boardTheme={boardTheme}
+            pieceSet={pieceSet}
           />
           {/* Viewing-history banner */}
           {!teaching.isAtEnd && (

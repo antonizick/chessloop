@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from config import settings
 from database import init_db
-from routers import auth, libraries, lines, practice, stats, public
+from routers import auth, libraries, lines, practice, stats, public, admin
 
 
 @asynccontextmanager
@@ -34,6 +34,7 @@ app.include_router(lines.router, prefix="/api")
 app.include_router(practice.router, prefix="/api")
 app.include_router(stats.router, prefix="/api")
 app.include_router(public.router, prefix="/api")
+app.include_router(admin.router, prefix="/api")
 
 
 @app.get("/api/health")

@@ -1,0 +1,117 @@
+##############################################################################
+# docker-compose.prod.yml — ChessLoop production configuration
+#
+# Usage:
+#   cp .env.example .env          # fill in JWT_SECRET, PUBLIC_PORT, DOMAIN
+#   docker compose -f docker-compose.prod.yml up -d --build
+#
+# SSL:
+#   This file assumes you're terminating SSL *upstream* (Caddy, Nginx on the
+#   host, Cloudflare Tunnel, Tailscale Funnel, etc.).  If you want SSL inside
+#   this Compose stack, see the "SSL inside Docker" notes at the bottom.
+#
+# Backups:
+#   The DB lives in the named volume chessloop-data.
+#   Use the Admin panel (role=admin required) to create & download backups,
+#   or snapshot the volume directly:
+#     docker run --rm -v chessloop-data:/src -v $(pwd):/out alpine \
+#       tar czf /out/chessloop-backup.tar.gz -C /src .
+##############################################################################
+
+version: "3.8"
+
+services:
+
+  # ─── Backend (FastAPI) ────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: chessloop-backend
+    restart: always
+    environment:
+      - CHESSLOOP_DB_PATH=/data/chessloop.db
+      - CHESSLOOP_BACKUP_DIR=/data/backups
+      - CHESSLOOP_JWT_SECRET=${JWT_SECRET:?err — set JWT_SECRET in .env}
+      - CHESSLOOP_ACCESS_TTL_MIN=${ACCESS_TTL_MIN:-15}
+      - CHESSLOOP_REFRESH_TTL_DAYS=${REFRESH_TTL_DAYS:-30}
+      # In production CORS origins should be your domain only:
+      - CHESSLOOP_CORS_ORIGINS=https://${DOMAIN:-localhost}
+    volumes:
+      - chessloop-data:/data
+    # Backend is NOT exposed to the host; nginx proxies /api/* to it.
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # ─── Frontend (React static) ──────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: chessloop-frontend
+    restart: always
+    depends_on:
+      - backend
+
+  # ─── Nginx (reverse proxy) ────────────────────────────────────────────────
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: chessloop-nginx
+    restart: always
+    ports:
+      # Bind only to the host's loopback (127.0.0.1) when a reverse proxy
+      # (Caddy / Nginx on host / Cloudflare Tunnel) handles the public HTTPS.
+      # Change to "0.0.0.0:${PUBLIC_PORT:-8090}:80" if you want direct HTTP access.
+      - "127.0.0.1:${PUBLIC_PORT:-8090}:80"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - backend
+      - frontend
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  chessloop-data:
+    driver: local
+
+##############################################################################
+# ── SSL inside Docker (optional) ────────────────────────────────────────────
+#
+# If you want Nginx to terminate SSL directly (no upstream proxy), you'll need
+# to:
+#   1. Obtain a certificate (Let's Encrypt via certbot, or copy an existing one).
+#   2. Mount the cert & key into the nginx container:
+#
+#       volumes:
+#         - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+#         - /etc/letsencrypt:/etc/letsencrypt:ro
+#
+#   3. Update nginx/default.conf to listen on 443 ssl and add:
+#
+#       ssl_certificate     /etc/letsencrypt/live/YOUR_DOMAIN/fullchain.pem;
+#       ssl_certificate_key /etc/letsencrypt/live/YOUR_DOMAIN/privkey.pem;
+#       ssl_protocols       TLSv1.2 TLSv1.3;
+#       ssl_ciphers         HIGH:!aNULL:!MD5;
+#
+#   4. Add a port binding for 443 in the nginx service above:
+#       ports:
+#         - "443:443"
+#         - "80:80"   # for HTTP → HTTPS redirect
+#
+# Caddy is simpler: add a Caddyfile at the host level and have it reverse proxy
+# to http://localhost:${PUBLIC_PORT}. Caddy handles cert auto-renewal.
+# Example Caddyfile:
+#
+#   chess.yourdomain.com {
+#     reverse_proxy localhost:8090
+#   }
+#
+##############################################################################

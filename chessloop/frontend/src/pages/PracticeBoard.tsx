@@ -41,7 +41,8 @@ import { ModeEntry } from "@/components/practice/ModeEntry";
 import type { PracticeOptions, UiMode } from "@/components/practice/ModeEntry";
 import { SessionSummary } from "@/components/practice/SessionSummary";
 import { practiceApi } from "@/api/practice";
-import { playMoveSound, playCaptureSound } from "@/utils/sounds";
+import { useAuthStore } from "@/stores/auth";
+import { playMoveSound, playCorrectSound, playWrongSound } from "@/utils/sounds";
 import type {
   PracticeMode,
   NextPositionResponse,
@@ -111,6 +112,10 @@ function isPromotion(fen: string, from: string, to: string): boolean {
 
 export function PracticeBoard() {
   const location = useLocation();
+  const user = useAuthStore((s) => s.user);
+  const soundsOn = user?.sounds_on ?? true;
+  const boardTheme = user?.board_theme ?? "brown";
+  const pieceSet = user?.piece_set ?? "cburnett";
 
   // cgRef is set once when ChessboardWrapper mounts (at page load, not on Start).
   // It stays valid for the entire session — no timing race with network requests.
@@ -341,7 +346,7 @@ export function PracticeBoard() {
 
     const fenAfter = moves[animStep].fen_after;
     const timer = setTimeout(() => {
-      playMoveSound();
+      playMoveSound(soundsOn);
       cgRef.current?.set({ fen: fenAfter, viewOnly: true });
       setAnimStep((s) => s + 1);
     }, 450);
@@ -360,7 +365,7 @@ export function PracticeBoard() {
     if (phase === "replaying") {
       const ctx = wrongMoveCtxRef.current;
       if (!ctx) return;
-      playMoveSound();
+      playMoveSound(soundsOn);
       cgRef.current?.set({
         fen: ctx.fenAfter,
         viewOnly: true,
@@ -442,7 +447,7 @@ export function PracticeBoard() {
 
     if (match) {
       // ── Correct move ──────────────────────────────────────────────────────
-      playMoveSound();
+      playMoveSound(soundsOn);
       cgRef.current?.set({
         fen: expected.fen_after,
         viewOnly: true,
@@ -488,7 +493,7 @@ export function PracticeBoard() {
       }
 
       const computerMove = moves[step];
-      playMoveSound();
+      playMoveSound(soundsOn);
       cgRef.current?.set({
         fen: computerMove.fen_after,
         viewOnly: true,
@@ -536,6 +541,7 @@ export function PracticeBoard() {
         wrong: prev.wrong,
         positions_seen: prev.positions_seen + 1,
       }));
+      playCorrectSound(soundsOn);
       setPhase("feedback_correct");
     } catch {
       setError("Network error. Try again.");
@@ -548,7 +554,7 @@ export function PracticeBoard() {
   function showWrongFeedback(expected: { uci: string; san: string; fen_after: string }) {
     const from = expected.uci.slice(0, 2) as Key;
     const to   = expected.uci.slice(2, 4) as Key;
-    playCaptureSound();
+    playWrongSound(soundsOn);
 
     const fen = currentFenRef.current;
     const ctx: WrongMoveCtx = { from, to, san: expected.san, fenAfter: expected.fen_after };
@@ -715,6 +721,8 @@ export function PracticeBoard() {
               viewOnly={isViewOnly}
               onMove={onMove}
               cgRef={cgRef}
+              boardTheme={boardTheme}
+              pieceSet={pieceSet}
             />
 
             {/* Phase border overlays */}

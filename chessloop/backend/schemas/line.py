@@ -16,8 +16,10 @@ class LineUpdate(BaseModel):
 
 class LineMoveAppend(BaseModel):
     san: str
-    uci: str
-    fen_after: str
+    # uci and fen_after are optional — if omitted, the backend computes them
+    # from the SAN using python-chess (requires all preceding moves to be valid).
+    uci: Optional[str] = None
+    fen_after: Optional[str] = None
     note: Optional[str] = None
 
 

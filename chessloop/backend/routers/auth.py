@@ -19,6 +19,7 @@ from schemas.auth import (
     MfaSetupResponse,
     MfaConfirmRequest,
     UserResponse,
+    PreferencesRequest,
 )
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -138,3 +139,29 @@ def mfa_confirm(
     user.mfa_enabled = True
     session.add(user)
     session.commit()
+
+
+_VALID_PIECE_SETS = {"cburnett", "alpha", "mono", "shadow"}
+_VALID_BOARD_THEMES = {"brown", "blue", "green", "ice", "purple"}
+
+
+@router.patch("/preferences", response_model=UserResponse)
+def update_preferences(
+    body: PreferencesRequest,
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    if body.piece_set is not None:
+        if body.piece_set not in _VALID_PIECE_SETS:
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, f"Invalid piece_set. Choose from: {', '.join(_VALID_PIECE_SETS)}")
+        user.piece_set = body.piece_set
+    if body.board_theme is not None:
+        if body.board_theme not in _VALID_BOARD_THEMES:
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, f"Invalid board_theme. Choose from: {', '.join(_VALID_BOARD_THEMES)}")
+        user.board_theme = body.board_theme
+    if body.sounds_on is not None:
+        user.sounds_on = body.sounds_on
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+    return user

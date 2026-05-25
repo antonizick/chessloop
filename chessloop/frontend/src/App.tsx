@@ -13,6 +13,7 @@ import { Stats } from "@/pages/Stats";
 import { Public } from "@/pages/Public";
 import { PublicLibraryDetail } from "@/pages/PublicLibraryDetail";
 import { Settings } from "@/pages/Settings";
+import { Admin } from "@/pages/Admin";
 
 function RequireAuth({ children }: { children: JSX.Element }) {
   const token = useAuthStore((s) => s.accessToken);
@@ -42,6 +43,7 @@ export default function App() {
         <Route path="/public" element={<Public />} />
         <Route path="/public/:id" element={<PublicLibraryDetail />} />
         <Route path="/settings" element={<Settings />} />
+        <Route path="/admin" element={<Admin />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

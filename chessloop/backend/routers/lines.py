@@ -3,6 +3,7 @@ from datetime import datetime
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, select
+import chess
 
 from database import get_session
 from models import User, Library, Line
@@ -115,6 +116,12 @@ def delete_line(
     session.commit()
 
 
+def _canonical_fen(fen: str) -> str:
+    """Strip move counters from FEN for use as a position key."""
+    parts = fen.split()
+    return " ".join(parts[:4])
+
+
 @router.post("/lines/{line_id}/moves", response_model=LineResponse)
 def append_move(
     line_id: UUID,
@@ -124,7 +131,28 @@ def append_move(
 ):
     line = _owned_line_or_404(session, line_id, user)
     moves = json.loads(line.moves or "[]")
-    moves.append(body.model_dump(exclude_none=True))
+
+    # If uci / fen_after are missing, compute them with python-chess.
+    if body.uci is None or body.fen_after is None:
+        board = chess.Board(line.starting_fen)
+        for m in moves:
+            board.push_san(m["san"])
+        try:
+            move = board.parse_san(body.san)
+        except (chess.InvalidMoveError, chess.IllegalMoveError, chess.AmbiguousMoveError) as exc:
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, f"Invalid SAN '{body.san}': {exc}")
+        uci = move.uci()
+        board.push(move)
+        fen_after = board.fen()
+    else:
+        uci = body.uci
+        fen_after = body.fen_after
+
+    move_record = {"san": body.san, "uci": uci, "fen_after": fen_after}
+    if body.note:
+        move_record["note"] = body.note
+
+    moves.append(move_record)
     line.moves = json.dumps(moves)
     line.updated_at = datetime.utcnow()
     session.add(line)

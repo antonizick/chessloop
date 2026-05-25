@@ -2,8 +2,7 @@
 
 Self-hosted, move-based spaced-repetition chess opening trainer.
 
-> **Status:** Phase 4 complete — Stats, Public Discovery, and a fully live Dashboard.  
-> Phase 5 next: piece-set themes, seed libraries, admin backup UI, Docker prod config.
+> **Status:** Phase 5 complete — fully production-ready for self-hosting.
 
 ---
 
@@ -26,7 +25,7 @@ ChessLoop lets you teach it your opening repertoire by playing moves on a board,
 | 2 | Teaching board (live move recording, move list, per-move notes) | ✅ Complete |
 | 3 | SRS practice loop, SM-2 scheduler, leech detection, session summary, sounds | ✅ Complete |
 | 4 | Stats (heatmap, mastery, leeches), public library discovery, dashboard live data | ✅ Complete |
-| 5 | Piece-set themes, seed libraries, admin backup UI, Docker prod config, README | 🔜 Next |
+| 5 | Board themes, piece sets, sounds settings, admin panel, seed libraries, Docker prod | ✅ Complete |
 
 ---
 
@@ -38,11 +37,12 @@ ChessLoop lets you teach it your opening repertoire by playing moves on a board,
 - **SQLite** (WAL mode) — zero config, file = backup
 - **python-jose** + **passlib** — JWT sessions + bcrypt hashing
 - **pyotp** — TOTP MFA (Google Authenticator compatible)
+- **chess** (python-chess) — server-side move validation and UCI/FEN computation
 
 ### Frontend
 - **React 18** + **Vite** + **TypeScript**
 - **Chessground 9** — drag/drop/touch chess board
-- **chess.js** — move validation, FEN/PGN
+- **chess.js** — client-side move validation, FEN/PGN
 - **TailwindCSS** — utility-first dark/gold theme
 - **Zustand** — lightweight state (auth store)
 - **TanStack Query** — data fetching, caching, background refresh
@@ -53,37 +53,7 @@ ChessLoop lets you teach it your opening repertoire by playing moves on a board,
 
 ---
 
-## API overview
-
-| Prefix | Purpose |
-|---|---|
-| `/api/auth/` | Register, login, MFA setup/confirm, refresh token, logout |
-| `/api/libraries/` | CRUD, active toggle, publish, fork |
-| `/api/lines/` | CRUD, append/delete moves, per-move notes |
-| `/api/practice/` | Session start/next/answer/end, due-count badge |
-| `/api/stats/` | Accuracy heatmap, mastery per library, leeches, recent sessions |
-| `/api/public/` | Browse/search public libraries, star, comment |
-
-Full interactive docs: `http://localhost:8100/docs` (dev) or `http://localhost:${PUBLIC_PORT}/api/docs` (Docker).
-
----
-
-## Ports
-
-ChessLoop is parameterised so it never collides with anything else on the host.
-
-| Mode | Service | Default | Override |
-|---|---|---|---|
-| Docker | Public web UI (nginx) | **8090** | `PUBLIC_PORT` in `.env` |
-| Docker | Backend, frontend containers | internal only | — |
-| Dev | FastAPI (uvicorn) | **8100** | `--port` flag |
-| Dev | Vite dev server | **8090** | `server.port` in `vite.config.ts` |
-
-If 8090 is busy, set a different `PUBLIC_PORT` in `.env` before `docker compose up`.
-
----
-
-## Dev quickstart
+## Quick start (development)
 
 ### Backend
 
@@ -106,14 +76,150 @@ npm run dev   # http://localhost:8090
 
 The Vite dev server proxies `/api/*` → `http://localhost:8100`.
 
-### Full stack (Docker)
+---
+
+## Production self-hosting (Docker)
+
+### 1. Configure
 
 ```bash
-cp .env.example .env   # set CHESSLOOP_JWT_SECRET; optionally change PUBLIC_PORT
-docker compose up --build
+cp .env.example .env
 ```
 
-App: `http://localhost:${PUBLIC_PORT:-8090}`
+Edit `.env` and set:
+
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `JWT_SECRET` | **yes** | — | Long random string. Generate: `openssl rand -hex 32` |
+| `PUBLIC_PORT` | no | `8090` | Host port for the web UI |
+| `DOMAIN` | for CORS | `localhost` | Your public domain (e.g. `chess.mysite.com`) |
+
+### 2. Build and start
+
+```bash
+# Development (binds to 0.0.0.0 so you can reach it from other machines)
+docker compose up --build
+
+# Production (binds to 127.0.0.1 — put a reverse proxy in front)
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
+App: `http://localhost:${PUBLIC_PORT}`
+
+### 3. SSL (recommended for production)
+
+**Option A — Caddy (simplest):** Install Caddy on the host and add to your Caddyfile:
+
+```
+chess.yourdomain.com {
+    reverse_proxy localhost:8090
+}
+```
+
+Caddy auto-provisions and renews the Let's Encrypt cert.
+
+**Option B — Cloudflare Tunnel:** Create a tunnel to `localhost:8090`. SSL handled by Cloudflare.
+
+**Option C — Nginx on host:**
+
+```nginx
+server {
+    listen 443 ssl;
+    server_name chess.yourdomain.com;
+    ssl_certificate     /etc/letsencrypt/live/chess.yourdomain.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/chess.yourdomain.com/privkey.pem;
+    location / {
+        proxy_pass http://127.0.0.1:8090;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
+```
+
+See `docker-compose.prod.yml` for full SSL-inside-Docker notes.
+
+### 4. Create your first admin account
+
+Register normally in the UI. Then promote yourself to admin via the backend:
+
+```bash
+# Find your user ID:
+sqlite3 /var/lib/docker/volumes/chessloop-data/_data/chessloop.db \
+  "SELECT id, username FROM user;"
+
+# Set role:
+sqlite3 /var/lib/docker/volumes/chessloop-data/_data/chessloop.db \
+  "UPDATE user SET role='admin' WHERE username='yourname';"
+```
+
+Once promoted, the **Admin panel** (⚙ Admin panel link in the sidebar) lets you:
+- Create and download database backups
+- Promote / demote other users
+
+---
+
+## Seed starter libraries
+
+ChessLoop ships with a seed script that populates 16 curated opening libraries and publishes them to the Public Discovery page. Useful on a fresh install.
+
+```bash
+cd backend
+source .venv/bin/activate
+
+# Against the dev server (default):
+python seeds/seed_libraries.py
+
+# Against Docker:
+python seeds/seed_libraries.py --url http://localhost:8090
+```
+
+The script creates a `seedbot` account, adds the 16 openings, and publishes them. Any existing library with the same name is skipped.
+
+To seed with your own account:
+```bash
+python seeds/seed_libraries.py --email you@example.com --username you --password YourPassword
+```
+
+---
+
+## Appearance
+
+Go to **Settings** to customise:
+
+| Setting | Options |
+|---|---|
+| Board theme | Brown (default) · Blue · Green · Ice · Purple |
+| Piece set | CBurnett (default) · Alpha · Mono · Shadow |
+| Sounds | On / Off |
+
+Changes take effect immediately (live preview in Settings before saving).
+
+---
+
+## API overview
+
+| Prefix | Purpose |
+|---|---|
+| `/api/auth/` | Register, login, MFA setup/confirm, refresh token, preferences |
+| `/api/libraries/` | CRUD, active toggle, publish, fork |
+| `/api/lines/` | CRUD, append/delete moves (SAN-only or SAN+UCI+FEN), per-move notes |
+| `/api/practice/` | Session start/next/answer/end, due-count badge |
+| `/api/stats/` | Accuracy heatmap, mastery per library, leeches, recent sessions |
+| `/api/public/` | Browse/search public libraries, star, comment |
+| `/api/admin/` | Backup CRUD + user management (admin role required) |
+
+Full interactive docs: `http://localhost:8100/docs` (dev) or `http://YOUR_HOST/api/docs` (Docker).
+
+---
+
+## Ports
+
+| Mode | Service | Default | Override |
+|---|---|---|---|
+| Docker | Public web UI (nginx) | **8090** | `PUBLIC_PORT` in `.env` |
+| Docker | Backend, frontend | internal only | — |
+| Dev | FastAPI (uvicorn) | **8100** | `--port` flag |
+| Dev | Vite dev server | **8090** | `server.port` in `vite.config.ts` |
 
 ---
 
@@ -131,13 +237,49 @@ Modified SM-2 with leech detection:
 ## Data model (key tables)
 
 ```
-User           — auth, preferences
+User           — auth, preferences (theme, piece_set, board_theme, sounds_on)
 Library        — opening repertoire container (white/black/both, public/private)
 Line           — move sequence within a library (JSON array of {san, uci, fen_after, note?})
 PracticePosition — one SRS card per (user, line, move_index)
 ReviewLog      — every answer recorded with timing
 PracticeSession — session metadata + aggregate stats
 PublicSignal   — stars and comments on public libraries
+Backup         — admin backup records (file_path, type, size)
+```
+
+---
+
+## Running tests
+
+```bash
+cd backend
+source .venv/bin/activate
+pytest tests/ -v
+```
+
+Tests cover: SRS engine correctness, practice session selection logic, practice API end-to-end.
+
+---
+
+## Backups
+
+Use the **Admin panel → Backups** tab to create named backups on-demand and download them. Three backup types:
+
+| Type | What's included |
+|---|---|
+| `full` | Entire SQLite file (users + content + SRS progress) |
+| `content` | Libraries and lines only (portable to another instance) |
+| `progress` | SRS cards + review log only |
+
+Up to 10 backups are retained; the oldest is pruned automatically when the limit is exceeded.
+
+For volume-level snapshots:
+
+```bash
+docker run --rm \
+  -v chessloop-data:/src \
+  -v $(pwd):/out \
+  alpine tar czf /out/chessloop-backup-$(date +%F).tar.gz -C /src .
 ```
 
 ---
@@ -152,29 +294,20 @@ chessloop/
 │   ├── config.py            # Settings (JWT secret, CORS origins, etc.)
 │   ├── models/              # SQLModel table classes
 │   ├── schemas/             # Pydantic request/response schemas
-│   ├── routers/             # auth, libraries, lines, practice, stats, public
-│   ├── services/            # srs_engine, position_key, practice_session
-│   └── auth/                # JWT, MFA, password helpers
+│   ├── routers/             # auth, libraries, lines, practice, stats, public, admin
+│   ├── services/            # srs_engine, position_key, practice_session, backup_service
+│   ├── auth/                # JWT, MFA, password helpers
+│   └── seeds/               # seed_libraries.py — 16 starter openings
 ├── frontend/
 │   └── src/
-│       ├── api/             # Typed fetch wrappers (auth, libraries, lines, practice, stats, public)
+│       ├── api/             # Typed fetch wrappers
 │       ├── components/      # board/, layout/, practice/, teaching/
-│       ├── pages/           # Dashboard, Libraries, TeachingBoard, PracticeBoard, Stats, Public, …
+│       ├── pages/           # Dashboard, Libraries, TeachingBoard, PracticeBoard,
+│       │                    # Stats, Public, Settings, Admin
 │       ├── stores/          # Zustand auth store
 │       └── types/           # Shared TypeScript interfaces
 ├── nginx/
 │   └── default.conf         # Reverse proxy config
-└── docker-compose.yml
+├── docker-compose.yml       # Development compose
+└── docker-compose.prod.yml  # Production compose (127.0.0.1 binding, health checks)
 ```
-
----
-
-## Running tests
-
-```bash
-cd backend
-source .venv/bin/activate
-pytest tests/ -v
-```
-
-Tests cover: SRS engine correctness, practice session selection logic, practice API end-to-end.
