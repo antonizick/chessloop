@@ -78,6 +78,9 @@ export interface NextPositionResponse {
   fen_before: string;
   turn_color: "white" | "black";
   preceding_moves: PrecedingMove[];
+  /** Full mainline from move_index to end. [0] = user's challenge move,
+   *  [1] = computer reply, [2] = user's next move, … */
+  remaining_moves: PrecedingMove[];
   is_new: boolean;
   is_leech: boolean;
   repetitions: number;
@@ -103,6 +106,8 @@ export interface AnswerRequest {
   move_uci: string;
   ease?: "easy" | "hard" | null;
   response_ms?: number;
+  /** Full-line practice: overrides the server-side UCI check when present. */
+  line_correct?: boolean | null;
 }
 
 export interface AnswerResponse {

@@ -104,6 +104,9 @@ def _build_next_response(db: Session, pos: PracticePosition) -> NextPositionResp
         fen_before=fen_before,
         turn_color=active_color(fen_before),
         preceding_moves=[PrecedingMove(**m) for m in moves[: pos.move_index]],
+        # All moves from move_index to the end of the line so the frontend
+        # can drive the full alternating user/computer sequence locally.
+        remaining_moves=[PrecedingMove(**m) for m in moves[pos.move_index :]],
         is_new=pos.repetitions == 0,
         is_leech=pos.is_leech,
         repetitions=pos.repetitions,
@@ -201,7 +204,15 @@ def submit_answer(
     expected = moves[pos.move_index]
     expected_uci = (expected.get("uci") or "").strip().lower()
     submitted = body.move_uci.strip().lower()
-    was_correct = submitted == expected_uci
+
+    # Full-line practice sends line_correct to reflect the outcome of the
+    # entire mainline sequence (not just this one move), so prefer it when
+    # present.  For single-move practice (line_correct is None) we fall back
+    # to the direct UCI comparison.
+    if body.line_correct is not None:
+        was_correct = body.line_correct
+    else:
+        was_correct = submitted == expected_uci
 
     if was_correct:
         srs_engine.apply_correct(pos, body.ease)

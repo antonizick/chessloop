@@ -54,13 +54,23 @@ import type {
 type Phase =
   | "entry"
   | "loading"
-  | "animating"
-  | "waiting"
-  | "submitting"
-  | "feedback_correct"
-  | "feedback_wrong"
-  | "replaying"
-  | "done";
+  | "animating"        // auto-playing preceding moves before the challenge
+  | "waiting"          // user's turn to drag a move
+  | "computer_move"    // computer auto-playing its mainline reply
+  | "submitting"       // POST /answer in flight
+  | "feedback_correct" // line complete — show SRS info + Easy/OK/Hard
+  | "feedback_wrong"   // wrong move — red arrow shown, delay before forced replay
+  | "replaying"        // user must drag the correct move to continue
+  | "done";            // session summary shown, board invisible
+
+// Per-move context stored when the user gets a move wrong so the replaying
+// phase (and its UI copy) can show the correct move without hitting the server.
+type WrongMoveCtx = {
+  from: string;
+  to: string;
+  san: string;
+  fenAfter: string;
+};
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -81,6 +91,11 @@ function intervalLabel(days: number): string {
   if (days < 30) return `${Math.round(days)} days`;
   const months = Math.round(days / 30);
   return `${months} month${months > 1 ? "s" : ""}`;
+}
+
+/** Extract whose turn it is directly from the FEN string ("w"→white, "b"→black). */
+function turnFromFen(fen: string): "white" | "black" {
+  return fen.split(" ")[1] === "w" ? "white" : "black";
 }
 
 function isPromotion(fen: string, from: string, to: string): boolean {
@@ -130,43 +145,69 @@ export function PracticeBoard() {
   // Response timing
   const startedAtRef = useRef(0);
 
+  // ── Line-traversal state ───────────────────────────────────────────────────
+  //
+  // remaining_moves[lineStep] is always the NEXT move to be played.
+  // Even lineStep values (0, 2, 4, …) are the user's moves.
+  // Odd values (1, 3, 5, …) are the computer's auto-replies.
+  //
+  // currentFen tracks the live board FEN as moves are played so mid-line
+  // board setup is independent of position.fen_before (which only describes
+  // the start of the challenge).
+  const [lineStep, setLineStep] = useState(0);
+  const [currentFen, setCurrentFen] = useState("");
+  const [wrongMoveCtx, setWrongMoveCtx] = useState<WrongMoveCtx | null>(null);
+
   // Stable refs to avoid stale closures in setTimeout callbacks
   const positionRef = useRef<NextPositionResponse | null>(null);
   const sessionIdRef = useRef<string | null>(null);
   const modeRef = useRef<UiMode>("weakest");
+  const lineStepRef = useRef(0);
+  const currentFenRef = useRef("");
+  const wrongMoveCtxRef = useRef<WrongMoveCtx | null>(null);
 
   positionRef.current = position;
   sessionIdRef.current = sessionId;
   modeRef.current = mode;
+  lineStepRef.current = lineStep;
+  currentFenRef.current = currentFen;
+  wrongMoveCtxRef.current = wrongMoveCtx;
 
   // ── Board helpers ──────────────────────────────────────────────────────────
 
-  const enableBoardForUser = useCallback((pos: NextPositionResponse) => {
-    cgRef.current?.set({
-      fen: pos.fen_before,
-      viewOnly: false,
-      turnColor: pos.turn_color,
-      movable: {
-        free: false,
-        color: pos.turn_color,
-        dests: legalDests(pos.fen_before),
-        showDests: true,
-      },
-      draggable: { enabled: true },
-      drawable: { shapes: [] },
-    });
-    startedAtRef.current = Date.now();
-  }, []);
+  // fenOverride is used for mid-line "waiting" states where the board is
+  // already past position.fen_before (i.e. lineStep > 0).
+  const enableBoardForUser = useCallback(
+    (pos: NextPositionResponse, fenOverride?: string) => {
+      const fen = fenOverride ?? pos.fen_before;
+      const color = turnFromFen(fen);
+      cgRef.current?.set({
+        fen,
+        viewOnly: false,
+        turnColor: color,
+        movable: {
+          free: false,
+          color,
+          dests: legalDests(fen),
+          showDests: true,
+        },
+        draggable: { enabled: true },
+        drawable: { shapes: [] },
+      });
+      startedAtRef.current = Date.now();
+    },
+    [],
+  );
 
   // ── Enable board when phase → "waiting" ────────────────────────────────────
   //
-  // Run inside useEffect so it fires AFTER React has committed the render and
-  // all child effects (ChessboardWrapper's init) have completed.  Since
-  // ChessboardWrapper is now always mounted, cgRef.current is guaranteed to be
-  // set long before startSession is ever called.
+  // Fires after React commits the render.  currentFenRef always holds the
+  // latest live FEN — for the initial waiting state (lineStep === 0) that is
+  // position.fen_before; for mid-line waiting states it is the FEN after the
+  // computer's last reply.
   useEffect(() => {
     if (phase !== "waiting" || !position) return;
-    enableBoardForUser(position);
+    enableBoardForUser(position, currentFenRef.current || undefined);
   }, [phase, position, enableBoardForUser]);
 
   // ── Auto-start from Dashboard "Practice weakest now" ──────────────────────
@@ -254,6 +295,14 @@ export function PracticeBoard() {
         positionRef.current = resp;
         setOrientation(resp.turn_color);
 
+        // Reset line-traversal state for the new challenge.
+        setLineStep(0);
+        lineStepRef.current = 0;
+        setCurrentFen(resp.fen_before);
+        currentFenRef.current = resp.fen_before;
+        setWrongMoveCtx(null);
+        wrongMoveCtxRef.current = null;
+
         if (resp.preceding_moves.length === 0) {
           // No animation needed — go straight to waiting.
           // The useEffect above will call enableBoardForUser after React commits.
@@ -307,45 +356,161 @@ export function PracticeBoard() {
     const sid = sessionIdRef.current;
     if (!pos || !sid) return;
 
+    // ── Replaying phase: forced-replay of the correct move ──────────────────
     if (phase === "replaying") {
-      // Forced replay — any move here is the correct one (dests limited to 1 square).
+      const ctx = wrongMoveCtxRef.current;
+      if (!ctx) return;
       playMoveSound();
       cgRef.current?.set({
-        fen: answer!.fen_after,
+        fen: ctx.fenAfter,
         viewOnly: true,
         drawable: { shapes: [] },
       });
-      setTimeout(() => advanceToNext(sid), 700);
+
+      // Submit the wrong-round result to the server, then advance.
+      setPhase("submitting");
+      const elapsedMs = Date.now() - startedAtRef.current;
+      try {
+        const result = await practiceApi.answer(sid, {
+          practice_position_id: pos.practice_position_id,
+          // Send the first expected move for the audit log; line_correct
+          // overrides the correctness decision on the server.
+          move_uci: pos.remaining_moves[0]?.uci ?? `${from}${to}`,
+          ease: null,
+          response_ms: elapsedMs,
+          line_correct: false,
+        });
+        setAnswer(result);
+        setRunningStats((prev) => ({
+          correct: prev.correct,
+          wrong: prev.wrong + 1,
+          positions_seen: prev.positions_seen + 1,
+        }));
+      } catch {
+        setError("Network error.");
+      }
+
+      await new Promise((r) => setTimeout(r, 500));
+      advanceToNext(sid);
       return;
     }
 
     if (phase !== "waiting") return;
 
-    // Check for promotion
-    if (isPromotion(pos.fen_before, from, to)) {
-      // Snap piece back — wait for promotion modal selection
-      cgRef.current?.set({ fen: pos.fen_before });
+    // ── Promotion check ─────────────────────────────────────────────────────
+    const activeFen = currentFenRef.current || pos.fen_before;
+    if (isPromotion(activeFen, from, to)) {
+      // Snap piece back — wait for promotion modal selection.
+      cgRef.current?.set({ fen: activeFen });
       setPendingPromotion({ from, to });
       return;
     }
 
-    playMoveSound();
-    await submitAnswer(`${from}${to}`, null);
+    handleUserMove(`${from}${to}`, null);
   }
 
   async function confirmPromotion(piece: "q" | "r" | "b" | "n") {
     if (!pendingPromotion) return;
     const { from, to } = pendingPromotion;
     setPendingPromotion(null);
-    await submitAnswer(`${from}${to}${piece}`, null);
+    handleUserMove(`${from}${to}${piece}`, null);
   }
 
-  // ── Submit answer to server ────────────────────────────────────────────────
+  // ── Core line-progression logic ────────────────────────────────────────────
+  //
+  // Called whenever the user drags a move in the "waiting" phase.
+  // Validates locally against remaining_moves[lineStep], then either
+  // advances the line (computer replies) or ends the round.
 
-  async function submitAnswer(uci: string, ease: "easy" | "hard" | null) {
+  function handleUserMove(uci: string, _unused: null) {
     const pos = positionRef.current;
+    if (!pos) return;
+
+    const step = lineStepRef.current;
+    const moves = pos.remaining_moves;
+    if (step >= moves.length) return;
+
+    const expected = moves[step];
+    const match = uci.toLowerCase() === expected.uci.toLowerCase();
+
+    if (match) {
+      // ── Correct move ──────────────────────────────────────────────────────
+      playMoveSound();
+      cgRef.current?.set({
+        fen: expected.fen_after,
+        viewOnly: true,
+        drawable: { shapes: [] },
+      });
+
+      const newStep = step + 1;
+      setLineStep(newStep);
+      lineStepRef.current = newStep;
+      setCurrentFen(expected.fen_after);
+      currentFenRef.current = expected.fen_after;
+
+      if (newStep >= moves.length) {
+        // Line exhausted after user's move — round complete.
+        finishRound(pos);
+      } else {
+        // Computer responds next.
+        setPhase("computer_move");
+        playComputerMove();
+      }
+    } else {
+      // ── Wrong move ────────────────────────────────────────────────────────
+      showWrongFeedback(expected);
+    }
+  }
+
+  // ── Computer auto-reply ────────────────────────────────────────────────────
+  //
+  // Reads lineStepRef (post-user-move increment) to find the computer's move,
+  // animates it after a short pause, then either enables the board for the
+  // user's next move or calls finishRound if the line is now exhausted.
+
+  function playComputerMove() {
+    setTimeout(() => {
+      const pos = positionRef.current;
+      if (!pos) return;
+
+      const step = lineStepRef.current; // odd index = computer's turn
+      const moves = pos.remaining_moves;
+      if (step >= moves.length) {
+        finishRound(pos);
+        return;
+      }
+
+      const computerMove = moves[step];
+      playMoveSound();
+      cgRef.current?.set({
+        fen: computerMove.fen_after,
+        viewOnly: true,
+        drawable: { shapes: [] },
+      });
+
+      const newStep = step + 1;
+      setLineStep(newStep);
+      lineStepRef.current = newStep;
+      setCurrentFen(computerMove.fen_after);
+      currentFenRef.current = computerMove.fen_after;
+
+      if (newStep >= moves.length) {
+        // Line ends on the computer's move (e.g. opponent plays the last book
+        // move) — the round is complete after this reply.
+        finishRound(pos);
+      } else {
+        // User's next move — the "waiting" useEffect will call enableBoardForUser
+        // with currentFenRef after React commits the phase change.
+        setPhase("waiting");
+      }
+    }, 600);
+  }
+
+  // ── Round completion: submit result and show SRS feedback ─────────────────
+
+  async function finishRound(pos: NextPositionResponse) {
     const sid = sessionIdRef.current;
-    if (!pos || !sid) return;
+    if (!sid) return;
 
     setPhase("submitting");
     const elapsedMs = Date.now() - startedAtRef.current;
@@ -353,44 +518,39 @@ export function PracticeBoard() {
     try {
       const result = await practiceApi.answer(sid, {
         practice_position_id: pos.practice_position_id,
-        move_uci: uci,
-        ease,
+        move_uci: pos.remaining_moves[0]?.uci ?? "",
+        ease: null,
         response_ms: elapsedMs,
+        line_correct: true,
       });
-
       setAnswer(result);
       setRunningStats((prev) => ({
-        correct: result.correct ? prev.correct + 1 : prev.correct,
-        wrong: result.correct ? prev.wrong : prev.wrong + 1,
+        correct: prev.correct + 1,
+        wrong: prev.wrong,
         positions_seen: prev.positions_seen + 1,
       }));
-
-      if (result.correct) {
-        cgRef.current?.set({
-          fen: result.fen_after,
-          viewOnly: true,
-          drawable: { shapes: [] },
-        });
-        setPhase("feedback_correct");
-      } else {
-        showWrongFeedback(pos, result);
-      }
+      setPhase("feedback_correct");
     } catch {
       setError("Network error. Try again.");
       setPhase("waiting");
     }
   }
 
-  // ── Wrong answer: red flash → forced replay ────────────────────────────────
+  // ── Wrong move: red-arrow flash → forced replay ────────────────────────────
 
-  function showWrongFeedback(pos: NextPositionResponse, result: AnswerResponse) {
-    const from = result.expected_uci.slice(0, 2) as Key;
-    const to = result.expected_uci.slice(2, 4) as Key;
-    playCaptureSound(); // distinct "crack" to signal a wrong answer
+  function showWrongFeedback(expected: { uci: string; san: string; fen_after: string }) {
+    const from = expected.uci.slice(0, 2) as Key;
+    const to   = expected.uci.slice(2, 4) as Key;
+    playCaptureSound();
 
-    // Step 1: show board at the question position with a red arrow
+    const fen = currentFenRef.current;
+    const ctx: WrongMoveCtx = { from, to, san: expected.san, fenAfter: expected.fen_after };
+    setWrongMoveCtx(ctx);
+    wrongMoveCtxRef.current = ctx;
+
+    // Step 1: freeze the board and show a red arrow on the correct move.
     cgRef.current?.set({
-      fen: pos.fen_before,
+      fen,
       viewOnly: true,
       drawable: {
         enabled: true,
@@ -400,17 +560,17 @@ export function PracticeBoard() {
     });
     setPhase("feedback_wrong");
 
-    // Step 2: after 1.6s switch to forced-replay with green guide arrow
+    // Step 2: after 1.6 s, switch to green-guided forced replay.
     setTimeout(() => {
       if (!cgRef.current) return;
+      const color = turnFromFen(fen);
       cgRef.current.set({
-        fen: pos.fen_before,
+        fen,
         viewOnly: false,
-        turnColor: pos.turn_color,
+        turnColor: color,
         movable: {
           free: false,
-          color: pos.turn_color,
-          // Only allow the one correct square
+          color,
           dests: new Map([[from, [to]]]),
           showDests: true,
         },
@@ -446,6 +606,12 @@ export function PracticeBoard() {
     setError(null);
     setPendingPromotion(null);
     setRunningStats({ correct: 0, wrong: 0, positions_seen: 0 });
+    setLineStep(0);
+    lineStepRef.current = 0;
+    setCurrentFen("");
+    currentFenRef.current = "";
+    setWrongMoveCtx(null);
+    wrongMoveCtxRef.current = null;
     // Reset board to default starting position, view-only
     cgRef.current?.set({
       fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
@@ -459,6 +625,7 @@ export function PracticeBoard() {
 
   const isActive = phase !== "entry" && phase !== "done";
   const isViewOnly = phase !== "waiting" && phase !== "replaying";
+  // "computer_move" is intentionally view-only (included by the line above).
 
   // ── Render ─────────────────────────────────────────────────────────────────
   //
@@ -604,6 +771,15 @@ export function PracticeBoard() {
                 </div>
               )}
 
+              {/* computer_move */}
+              {phase === "computer_move" && (
+                <div className="flex-1 flex items-center justify-center">
+                  <p className="text-ink-400 text-sm animate-pulse text-center">
+                    Opponent replies…
+                  </p>
+                </div>
+              )}
+
               {/* waiting */}
               {phase === "waiting" && (
                 <div className="flex-1 flex flex-col items-center justify-center gap-2">
@@ -622,13 +798,26 @@ export function PracticeBoard() {
               )}
 
               {/* feedback_correct */}
-              {phase === "feedback_correct" && answer && (
+              {phase === "feedback_correct" && answer && position && (
                 <div className="flex-1 flex flex-col gap-4">
                   <div className="flex items-center gap-2">
                     <span className="text-green-400 text-xl">✓</span>
-                    <span className="font-semibold text-green-400">Correct!</span>
-                    <span className="text-ink-300 ml-1">{answer.expected_san}</span>
+                    <span className="font-semibold text-green-400">Line complete!</span>
                   </div>
+
+                  {/* Show how many moves the user played through */}
+                  {position.remaining_moves.length > 1 && (
+                    <div className="text-xs text-ink-400">
+                      Played{" "}
+                      <span className="text-ink-200">
+                        {Math.ceil(position.remaining_moves.length / 2)}
+                      </span>{" "}
+                      move{Math.ceil(position.remaining_moves.length / 2) !== 1 ? "s" : ""} ·{" "}
+                      <span className="text-ink-300">
+                        {position.remaining_moves.map((m) => m.san).join(" ")}
+                      </span>
+                    </div>
+                  )}
 
                   {answer.note && (
                     <blockquote className="text-xs text-ink-300 italic border-l-2 border-gold-500/40 pl-3">
@@ -676,7 +865,7 @@ export function PracticeBoard() {
               )}
 
               {/* feedback_wrong */}
-              {phase === "feedback_wrong" && answer && (
+              {phase === "feedback_wrong" && wrongMoveCtx && (
                 <div className="flex-1 flex flex-col gap-3">
                   <div className="flex items-center gap-2">
                     <span className="text-red-400 text-xl">✗</span>
@@ -684,7 +873,7 @@ export function PracticeBoard() {
                   </div>
                   <div className="text-sm text-ink-300">
                     Correct move:{" "}
-                    <span className="font-semibold text-ink-100">{answer.expected_san}</span>
+                    <span className="font-semibold text-ink-100">{wrongMoveCtx.san}</span>
                   </div>
                   <p className="text-xs text-ink-500 animate-pulse">
                     Study the correct move…
@@ -693,7 +882,7 @@ export function PracticeBoard() {
               )}
 
               {/* replaying */}
-              {phase === "replaying" && answer && (
+              {phase === "replaying" && wrongMoveCtx && (
                 <div className="flex-1 flex flex-col gap-3">
                   <div className="flex items-center gap-2">
                     <span className="text-red-400 text-xl">✗</span>
@@ -701,7 +890,7 @@ export function PracticeBoard() {
                   </div>
                   <div className="text-sm text-ink-300">
                     Correct move:{" "}
-                    <span className="font-semibold text-ink-100">{answer.expected_san}</span>
+                    <span className="font-semibold text-ink-100">{wrongMoveCtx.san}</span>
                   </div>
                   <p className="text-xs text-gold-400 animate-pulse">
                     ↑ Play the correct move to continue

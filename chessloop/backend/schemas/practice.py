@@ -41,6 +41,11 @@ class NextPositionResponse(BaseModel):
     fen_before: str
     turn_color: Literal["white", "black"]
     preceding_moves: list[PrecedingMove]
+    # Full mainline from move_index to the end of the line.
+    # remaining_moves[0] is the user's challenge move (at move_index).
+    # Odd-indexed entries are the computer's auto-replies; even-indexed
+    # entries are the user's subsequent moves.
+    remaining_moves: list[PrecedingMove]
     is_new: bool
     is_leech: bool
     repetitions: int
@@ -59,6 +64,10 @@ class AnswerRequest(BaseModel):
     move_uci: str
     ease: Optional[Literal["easy", "hard"]] = None
     response_ms: Optional[int] = None
+    # Full-line practice override: when set, skip the UCI comparison and use
+    # this value directly to update SRS.  The move_uci is still recorded in
+    # the ReviewLog for auditing.
+    line_correct: Optional[bool] = None
 
 
 class SrsState(BaseModel):
