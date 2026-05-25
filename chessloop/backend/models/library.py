@@ -2,9 +2,12 @@ from datetime import datetime
 from typing import Optional
 from uuid import UUID, uuid4
 from sqlmodel import SQLModel, Field
+from sqlalchemy import UniqueConstraint
 
 
 class Library(SQLModel, table=True):
+    __table_args__ = (UniqueConstraint("owner_user_id", "name", name="uq_owner_library_name"),)
+
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     name: str
     color: str  # 'white' | 'black' | 'both'

@@ -10,10 +10,13 @@ import json
 from typing import Optional
 from uuid import UUID
 
+import httpx
 from sqlmodel import Session, select
 
 from models.library import Library
 from models.line import Line, STARTING_FEN
+
+LICHESS_EXPLORER_URL = "https://explorer.lichess.ovh/master"
 
 
 # ── ECO opening database ──────────────────────────────────────────────────────
@@ -186,6 +189,71 @@ def search_openings(query: str) -> list[dict]:
     return results[:20]  # Cap at 20 results
 
 
+def count_lichess_variations(moves: list[str]) -> int:
+    """Count how many variations are available from Lichess for the given opening position."""
+    import chess
+    try:
+        board = chess.Board()
+        for san in moves:
+            board.push_san(san)
+        fen = board.fen()
+        with httpx.Client(timeout=5) as client:
+            response = client.get(
+                LICHESS_EXPLORER_URL,
+                params={"fen": fen, "since": 2020, "until": 2026, "speeds": "blitz,rapid,classical", "ratings": "2000,2200,2400"},
+            )
+            if response.status_code != 200:
+                return 0
+            data = response.json()
+            moves_list = data.get("moves", [])
+            return len(moves_list) if moves_list else 0
+    except Exception:
+        return 0
+
+
+def fetch_lichess_variations(moves: list[str], count: int) -> list[list[str]] | None:
+    """Fetch variation lines from Lichess for the given opening position."""
+    import chess
+    try:
+        board = chess.Board()
+        for san in moves:
+            board.push_san(san)
+        fen = board.fen()
+        with httpx.Client(timeout=10) as client:
+            response = client.get(
+                LICHESS_EXPLORER_URL,
+                params={"fen": fen, "since": 2020, "until": 2026, "speeds": "blitz,rapid,classical", "ratings": "2000,2200,2400"},
+            )
+            if response.status_code != 200:
+                return None
+            data = response.json()
+            moves_list = data.get("moves", [])
+            if not moves_list:
+                return None
+            # Get top N moves by popularity
+            top_moves = sorted(moves_list, key=lambda m: m.get("games", 0), reverse=True)[:count]
+            continuations = []
+            for top_move in top_moves:
+                san = top_move.get("san")
+                if not san:
+                    continue
+                variation = list(moves) + [san]
+                current = top_move
+                for _ in range(15):
+                    if "moves" not in current or not current["moves"]:
+                        break
+                    best_move = max(current["moves"], key=lambda m: m.get("games", 0))
+                    next_san = best_move.get("san")
+                    if not next_san or best_move.get("games", 0) < 5:
+                        break
+                    variation.append(next_san)
+                    current = best_move
+                continuations.append(variation)
+            return continuations if continuations else None
+    except Exception:
+        return None
+
+
 def opening_exists(name: str, user_id: UUID, session: Session) -> bool:
     """Check whether a library with this name already exists for the user."""
     result = session.exec(
@@ -206,20 +274,26 @@ def import_opening(
     moves: list[str],
     user_id: UUID,
     session: Session,
+    owner_user_id: UUID | None = None,
 ) -> tuple[Library, str]:
     """
     Import an opening as a new Library + Line in ChessLoop.
 
     Returns (library, status) where status is 'created' or 'exists'.
     Raises ValueError if the moves are invalid.
+
+    If owner_user_id is provided, use that instead of user_id for ownership
+    (useful for seed libraries that should be owned by a system user).
     """
     import chess
 
-    if opening_exists(name, user_id, session):
+    actual_owner = owner_user_id if owner_user_id is not None else user_id
+
+    if opening_exists(name, actual_owner, session):
         existing = session.exec(
             select(Library).where(
                 Library.name == name,
-                Library.owner_user_id == user_id,
+                Library.owner_user_id == actual_owner,
             )
         ).first()
         return existing, "exists"
@@ -246,7 +320,7 @@ def import_opening(
     lib = Library(
         name=name,
         color=color,
-        owner_user_id=user_id,
+        owner_user_id=actual_owner,
         is_active=True,
         is_public=False,
         eco_code=eco,

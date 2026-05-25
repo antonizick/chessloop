@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { librariesApi } from "@/api/libraries";
@@ -6,6 +7,9 @@ import { linesApi } from "@/api/lines";
 export function LibraryDetail() {
   const { id } = useParams<{ id: string }>();
   const qc = useQueryClient();
+  const [renamingLineId, setRenamingLineId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   const { data: lib } = useQuery({
     queryKey: ["library", id],
@@ -33,9 +37,22 @@ export function LibraryDetail() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["lines", id] }),
   });
 
+  const renameLine = useMutation({
+    mutationFn: ({ lineId, newName }: { lineId: string; newName: string }) =>
+      linesApi.update(lineId, { name: newName }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["lines", id] });
+      setRenamingLineId(null);
+      setRenameValue("");
+    },
+  });
+
   const removeLine = useMutation({
     mutationFn: (lineId: string) => linesApi.remove(lineId),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["lines", id] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["lines", id] });
+      setDeleteConfirmId(null);
+    },
   });
 
   if (!lib) return <p className="text-ink-300">Loading…</p>;
@@ -99,21 +116,90 @@ export function LibraryDetail() {
         {lines?.length === 0 && <p className="text-ink-300 text-sm">No lines yet.</p>}
         <ul className="flex flex-col divide-y divide-ink-700">
           {lines?.map((line) => (
-            <li key={line.id} className="py-3 flex items-center justify-between">
-              <div>
-                <div className="text-ink-100">{line.name ?? "Untitled line"}</div>
-                <div className="text-xs text-ink-400">{line.moves.length} moves</div>
-              </div>
-              <button
-                className="btn-ghost text-xs text-red-400"
-                onClick={() => {
-                  if (confirm(`Delete "${line.name ?? "Untitled line"}"?`)) {
-                    removeLine.mutate(line.id);
-                  }
-                }}
-              >
-                Delete
-              </button>
+            <li key={line.id} className="py-3 flex items-center justify-between gap-3">
+              {renamingLineId === line.id ? (
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if (renameValue.trim()) {
+                      renameLine.mutate({ lineId: line.id, newName: renameValue.trim() });
+                    }
+                  }}
+                  className="flex-1 flex items-center gap-1"
+                >
+                  <input
+                    autoFocus
+                    className="input text-sm py-1 flex-1"
+                    value={renameValue}
+                    onChange={(e) => setRenameValue(e.target.value)}
+                  />
+                  <button
+                    type="submit"
+                    className="btn-primary text-xs py-1 px-2"
+                    disabled={renameLine.isPending}
+                  >
+                    {renameLine.isPending ? "…" : "Save"}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-ghost text-xs py-1 px-2"
+                    onClick={() => {
+                      setRenamingLineId(null);
+                      setRenameValue("");
+                    }}
+                  >
+                    ✕
+                  </button>
+                </form>
+              ) : (
+                <>
+                  <div className="flex-1 cursor-pointer" onClick={() => {
+                    setRenamingLineId(line.id);
+                    setRenameValue(line.name ?? "");
+                  }}>
+                    <div className="text-ink-100 hover:text-gold-400 transition-colors">{line.name ?? "Untitled line"}</div>
+                    <div className="text-xs text-ink-400">{line.moves.length} moves</div>
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      className="btn-ghost text-xs py-1 px-2"
+                      onClick={() => {
+                        setRenamingLineId(line.id);
+                        setRenameValue(line.name ?? "");
+                      }}
+                      title="Rename"
+                    >
+                      ✎
+                    </button>
+                    {deleteConfirmId === line.id ? (
+                      <>
+                        <button
+                          className="btn-ghost text-xs py-1 px-2 text-red-400 hover:bg-red-600/20"
+                          onClick={() => removeLine.mutate(line.id)}
+                          disabled={removeLine.isPending}
+                        >
+                          {removeLine.isPending ? "…" : "Confirm"}
+                        </button>
+                        <button
+                          className="btn-ghost text-xs py-1 px-2"
+                          onClick={() => setDeleteConfirmId(null)}
+                          disabled={removeLine.isPending}
+                        >
+                          ✕
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        className="btn-ghost text-xs py-1 px-2 text-red-400 hover:text-red-300"
+                        onClick={() => setDeleteConfirmId(line.id)}
+                        title="Delete"
+                      >
+                        🗑
+                      </button>
+                    )}
+                  </div>
+                </>
+              )}
             </li>
           ))}
         </ul>

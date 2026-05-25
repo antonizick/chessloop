@@ -1,6 +1,6 @@
 # ChessLoop — Design & Implementation Plan
 
-> Last updated: 2026-05-24
+> Last updated: 2026-05-25
 > Status: Phase 5 complete — all phases done ✅
 
 ---
@@ -663,6 +663,22 @@ chessloop/
 - Environment variable override still available: `CHESSLOOP_BACKUP_DIR`
 
 **Result:** Backups now work out-of-the-box; portable across dev and Docker deployments.
+
+### Move Navigation & PGN Export Enhancement (2026-05-25)
+
+**Feature:** Added move navigation controls and PGN export to Teaching Board
+
+**Implementation:**
+- Navigation buttons at bottom of move list card: ⟪ (first) · ‹ (previous) · › (next) · ⟫ (last)
+- Export button: ↓ PGN (downloads moves as valid PGN file with [Event] header using line name)
+- Smart navigation: Previous from end jumps to last move; next from last jumps to live position
+- Controls positioned with "White to move" / "Black to move" indicator for clear UX
+
+**Files modified:**
+- `frontend/src/components/teaching/MoveList.tsx` — exported PGN generation functions
+- `frontend/src/pages/TeachingBoard.tsx` — navigation handlers and control UI
+
+**Result:** Users can easily navigate through recorded moves and export openings in standard PGN format for use in other tools.
 
 ---
 

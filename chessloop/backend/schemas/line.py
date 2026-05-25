@@ -27,6 +27,11 @@ class LineMoveNoteUpdate(BaseModel):
     text: str
 
 
+class LineMovesBatchImport(BaseModel):
+    moves: list[str]  # ordered SANs e.g. ["e4", "c5", "Nf3"]
+    starting_fen: Optional[str] = None  # new starting position (from FEN import)
+
+
 class LineResponse(BaseModel):
     id: UUID
     library_id: UUID

@@ -41,7 +41,7 @@ function SeedSection() {
     mutationFn: adminApi.seedOpenings,
     onSuccess: (data) => {
       setResult(data);
-      qc.invalidateQueries({ queryKey: ["public-libraries"] });
+      qc.invalidateQueries({ queryKey: ["public-libraries"], exact: false });
     },
   });
 
@@ -85,7 +85,7 @@ function SeedSection() {
 
 // ── Section: Pull variations ──────────────────────────────────────────────────
 
-function PullVariationsSection({ libraryNames }: { libraryNames: string[] }) {
+function PullVariationsSection({ publicLibraries }: { publicLibraries: PublicLibraryEntry[] }) {
   const [selected, setSelected] = useState("");
   const [count, setCount] = useState(3);
   const [result, setResult] = useState<{ added: number; message: string } | null>(null);
@@ -111,8 +111,8 @@ function PullVariationsSection({ libraryNames }: { libraryNames: string[] }) {
           className="input text-sm py-1 flex-1 min-w-[200px]"
         >
           <option value="">— Select an opening —</option>
-          {libraryNames.map((n) => (
-            <option key={n} value={n}>{n}</option>
+          {publicLibraries.map((lib) => (
+            <option key={lib.name} value={lib.name}>{lib.name}</option>
           ))}
         </select>
 
@@ -163,6 +163,8 @@ function ImportOpeningSection() {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [importing, setImporting] = useState<string | null>(null);
   const [importResults, setImportResults] = useState<Record<string, "created" | "exists" | "error">>({});
+  const [dialogEntry, setDialogEntry] = useState<OpeningSearchResult | null>(null);
+  const [variationsToImport, setVariationsToImport] = useState(5);
 
   function handleQueryChange(val: string) {
     setQuery(val);
@@ -177,22 +179,30 @@ function ImportOpeningSection() {
     enabled: true,
   });
 
-  async function handleImport(entry: OpeningSearchResult) {
-    setImporting(entry.name);
+  function openImportDialog(entry: OpeningSearchResult) {
+    setDialogEntry(entry);
+    setVariationsToImport(Math.min(5, entry.available_variations));
+  }
+
+  async function confirmImport() {
+    if (!dialogEntry) return;
+    setImporting(dialogEntry.name);
     try {
       const resp = await adminApi.importOpening({
-        eco: entry.eco,
-        name: entry.name,
-        color: entry.color,
-        difficulty: entry.difficulty,
-        description: entry.description,
-        moves: entry.moves,
+        eco: dialogEntry.eco,
+        name: dialogEntry.name,
+        color: dialogEntry.color,
+        difficulty: dialogEntry.difficulty,
+        description: dialogEntry.description,
+        moves: dialogEntry.moves,
         publish: true,
+        variations_to_import: variationsToImport,
       });
-      setImportResults((prev) => ({ ...prev, [entry.name]: resp.status }));
-      qc.invalidateQueries({ queryKey: ["public-libraries"] });
+      setImportResults((prev) => ({ ...prev, [dialogEntry.name]: resp.status }));
+      qc.invalidateQueries({ queryKey: ["public-libraries"], exact: false });
+      setDialogEntry(null);
     } catch {
-      setImportResults((prev) => ({ ...prev, [entry.name]: "error" }));
+      setImportResults((prev) => ({ ...prev, [dialogEntry.name]: "error" }));
     } finally {
       setImporting(null);
     }
@@ -243,7 +253,9 @@ function ImportOpeningSection() {
                     <span className="text-[10px] text-ink-500 shrink-0 capitalize">{entry.difficulty}</span>
                   </div>
                   <p className="text-xs text-ink-400 mt-0.5 line-clamp-1">{entry.description}</p>
-                  <p className="text-[10px] text-ink-500 mt-0.5">{entry.moves.length} moves</p>
+                  <p className="text-[10px] text-ink-500 mt-0.5">
+                    {entry.moves.length} moves · {entry.available_variations} variations available
+                  </p>
                 </div>
 
                 <div className="shrink-0 flex items-center">
@@ -252,7 +264,7 @@ function ImportOpeningSection() {
                   ) : (
                     <button
                       className="btn-ghost text-xs py-1 px-3 border border-ink-600 hover:border-gold-500 hover:text-gold-400"
-                      onClick={() => handleImport(entry)}
+                      onClick={() => openImportDialog(entry)}
                       disabled={!!importing}
                     >
                       {isImporting ? "Importing…" : "Import"}
@@ -268,13 +280,50 @@ function ImportOpeningSection() {
       {results && results.length === 0 && debouncedQ && !isFetching && (
         <p className="text-xs text-ink-400">No openings found matching "{debouncedQ}".</p>
       )}
+
+      {dialogEntry && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-ink-900 border border-ink-700 rounded-lg p-4 w-96 max-w-[90vw] shadow-lg">
+            <h3 className="text-sm font-medium text-ink-100 mb-3">Import Variations</h3>
+            <p className="text-xs text-ink-400 mb-4">
+              {dialogEntry.name} has {dialogEntry.available_variations} variations available. How many would you like to import?
+            </p>
+            <div className="flex items-center gap-3 mb-4">
+              <input
+                type="range"
+                min={1}
+                max={dialogEntry.available_variations}
+                value={variationsToImport}
+                onChange={(e) => setVariationsToImport(Number(e.target.value))}
+                className="flex-1"
+              />
+              <span className="text-sm text-ink-300 font-medium w-12 text-center">{variationsToImport}</span>
+            </div>
+            <div className="flex gap-2 justify-end">
+              <button
+                className="btn-ghost text-xs py-1 px-3 border border-ink-600"
+                onClick={() => setDialogEntry(null)}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn-primary text-xs py-1 px-3"
+                onClick={confirmImport}
+                disabled={importing === dialogEntry.name}
+              >
+                {importing === dialogEntry.name ? "Importing…" : "Import"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 // ── Section: Delete opening ────────────────────────────────────────────────
 
-function DeleteOpeningSection({ libraryNames }: { libraryNames: string[] }) {
+function DeleteOpeningSection({ publicLibraries }: { publicLibraries: PublicLibraryEntry[] }) {
   const qc = useQueryClient();
   const [selected, setSelected] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -284,7 +333,7 @@ function DeleteOpeningSection({ libraryNames }: { libraryNames: string[] }) {
     onSuccess: () => {
       setSelected("");
       setConfirmDelete(false);
-      qc.invalidateQueries({ queryKey: ["public-libraries"] });
+      qc.invalidateQueries({ queryKey: ["public-libraries"], exact: false });
     },
   });
 
@@ -304,8 +353,8 @@ function DeleteOpeningSection({ libraryNames }: { libraryNames: string[] }) {
           className="input text-sm py-1 flex-1 min-w-[200px]"
         >
           <option value="">— Select an opening to delete —</option>
-          {libraryNames.map((n) => (
-            <option key={n} value={n}>{n}</option>
+          {publicLibraries.map((lib) => (
+            <option key={lib.name} value={lib.name}>{lib.name}</option>
           ))}
         </select>
 
@@ -354,7 +403,9 @@ function DeleteOpeningSection({ libraryNames }: { libraryNames: string[] }) {
 
 // ── Root panel ────────────────────────────────────────────────────────────────
 
-export function AdminOpeningsPanel({ publicLibraryNames }: { publicLibraryNames: string[] }) {
+import type { PublicLibraryEntry } from "@/types";
+
+export function AdminOpeningsPanel({ publicLibraries }: { publicLibraries: PublicLibraryEntry[] }) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -375,11 +426,11 @@ export function AdminOpeningsPanel({ publicLibraryNames }: { publicLibraryNames:
         <div className="px-4 pb-4 flex flex-col gap-6 border-t border-ink-700 pt-4">
           <SeedSection />
           <div className="border-t border-ink-700" />
-          <PullVariationsSection libraryNames={publicLibraryNames} />
+          <PullVariationsSection publicLibraries={publicLibraries} />
           <div className="border-t border-ink-700" />
           <ImportOpeningSection />
           <div className="border-t border-ink-700" />
-          <DeleteOpeningSection libraryNames={publicLibraryNames} />
+          <DeleteOpeningSection publicLibraries={publicLibraries} />
         </div>
       )}
     </div>

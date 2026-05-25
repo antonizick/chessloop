@@ -18,4 +18,9 @@ export const linesApi = {
       method: "PUT",
       body: JSON.stringify({ text }),
     }),
+  importMoves: (id: string, body: { moves: string[]; starting_fen?: string }) =>
+    api<Line>(`/lines/${id}/moves`, {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }),
 };

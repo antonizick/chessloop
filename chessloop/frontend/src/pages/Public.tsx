@@ -24,7 +24,7 @@ function LibraryCard({ lib, isAdmin }: { lib: PublicLibraryEntry; isAdmin: boole
 
   const starMut = useMutation({
     mutationFn: () => publicApi.toggleStar(lib.id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["public-libraries"] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["public-libraries"], exact: false }),
   });
 
   const forkMut = useMutation({
@@ -46,7 +46,7 @@ function LibraryCard({ lib, isAdmin }: { lib: PublicLibraryEntry; isAdmin: boole
     onSuccess: () => {
       setShowDeleteConfirm(false);
       // Invalidate all public-libraries queries with different filters
-      qc.invalidateQueries({ queryKey: ["public-libraries"] });
+      qc.invalidateQueries({ queryKey: ["public-libraries"], exact: false, refetchType: "all" });
     },
   });
 
@@ -147,8 +147,6 @@ export function Public() {
     staleTime: 30_000,
   });
 
-  const publicLibraryNames = (libraries ?? []).map((l) => l.name);
-
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -158,7 +156,7 @@ export function Public() {
 
       {/* Admin opening management panel — admins only */}
       {user?.role === "admin" && (
-        <AdminOpeningsPanel publicLibraryNames={publicLibraryNames} />
+        <AdminOpeningsPanel publicLibraries={libraries ?? []} />
       )}
 
       {/* Filters */}
@@ -190,16 +188,19 @@ export function Public() {
           <option value="intermediate">Intermediate</option>
           <option value="advanced">Advanced</option>
         </select>
-        <select
-          value={sort}
-          onChange={(e) => setSort(e.target.value as "stars" | "newest" | "name" | "lines")}
-          className="input w-[140px]"
-        >
-          <option value="stars">Most starred</option>
-          <option value="newest">Newest</option>
-          <option value="lines">Most lines</option>
-          <option value="name">Name (A-Z)</option>
-        </select>
+        <div className="flex items-center gap-2">
+          <label className="text-xs text-ink-400 whitespace-nowrap">Sort by:</label>
+          <select
+            value={sort}
+            onChange={(e) => setSort(e.target.value as "stars" | "newest" | "name" | "lines")}
+            className="input w-[130px]"
+          >
+            <option value="stars">Most starred</option>
+            <option value="newest">Newest</option>
+            <option value="lines">Most lines</option>
+            <option value="name">Name (A-Z)</option>
+          </select>
+        </div>
       </div>
 
       {/* Results */}

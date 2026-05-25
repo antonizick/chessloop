@@ -27,6 +27,12 @@ interface BackupEntry {
 
 const adminApi = {
   listUsers: () => api<AdminUser[]>("/admin/users"),
+  createUser: (body: { email: string; username: string; password: string; role: string }) =>
+    api<AdminUser>("/admin/users", { method: "POST", body: JSON.stringify(body) }),
+  updateUser: (userId: string, body: { email?: string; username?: string; role?: string; new_password?: string }) =>
+    api<AdminUser>(`/admin/users/${userId}`, { method: "PATCH", body: JSON.stringify(body) }),
+  deleteUser: (userId: string) =>
+    api<void>(`/admin/users/${userId}`, { method: "DELETE" }),
   setUserRole: (userId: string, role: string) =>
     api<AdminUser>(`/admin/users/${userId}`, { method: "PATCH", body: JSON.stringify({ role }) }),
 
@@ -194,15 +200,134 @@ function UsersSection() {
     queryFn: adminApi.listUsers,
   });
 
-  const roleMut = useMutation({
-    mutationFn: ({ id, role }: { id: string; role: string }) => adminApi.setUserRole(id, role),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-users"] }),
+  // Create user form state
+  const [showCreate, setShowCreate] = useState(false);
+  const [createForm, setCreateForm] = useState({ username: "", email: "", password: "", role: "user" });
+  const [createError, setCreateError] = useState<string | null>(null);
+
+  // Edit user state
+  const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
+  const [editForm, setEditForm] = useState({ username: "", email: "", role: "", new_password: "" });
+
+  // Delete confirmation state
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  // Mutations
+  const createMut = useMutation({
+    mutationFn: () => adminApi.createUser(createForm),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-users"] });
+      setShowCreate(false);
+      setCreateForm({ username: "", email: "", password: "", role: "user" });
+      setCreateError(null);
+    },
+    onError: (e: any) => setCreateError(e.message ?? "Failed to create user"),
   });
+
+  const updateMut = useMutation({
+    mutationFn: () => {
+      if (!editingUser) throw new Error("No user selected");
+      return adminApi.updateUser(editingUser.id, editForm);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-users"] });
+      setEditingUser(null);
+    },
+    onError: (e: any) => setCreateError(e.message ?? "Failed to update user"),
+  });
+
+  const deleteMut = useMutation({
+    mutationFn: (userId: string) => adminApi.deleteUser(userId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-users"] });
+      setConfirmDeleteId(null);
+      setDeleteError(null);
+    },
+    onError: (e: any) => setDeleteError(e.message ?? "Failed to delete user"),
+  });
+
+  const handleEditStart = (user: AdminUser) => {
+    setEditingUser(user);
+    setEditForm({ username: user.username, email: user.email, role: user.role, new_password: "" });
+  };
+
+  const handleEditCancel = () => {
+    setEditingUser(null);
+  };
 
   return (
     <div className="card flex flex-col gap-4">
-      <h2>User management</h2>
+      <div className="flex items-center justify-between">
+        <h2>User management</h2>
+        <button
+          className="btn-primary text-sm px-3 py-1.5"
+          onClick={() => {
+            setShowCreate(!showCreate);
+            setCreateError(null);
+          }}
+        >
+          {showCreate ? "Cancel" : "+ Create user"}
+        </button>
+      </div>
 
+      {/* Create user form */}
+      {showCreate && (
+        <div className="p-3 rounded-md bg-ink-900 border border-ink-700 flex flex-col gap-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="col-span-2 flex flex-col gap-1 sm:col-span-1">
+              <label className="label">Username</label>
+              <input
+                className="input"
+                value={createForm.username}
+                onChange={(e) => setCreateForm({ ...createForm, username: e.target.value })}
+                placeholder="john_doe"
+              />
+            </div>
+            <div className="col-span-2 flex flex-col gap-1 sm:col-span-1">
+              <label className="label">Email</label>
+              <input
+                className="input"
+                type="email"
+                value={createForm.email}
+                onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })}
+                placeholder="user@example.com"
+              />
+            </div>
+            <div className="col-span-2 flex flex-col gap-1 sm:col-span-1">
+              <label className="label">Password</label>
+              <input
+                className="input"
+                type="password"
+                value={createForm.password}
+                onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
+                placeholder="••••••••"
+              />
+            </div>
+            <div className="col-span-2 flex flex-col gap-1 sm:col-span-1">
+              <label className="label">Role</label>
+              <select
+                className="input"
+                value={createForm.role}
+                onChange={(e) => setCreateForm({ ...createForm, role: e.target.value })}
+              >
+                <option value="user">User</option>
+                <option value="admin">Admin</option>
+              </select>
+            </div>
+          </div>
+          {createError && <p className="text-red-400 text-sm">{createError}</p>}
+          <button
+            className="btn-primary text-sm"
+            onClick={() => createMut.mutate()}
+            disabled={createMut.isPending || !createForm.username.trim() || !createForm.email.trim() || !createForm.password}
+          >
+            {createMut.isPending ? "Creating…" : "Create user"}
+          </button>
+        </div>
+      )}
+
+      {/* Users list */}
       {isLoading ? (
         <p className="text-ink-500 text-sm">Loading…</p>
       ) : (
@@ -242,28 +367,115 @@ function UsersSection() {
                   </td>
                   <td className="py-2">
                     {u.id !== currentUserId && (
-                      <button
-                        className={`text-xs px-2 py-1 rounded border transition-colors ${
-                          u.role === "admin"
-                            ? "border-ink-600 text-ink-400 hover:border-red-500/60 hover:text-red-400"
-                            : "border-ink-600 text-ink-400 hover:border-gold-500/60 hover:text-gold-400"
-                        }`}
-                        onClick={() =>
-                          roleMut.mutate({
-                            id: u.id,
-                            role: u.role === "admin" ? "user" : "admin",
-                          })
-                        }
-                        disabled={roleMut.isPending}
-                      >
-                        {u.role === "admin" ? "Revoke admin" : "Make admin"}
-                      </button>
+                      <div className="flex items-center gap-1 justify-end">
+                        <button
+                          className="btn-ghost text-xs px-2 py-1"
+                          onClick={() => handleEditStart(u)}
+                          disabled={editingUser?.id === u.id}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          className="btn-danger text-xs px-2 py-1"
+                          onClick={() => setConfirmDeleteId(u.id)}
+                        >
+                          Delete
+                        </button>
+                      </div>
                     )}
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Edit user modal */}
+      {editingUser && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-ink-800 rounded-lg border border-ink-700 p-4 max-w-md w-full">
+            <h3 className="text-lg font-medium mb-4">Edit {editingUser.username}</h3>
+            <div className="flex flex-col gap-3 mb-4">
+              <div className="flex flex-col gap-1">
+                <label className="label">Username</label>
+                <input
+                  className="input"
+                  value={editForm.username}
+                  onChange={(e) => setEditForm({ ...editForm, username: e.target.value })}
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="label">Email</label>
+                <input
+                  className="input"
+                  type="email"
+                  value={editForm.email}
+                  onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="label">Role</label>
+                <select
+                  className="input"
+                  value={editForm.role}
+                  onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}
+                >
+                  <option value="user">User</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="label">New Password (optional)</label>
+                <input
+                  className="input"
+                  type="password"
+                  value={editForm.new_password}
+                  onChange={(e) => setEditForm({ ...editForm, new_password: e.target.value })}
+                  placeholder="Leave blank to keep current password"
+                />
+              </div>
+            </div>
+            {createError && <p className="text-red-400 text-sm mb-4">{createError}</p>}
+            <div className="flex gap-2">
+              <button className="btn-primary flex-1" onClick={() => updateMut.mutate()} disabled={updateMut.isPending}>
+                {updateMut.isPending ? "Saving…" : "Save"}
+              </button>
+              <button className="btn-ghost flex-1" onClick={handleEditCancel} disabled={updateMut.isPending}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete confirmation */}
+      {confirmDeleteId && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-ink-800 rounded-lg border border-ink-700 p-4 max-w-md w-full">
+            <h3 className="text-lg font-medium mb-2">Delete user?</h3>
+            <p className="text-sm text-ink-400 mb-4">This will permanently delete the user account and all associated data (libraries, practice history, backups). This cannot be undone.</p>
+            {deleteError && <p className="text-red-400 text-sm mb-4">{deleteError}</p>}
+            <div className="flex gap-2">
+              <button
+                className="btn-danger flex-1"
+                onClick={() => deleteMut.mutate(confirmDeleteId)}
+                disabled={deleteMut.isPending}
+              >
+                {deleteMut.isPending ? "Deleting…" : "Yes, delete"}
+              </button>
+              <button
+                className="btn-ghost flex-1"
+                onClick={() => {
+                  setConfirmDeleteId(null);
+                  setDeleteError(null);
+                }}
+                disabled={deleteMut.isPending}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

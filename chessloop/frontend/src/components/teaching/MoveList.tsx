@@ -5,9 +5,38 @@ interface Props {
   viewIndex: number | null;
   isAtEnd: boolean;
   onJump: (index: number) => void;
-  onJumpToStart: () => void;
   onJumpToEnd: () => void;
   onDeleteFrom: (index: number) => void;
+}
+
+export function generatePgn(moves: RecordedMove[], lineName?: string): string {
+  let pgn = '';
+  if (lineName) {
+    pgn += `[Event "${lineName}"]\n`;
+  }
+  pgn += '\n';
+
+  for (let i = 0; i < moves.length; i++) {
+    if (i % 2 === 0) {
+      pgn += `${Math.floor(i / 2) + 1}. `;
+    }
+    pgn += moves[i].san;
+    if (i < moves.length - 1) {
+      pgn += ' ';
+    }
+  }
+
+  return pgn;
+}
+
+export function exportPgn(pgn: string, lineName?: string) {
+  const element = document.createElement('a');
+  element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(pgn));
+  element.setAttribute('download', `${lineName || 'opening'}.pgn`);
+  element.style.display = 'none';
+  document.body.appendChild(element);
+  element.click();
+  document.body.removeChild(element);
 }
 
 export function MoveList({
@@ -15,10 +44,10 @@ export function MoveList({
   viewIndex,
   isAtEnd,
   onJump,
-  onJumpToStart,
   onJumpToEnd,
   onDeleteFrom,
 }: Props) {
+
   if (moves.length === 0) {
     return (
       <p className="text-ink-300 text-sm italic mt-2">
@@ -47,14 +76,6 @@ export function MoveList({
 
   return (
     <div className="flex flex-col gap-0.5">
-      {/* Jump to start */}
-      <button
-        className="text-xs text-ink-400 hover:text-gold-400 text-left mb-1"
-        onClick={onJumpToStart}
-      >
-        ⟪ start
-      </button>
-
       {pairs.map(({ num, white, wi, black, bi }) => (
         <div key={wi} className="flex items-center gap-0.5 text-sm">
           <span className="text-ink-500 w-6 text-right shrink-0 select-none">{num}.</span>

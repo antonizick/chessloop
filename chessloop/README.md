@@ -22,10 +22,28 @@ ChessLoop lets you teach it your opening repertoire by playing moves on a board,
 | Phase | What | Status |
 |---|---|---|
 | 1 | Auth (JWT + TOTP MFA), Library/Line CRUD, Chessground board, dark/gold UI | ✅ Complete |
-| 2 | Teaching board (live move recording, move list, per-move notes) | ✅ Complete |
+| 2 | Teaching board (live move recording, move list, per-move notes, move navigation, PGN export) | ✅ Complete |
 | 3 | SRS practice loop, SM-2 scheduler, leech detection, session summary, sounds | ✅ Complete |
 | 4 | Stats (heatmap, mastery, leeches), public library discovery, dashboard live data | ✅ Complete |
 | 5 | Board themes, piece sets, sounds settings, admin panel, seed libraries, Docker prod | ✅ Complete |
+
+---
+
+## Teaching Board Controls
+
+The Teaching Board provides intuitive controls for recording and navigating through opening moves:
+
+| Control | Action |
+|---|---|
+| Drag pieces | Record moves onto the board (creates Line with move sequence) |
+| ⟪ | Jump to first move |
+| ‹ | Go to previous move (or last move if at live position) |
+| › | Go to next move (disabled when at live position) |
+| ⟫ | Jump to last move |
+| ↓ PGN | Download line as standard PGN file (with `[Event]` header) |
+| Delete (×) | Remove a move and all subsequent moves |
+
+Move-by-move navigation lets you review and edit your lines without re-playing them. PGN export makes openings portable to other chess tools.
 
 ---
 

@@ -2,9 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Api } from "chessground/api";
+import { Chess } from "chess.js";
 
 import { ChessboardWrapper } from "@/components/board/ChessboardWrapper";
-import { MoveList } from "@/components/teaching/MoveList";
+import { MoveList, generatePgn, exportPgn } from "@/components/teaching/MoveList";
 import { PromotionModal } from "@/components/teaching/PromotionModal";
 import { LineSelector } from "@/components/teaching/LineSelector";
 import { useTeaching } from "@/hooks/useTeaching";
@@ -38,6 +39,9 @@ export function TeachingBoard() {
   const [selectedLineId, setSelectedLineId] = useState<string | null>(null);
   const [orientation, setOrientation] = useState<"white" | "black">("white");
   const [isSaving, setIsSaving] = useState(false);
+  const [showImport, setShowImport] = useState(false);
+  const [importText, setImportText] = useState("");
+  const [importError, setImportError] = useState<string | null>(null);
 
   // Sync orientation with library color on first load
   useEffect(() => {
@@ -98,6 +102,86 @@ export function TeachingBoard() {
       qc.invalidateQueries({ queryKey: ["lines", libId] });
     },
   });
+
+  const deleteLine = useMutation({
+    mutationFn: (lineId: string) => linesApi.remove(lineId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["lines", libId] });
+      if (selectedLineId && selectedLineId === lines[0]?.id) {
+        if (lines.length > 1) {
+          setSelectedLineId(lines[1].id);
+        } else {
+          setSelectedLineId(null);
+        }
+      }
+    },
+  });
+
+  const importLinesMut = useMutation({
+    mutationFn: (body: { moves: string[]; starting_fen?: string }) =>
+      linesApi.importMoves(selectedLineId!, body),
+    onSuccess: (updatedLine) => {
+      qc.invalidateQueries({ queryKey: ["lines", libId] });
+      teaching.resetToLine(updatedLine.starting_fen, updatedLine.moves);
+      setShowImport(false);
+      setImportText("");
+      setImportError(null);
+    },
+    onError: (e: any) => setImportError(e.message ?? "Import failed"),
+  });
+
+  // ── Import handler ──────────────────────────────────────────────────────────
+  function handleImport() {
+    const text = importText.trim();
+    if (!text) {
+      setImportError("Enter PGN, FEN, or moves to import");
+      return;
+    }
+
+    const chess = new Chess();
+    let moves: string[] = [];
+    let starting_fen: string | undefined;
+
+    // Try PGN first (contains move numbers like "1.e4")
+    try {
+      chess.loadPgn(text);
+      moves = chess.history();
+      importLinesMut.mutate({ moves, starting_fen });
+      return;
+    } catch {
+      // PGN failed, try other formats
+    }
+
+    // Check if it looks like a FEN (has "/" and starts with piece placement)
+    const looksLikeFen = /^[rnbqkpRNBQKP1-8\/]+ [wb] /.test(text);
+    if (looksLikeFen) {
+      try {
+        chess.load(text);
+        starting_fen = text;
+        moves = [];
+        importLinesMut.mutate({ moves, starting_fen });
+        return;
+      } catch {
+        setImportError("Invalid FEN string");
+        return;
+      }
+    }
+
+    // Try as plain SAN list (e.g. "e4 c5 Nf3 d6")
+    try {
+      const sans = text.replace(/\d+\./g, "").trim().split(/\s+/).filter(Boolean);
+      chess.reset();
+      for (const san of sans) {
+        chess.move(san);
+      }
+      moves = chess.history();
+      importLinesMut.mutate({ moves, starting_fen });
+      return;
+    } catch {
+      setImportError("Could not parse as PGN, FEN, or SAN list");
+      return;
+    }
+  }
 
   // ── Move handler ─────────────────────────────────────────────────────────
   async function onMove({ from, to }: { from: string; to: string }) {
@@ -165,6 +249,36 @@ export function TeachingBoard() {
     teaching.jumpTo(-1);
   }
 
+  // ── Navigation and export handlers ────────────────────────────────────────
+  function handlePreviousMove() {
+    if (teaching.viewIndex === null) {
+      if (teaching.moves.length > 0) {
+        teaching.jumpTo(teaching.moves.length - 1);
+      }
+    } else if (teaching.viewIndex > 0) {
+      teaching.jumpTo(teaching.viewIndex - 1);
+    } else if (teaching.viewIndex === 0) {
+      teaching.jumpTo(-1);
+    }
+  }
+
+  function handleNextMove() {
+    if (teaching.viewIndex === null) {
+      return;
+    }
+    if (teaching.viewIndex < teaching.moves.length - 1) {
+      teaching.jumpTo(teaching.viewIndex + 1);
+    } else {
+      teaching.jumpToEnd();
+    }
+  }
+
+  function handleExportPgn() {
+    const lineName = selectedLine?.name || undefined;
+    const pgn = generatePgn(teaching.moves, lineName);
+    exportPgn(pgn, lineName);
+  }
+
   // ── Render ───────────────────────────────────────────────────────────────
   return (
     <div className="flex flex-col gap-4">
@@ -194,7 +308,18 @@ export function TeachingBoard() {
         selectedId={selectedLineId}
         onSelect={setSelectedLineId}
         onCreateNew={(name) => createLine.mutate(name)}
-        onRename={(lineId, newName) => renameLine.mutateAsync({ lineId, newName })}
+        onRename={(lineId, newName) => new Promise<void>((resolve) => {
+          renameLine.mutate({ lineId, newName }, {
+            onSuccess: () => resolve(),
+            onError: () => resolve(),
+          });
+        })}
+        onDelete={(lineId) => new Promise<void>((resolve) => {
+          deleteLine.mutate(lineId, {
+            onSuccess: () => resolve(),
+            onError: () => resolve(),
+          });
+        })}
         isCreating={createLine.isPending}
       />
 
@@ -222,12 +347,61 @@ export function TeachingBoard() {
             <h2>
               {selectedLine?.name ?? "Select a line"}
             </h2>
-            {selectedLine && (
-              <span className="text-xs text-ink-400">
-                {teaching.moves.length} move{teaching.moves.length !== 1 ? "s" : ""}
-              </span>
-            )}
+            <div className="flex items-center gap-2">
+              {selectedLine && (
+                <span className="text-xs text-ink-400">
+                  {teaching.moves.length} move{teaching.moves.length !== 1 ? "s" : ""}
+                </span>
+              )}
+              {selectedLine && (
+                <button
+                  className="btn-ghost text-xs px-2 py-1"
+                  onClick={() => {
+                    setShowImport(!showImport);
+                    setImportError(null);
+                  }}
+                >
+                  ↓ Import
+                </button>
+              )}
+            </div>
           </div>
+
+          {/* Import panel */}
+          {showImport && selectedLine && (
+            <div className="mb-3 flex flex-col gap-2 p-3 rounded-md bg-ink-900 border border-ink-700">
+              <p className="text-xs text-ink-400">
+                Paste PGN notation (e.g. <code>1.e4 c5 2.Nf3</code>) or a FEN string.
+                This will <strong>replace</strong> the current line entirely.
+              </p>
+              <textarea
+                className="input font-mono text-xs h-24 resize-none"
+                value={importText}
+                onChange={(e) => setImportText(e.target.value)}
+                placeholder="1.e4 c5 2.Nf3 d6 3.d4..."
+              />
+              {importError && <p className="text-red-400 text-xs">{importError}</p>}
+              <div className="flex gap-2">
+                <button
+                  className="btn-primary text-sm flex-1"
+                  onClick={handleImport}
+                  disabled={!importText.trim() || importLinesMut.isPending}
+                >
+                  {importLinesMut.isPending ? "Importing…" : "Import"}
+                </button>
+                <button
+                  className="btn-ghost text-sm"
+                  onClick={() => {
+                    setShowImport(false);
+                    setImportError(null);
+                    setImportText("");
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
 
           {!selectedLine ? (
             <p className="text-ink-300 text-sm italic">
@@ -240,14 +414,64 @@ export function TeachingBoard() {
                 viewIndex={teaching.viewIndex}
                 isAtEnd={teaching.isAtEnd}
                 onJump={teaching.jumpTo}
-                onJumpToStart={handleJumpToStart}
                 onJumpToEnd={teaching.jumpToEnd}
                 onDeleteFrom={handleDeleteFrom}
               />
             </div>
           )}
 
-          {selectedLine && teaching.isAtEnd && !teaching.pendingPromotion && (
+          {selectedLine && teaching.moves.length > 0 && (
+            <div className="mt-3 border-t border-ink-700 pt-3 flex flex-col gap-2">
+              <div className="flex items-center gap-1 text-xs">
+                <button
+                  className="btn-ghost px-2 py-1 text-ink-400 hover:text-gold-400"
+                  onClick={handleJumpToStart}
+                  title="Go to first move"
+                >
+                  ⟪
+                </button>
+                <button
+                  className="btn-ghost px-2 py-1 text-ink-400 hover:text-gold-400"
+                  onClick={handlePreviousMove}
+                  title="Previous move"
+                >
+                  ‹
+                </button>
+                <button
+                  className="btn-ghost px-2 py-1 text-ink-400 hover:text-gold-400"
+                  onClick={handleNextMove}
+                  disabled={teaching.isAtEnd}
+                  title="Next move"
+                >
+                  ›
+                </button>
+                <button
+                  className="btn-ghost px-2 py-1 text-ink-400 hover:text-gold-400"
+                  onClick={teaching.jumpToEnd}
+                  title="Go to last move"
+                >
+                  ⟫
+                </button>
+                <span className="flex-1" />
+                <button
+                  className="btn-ghost px-2 py-1 text-ink-400 hover:text-gold-400"
+                  onClick={handleExportPgn}
+                  title="Export as PGN"
+                >
+                  ↓ PGN
+                </button>
+              </div>
+              {teaching.isAtEnd && !teaching.pendingPromotion && (
+                <p className="text-xs text-ink-400">
+                  {teaching.liveTurnColor === "white" ? "♔" : "♚"}{" "}
+                  {teaching.liveTurnColor.charAt(0).toUpperCase() + teaching.liveTurnColor.slice(1)} to move
+                  {teaching.moves.length === 0 && " · drag a piece to begin"}
+                </p>
+              )}
+            </div>
+          )}
+
+          {selectedLine && teaching.isAtEnd && !teaching.pendingPromotion && teaching.moves.length === 0 && (
             <p className="text-xs text-ink-400 mt-3 border-t border-ink-700 pt-3">
               {teaching.liveTurnColor === "white" ? "♔" : "♚"}{" "}
               {teaching.liveTurnColor.charAt(0).toUpperCase() + teaching.liveTurnColor.slice(1)} to move

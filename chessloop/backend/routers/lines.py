@@ -14,6 +14,7 @@ from schemas.line import (
     LineUpdate,
     LineMoveAppend,
     LineMoveNoteUpdate,
+    LineMovesBatchImport,
     LineResponse,
 )
 
@@ -114,6 +115,20 @@ def delete_line(
     session: Session = Depends(get_session),
 ):
     line = _owned_line_or_404(session, line_id, user)
+    from models.practice import PracticePosition
+    from models.line import MoveNote
+
+    # Delete related practice positions
+    positions = session.exec(select(PracticePosition).where(PracticePosition.line_id == line_id)).all()
+    for pos in positions:
+        session.delete(pos)
+
+    # Delete related move notes
+    notes = session.exec(select(MoveNote).where(MoveNote.line_id == line_id)).all()
+    for note in notes:
+        session.delete(note)
+
+    # Delete the line
     session.delete(line)
     session.commit()
 
@@ -197,6 +212,42 @@ def update_move_note(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Move index out of range")
     moves[index]["note"] = body.text
     line.moves = json.dumps(moves)
+    line.updated_at = datetime.utcnow()
+    session.add(line)
+    session.commit()
+    session.refresh(line)
+    return line
+
+
+@router.put("/lines/{line_id}/moves", response_model=LineResponse)
+def replace_moves(
+    line_id: UUID,
+    body: LineMovesBatchImport,
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    line = _owned_line_or_404(session, line_id, user)
+
+    # Use provided starting FEN or keep the line's existing one
+    start_fen = body.starting_fen or line.starting_fen
+    board = chess.Board(start_fen)
+    new_moves = []
+
+    # Validate and build move records
+    for san in body.moves:
+        try:
+            move = board.parse_san(san)
+        except (chess.InvalidMoveError, chess.IllegalMoveError, chess.AmbiguousMoveError) as exc:
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, f"Invalid SAN '{san}': {exc}")
+        uci = move.uci()
+        board.push(move)
+        fen_after = board.fen()
+        new_moves.append({"san": san, "uci": uci, "fen_after": fen_after})
+
+    # Update line
+    if body.starting_fen:
+        line.starting_fen = body.starting_fen
+    line.moves = json.dumps(new_moves)
     line.updated_at = datetime.utcnow()
     session.add(line)
     session.commit()

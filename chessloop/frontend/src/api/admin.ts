@@ -7,6 +7,7 @@ export interface OpeningSearchResult {
   difficulty: string;
   description: string;
   moves: string[];
+  available_variations: number;
 }
 
 export interface SeedOpeningsResponse {
@@ -23,6 +24,7 @@ export interface ImportOpeningRequest {
   description: string;
   moves: string[];
   publish?: boolean;
+  variations_to_import?: number;
 }
 
 export interface ImportOpeningResponse {
@@ -55,15 +57,14 @@ export const adminApi = {
       body: JSON.stringify(body),
     }),
 
-  pullVariations: (opening_name: string, count = 5) =>
+  pullVariations: (library_id: string, count = 5) =>
     api<PullVariationsResponse>("/admin/openings/pull-variations", {
       method: "POST",
-      body: JSON.stringify({ opening_name, count }),
+      body: JSON.stringify({ library_id, count }),
     }),
 
   deleteOpening: (name: string) =>
-    api<DeleteOpeningResponse>("/admin/openings/delete", {
+    api<DeleteOpeningResponse>(`/admin/openings/delete?name=${encodeURIComponent(name)}`, {
       method: "DELETE",
-      body: JSON.stringify({ name }),
     }),
 };

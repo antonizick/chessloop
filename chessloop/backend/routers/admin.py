@@ -5,15 +5,20 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import FileResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 from sqlmodel import Session, select
 
 from database import get_session
 from models import Backup, Library
 from models.user import User
+from models.practice import PracticePosition, ReviewLog, PracticeSession
 from auth.dependencies import get_current_user
+from auth.password import hash_password
 from services import backup_service
 from services import opening_import
+
+# Special user ID for seeded opening libraries (so they don't appear in admin's account)
+SEEDBOT_USER_ID = UUID("00000000-0000-0000-0000-000000000001")
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -44,6 +49,20 @@ class PatchUserRoleRequest(BaseModel):
     role: str  # 'user' | 'admin'
 
 
+class CreateUserRequest(BaseModel):
+    email: EmailStr
+    username: str
+    password: str
+    role: str = "user"
+
+
+class UpdateUserRequest(BaseModel):
+    email: Optional[EmailStr] = None
+    username: Optional[str] = None
+    role: Optional[str] = None
+    new_password: Optional[str] = None
+
+
 @router.get("/users", response_model=list[UserAdminResponse])
 def list_users(
     session: Session = Depends(get_session),
@@ -64,24 +83,83 @@ def list_users(
     ]
 
 
-@router.patch("/users/{user_id}", response_model=UserAdminResponse)
-def update_user_role(
-    user_id: UUID,
-    body: PatchUserRoleRequest,
+@router.post("/users", response_model=UserAdminResponse, status_code=status.HTTP_201_CREATED)
+def create_user(
+    body: CreateUserRequest,
     session: Session = Depends(get_session),
-    admin: User = Depends(require_admin),
+    _: User = Depends(require_admin),
 ):
     if body.role not in ("user", "admin"):
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "role must be 'user' or 'admin'")
+
+    # Collision check: email or username already exists
+    existing = session.exec(
+        select(User).where((User.email == body.email) | (User.username == body.username))
+    ).first()
+    if existing:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Email or username already exists")
+
+    # Create user with hashed password
+    user = User(
+        email=body.email,
+        username=body.username,
+        password_hash=hash_password(body.password),
+        role=body.role,
+    )
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+
+    return UserAdminResponse(
+        id=user.id,
+        username=user.username,
+        email=user.email,
+        role=user.role,
+        mfa_enabled=user.mfa_enabled,
+        created_at=user.created_at.isoformat(),
+        last_login=user.last_login.isoformat() if user.last_login else None,
+    )
+
+
+@router.patch("/users/{user_id}", response_model=UserAdminResponse)
+def update_user(
+    user_id: UUID,
+    body: UpdateUserRequest,
+    session: Session = Depends(get_session),
+    admin: User = Depends(require_admin),
+):
     target = session.get(User, user_id)
     if not target:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
-    if target.id == admin.id:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Cannot change your own role")
-    target.role = body.role
+
+    # Check for email/username collision (if changing either)
+    if body.email or body.username:
+        collision = session.exec(
+            select(User).where(
+                (User.id != user_id) & ((User.email == body.email) | (User.username == body.username))
+            )
+        ).first()
+        if collision:
+            raise HTTPException(status.HTTP_409_CONFLICT, "Email or username already exists")
+
+    # Apply updates
+    if body.email:
+        target.email = body.email
+    if body.username:
+        target.username = body.username
+    if body.role:
+        if body.role not in ("user", "admin"):
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "role must be 'user' or 'admin'")
+        if target.id == admin.id:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Cannot change your own role")
+        target.role = body.role
+    if body.new_password:
+        target.password_hash = hash_password(body.new_password)
+
     session.add(target)
     session.commit()
     session.refresh(target)
+
     return UserAdminResponse(
         id=target.id,
         username=target.username,
@@ -91,6 +169,65 @@ def update_user_role(
         created_at=target.created_at.isoformat(),
         last_login=target.last_login.isoformat() if target.last_login else None,
     )
+
+
+@router.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_user(
+    user_id: UUID,
+    session: Session = Depends(get_session),
+    admin: User = Depends(require_admin),
+):
+    target = session.get(User, user_id)
+    if not target:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
+
+    if target.id == admin.id:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Cannot delete your own account")
+
+    # Cascade delete: review logs, practice positions, sessions, lines, libraries, signals, backups
+    from models.line import Line
+    from models.public_signal import PublicSignal
+
+    # Delete review logs
+    review_logs = session.exec(select(ReviewLog).where(ReviewLog.user_id == user_id)).all()
+    for log in review_logs:
+        session.delete(log)
+
+    # Delete practice positions
+    practice_positions = session.exec(select(PracticePosition).where(PracticePosition.user_id == user_id)).all()
+    for pos in practice_positions:
+        session.delete(pos)
+
+    # Delete practice sessions
+    practice_sessions = session.exec(select(PracticeSession).where(PracticeSession.user_id == user_id)).all()
+    for sess in practice_sessions:
+        session.delete(sess)
+
+    # Delete lines and libraries owned by this user
+    libraries = session.exec(select(Library).where(Library.owner_user_id == user_id)).all()
+    for lib in libraries:
+        lines = session.exec(select(Line).where(Line.library_id == lib.id)).all()
+        for line in lines:
+            session.delete(line)
+        session.delete(lib)
+
+    # Delete public signals (stars, comments)
+    public_signals = session.exec(select(PublicSignal).where(PublicSignal.user_id == user_id)).all()
+    for signal in public_signals:
+        session.delete(signal)
+
+    # Delete backups created by this user
+    from pathlib import Path
+    backups = session.exec(select(Backup).where(Backup.created_by == user_id)).all()
+    for backup in backups:
+        p = Path(backup.file_path)
+        if p.exists():
+            p.unlink()
+        session.delete(backup)
+
+    # Finally delete the user
+    session.delete(target)
+    session.commit()
 
 
 # ── Backups ───────────────────────────────────────────────────────────────────
@@ -194,6 +331,7 @@ class OpeningSearchResult(BaseModel):
     difficulty: str
     description: str
     moves: list[str]
+    available_variations: int
 
 
 class SeedOpeningsResponse(BaseModel):
@@ -210,6 +348,7 @@ class ImportOpeningRequest(BaseModel):
     description: str
     moves: list[str]
     publish: bool = False
+    variations_to_import: int = 0
 
 
 class ImportOpeningResponse(BaseModel):
@@ -219,7 +358,7 @@ class ImportOpeningResponse(BaseModel):
 
 
 class PullVariationsRequest(BaseModel):
-    opening_name: str
+    library_id: UUID
     count: int = 5
 
 
@@ -244,6 +383,7 @@ def search_openings(
             difficulty=r["difficulty"],
             description=r["description"],
             moves=r["moves"],
+            available_variations=opening_import.count_lichess_variations(r["moves"]),
         )
         for r in results
     ]
@@ -255,9 +395,44 @@ def seed_openings(
     session: Session = Depends(get_session),
 ):
     """
-    Seed all 16 standard starter opening libraries into the admin's account.
+    Seed all 16 standard starter opening libraries to public discovery.
+    Libraries are owned by a special seedbot user, not the admin's account.
     Already-existing libraries are skipped. New ones are published automatically.
     """
+    # Ensure seedbot user exists
+    seedbot = session.get(User, SEEDBOT_USER_ID)
+    if not seedbot:
+        try:
+            seedbot = User(
+                id=SEEDBOT_USER_ID,
+                username="seedbot",
+                email="seedbot@chessloop.local",
+                password_hash="",  # No password
+                role="user",
+            )
+            session.add(seedbot)
+            session.commit()
+        except Exception as e:
+            # User may already exist or there's a unique constraint issue
+            session.rollback()
+            seedbot = session.get(User, SEEDBOT_USER_ID)
+            if not seedbot:
+                # Try to create with unique email and username if they're taken
+                try:
+                    import uuid
+                    unique_id = str(uuid.uuid4())[:8]
+                    seedbot = User(
+                        id=SEEDBOT_USER_ID,
+                        username=f"seedbot-{unique_id}",
+                        email=f"seedbot-{unique_id}@chessloop.local",
+                        password_hash="",
+                        role="user",
+                    )
+                    session.add(seedbot)
+                    session.commit()
+                except Exception as e2:
+                    raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, f"Failed to create seedbot user: {e2}")
+
     seeded = 0
     skipped = 0
     errors: list[str] = []
@@ -280,10 +455,15 @@ def seed_openings(
                 moves=moves,
                 user_id=admin.id,
                 session=session,
+                owner_user_id=SEEDBOT_USER_ID,
             )
 
             if status_str == "created":
-                seeded += 1
+                try:
+                    opening_import.publish_library(lib.id, session)
+                    seeded += 1
+                except Exception as pub_err:
+                    errors.append(f"{opening_name}: Failed to publish - {pub_err}")
             else:
                 skipped += 1
 
@@ -301,8 +481,10 @@ def import_opening(
 ):
     """
     Import a specific opening (by ECO/name/moves) into the admin's library.
-    Optionally publishes immediately.
+    Optionally publishes immediately and imports additional variations.
     """
+    import json
+    import chess
     try:
         lib, status_str = opening_import.import_opening(
             eco=body.eco,
@@ -316,6 +498,39 @@ def import_opening(
         )
     except ValueError as e:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(e))
+
+    # Fetch and create variations if requested
+    if body.variations_to_import > 0 and status_str == "created":
+        variations = opening_import.fetch_lichess_variations(body.moves, body.variations_to_import)
+        if variations:
+            from models.line import Line, STARTING_FEN
+            for i, var_moves in enumerate(variations):
+                line_name = f"Variation {i + 2}"  # Main line is 1, variations start at 2
+                # Validate and build moves JSON
+                board = chess.Board()
+                parsed_moves = []
+                for san in var_moves:
+                    try:
+                        move = board.parse_san(san)
+                        uci = move.uci()
+                        board.push(move)
+                        parsed_moves.append((san, uci, board.fen()))
+                    except:
+                        break
+                if parsed_moves:
+                    moves_json = json.dumps([
+                        {"san": san, "uci": uci, "fen_after": fen_after}
+                        for san, uci, fen_after in parsed_moves
+                    ])
+                    line = Line(
+                        library_id=lib.id,
+                        name=line_name,
+                        starting_fen=STARTING_FEN,
+                        moves=moves_json,
+                        order_index=i + 1,
+                    )
+                    session.add(line)
+            session.commit()
 
     if body.publish and status_str == "created":
         opening_import.publish_library(lib.id, session)
@@ -338,34 +553,28 @@ def pull_variations(
     from models.line import Line, STARTING_FEN
     import json, chess
 
-    # Find the library
-    lib = session.exec(
-        select(LibModel).where(
-            LibModel.name == body.opening_name,
-            LibModel.owner_user_id == admin.id,
-        )
-    ).first()
-
+    # Find the library by ID
+    lib = session.get(LibModel, body.library_id)
     if not lib:
         raise HTTPException(
             status.HTTP_404_NOT_FOUND,
-            f"Opening '{body.opening_name}' not found in your libraries"
+            f"Library not found"
         )
 
     # Find related ECO entries (same base name or ECO prefix)
-    base_name = body.opening_name.split(" — ")[0].lower()
+    base_name = lib.name.split(" — ")[0].lower()
     related = [
         e for e in opening_import.ECO_DATABASE
         if (
             base_name in e["name"].lower()
             or (lib.eco_code and e["eco"].startswith(lib.eco_code[0]))
         )
-        and e["name"] != body.opening_name  # skip main entry itself
+        and e["name"] != lib.name  # skip main entry itself
     ][:body.count]
 
     if not related:
         return PullVariationsResponse(
-            opening_name=body.opening_name,
+            opening_name=lib.name,
             added=0,
             message="No additional variations found in the ECO database for this opening.",
         )
@@ -414,15 +623,15 @@ def pull_variations(
         session.commit()
 
     return PullVariationsResponse(
-        opening_name=body.opening_name,
+        opening_name=lib.name,
         added=added,
-        message=f"Added {added} variation(s) to '{body.opening_name}'." if added
+        message=f"Added {added} variation(s) to '{lib.name}'." if added
                 else "All found variations already exist in this library.",
     )
 
 
 class DeleteOpeningRequest(BaseModel):
-    name: str
+    library_id: UUID
 
 
 class DeleteOpeningResponse(BaseModel):
@@ -432,32 +641,96 @@ class DeleteOpeningResponse(BaseModel):
 
 @router.delete("/openings/delete", response_model=DeleteOpeningResponse, status_code=status.HTTP_200_OK)
 def delete_opening(
-    body: DeleteOpeningRequest,
+    name: str = Query(...),
     admin: User = Depends(require_admin),
     session: Session = Depends(get_session),
 ):
     """
     Delete a public opening library by name.
-    Only admins can delete openings. The library must be owned by the admin.
+    Only admins can delete openings. The library must be public.
+    Cascades: deletes all lines, practice positions, move notes, and public signals.
     """
     lib = session.exec(
         select(Library).where(
-            Library.name == body.name,
-            Library.owner_user_id == admin.id,
+            Library.name == name,
             Library.is_public == True,  # noqa: E712
         )
     ).first()
 
-    if not lib:
+    if not lib or not lib.is_public:
         raise HTTPException(
             status.HTTP_404_NOT_FOUND,
-            f"Public opening '{body.name}' not found or not owned by you"
+            f"Public opening not found"
         )
 
+    # Delete all related data
+    from models import Line
+    from models.practice import PracticePosition
+    from models.public_signal import PublicSignal
+
+    # Delete practice positions and lines for this library
+    lines = session.exec(select(Line).where(Line.library_id == lib.id)).all()
+    for line in lines:
+        # Delete practice positions
+        positions = session.exec(
+            select(PracticePosition).where(PracticePosition.line_id == line.id)
+        ).all()
+        for pos in positions:
+            session.delete(pos)
+        # Delete the line
+        session.delete(line)
+
+    session.flush()
+
+    # Delete public signals (stars, comments) for this library
+    signals = session.exec(select(PublicSignal).where(PublicSignal.target_id == lib.id)).all()
+    for sig in signals:
+        session.delete(sig)
+
+    session.flush()
+
+    # Delete the library itself
     session.delete(lib)
     session.commit()
 
     return DeleteOpeningResponse(
         deleted=True,
-        message=f"Deleted opening '{body.name}'."
+        message=f"Deleted opening '{lib.name}'."
     )
+
+
+@router.post("/openings/delete-all-public", status_code=status.HTTP_200_OK)
+def delete_all_public_openings(
+    confirm: str = Query(default=""),
+    session: Session = Depends(get_session),
+):
+    """Delete ALL public libraries (for clean reimport). Requires confirm=yes query param."""
+    if confirm != "yes":
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Must pass confirm=yes to delete all public libraries")
+    from models.line import Line
+    from models.practice import PracticePosition
+    from models.public_signal import PublicSignal
+
+    # Find all public libraries
+    libs = session.exec(select(Library).where(Library.is_public == True)).all()  # noqa: E712
+    count = len(libs)
+
+    for lib in libs:
+        # Delete practice positions
+        lines = session.exec(select(Line).where(Line.library_id == lib.id)).all()
+        for line in lines:
+            positions = session.exec(select(PracticePosition).where(PracticePosition.line_id == line.id)).all()
+            for pos in positions:
+                session.delete(pos)
+            session.delete(line)
+
+        # Delete public signals
+        signals = session.exec(select(PublicSignal).where(PublicSignal.target_id == lib.id)).all()
+        for sig in signals:
+            session.delete(sig)
+
+        # Delete the library
+        session.delete(lib)
+
+    session.commit()
+    return {"deleted": count, "message": f"Deleted {count} public libraries and all associated data."}
