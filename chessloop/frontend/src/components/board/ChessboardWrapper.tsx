@@ -127,20 +127,30 @@ export function ChessboardWrapper({
     api.set({ orientation, viewOnly });      // apply final state (may trigger toggleOrientation)
   }, [orientation, viewOnly]);
 
-  // Build theme class names — board-theme-{name} and pieces-{name} (skip cburnett, no extra class)
+  // Build theme class names on an OUTER wrapper — never on the Chessground container.
+  //
+  // Why: Chessground imperatively sets class="cg-wrap" on the element it is
+  // initialized with (containerRef). If React also manages className on that same
+  // element, any re-render that changes className (e.g. switching board theme)
+  // will overwrite "cg-wrap", causing the board layout and piece rendering to
+  // completely break (pieces disappear, board de-sizes).
+  //
+  // Solution: let Chessground own its div (containerRef) with no React-managed
+  // className.  Put theme classes on an outer wrapper div instead.  The CSS
+  // selectors (.board-theme-X cg-board, .pieces-X .cg-wrap piece) are all
+  // descendant selectors, so they work from any ancestor.
   const themeClasses = [
     boardTheme && boardTheme !== "brown" ? `board-theme-${boardTheme}` : "",
     pieceSet && pieceSet !== "cburnett" ? `pieces-${pieceSet}` : "",
     className ?? "",
   ]
     .filter(Boolean)
-    .join(" ");
+    .join(" ") || undefined;
 
   return (
-    <div
-      ref={containerRef}
-      style={{ width: size, height: size }}
-      className={themeClasses || undefined}
-    />
+    <div style={{ width: size, height: size }} className={themeClasses}>
+      {/* Chessground owns this div — never set className on it from React */}
+      <div ref={containerRef} style={{ width: "100%", height: "100%" }} />
+    </div>
   );
 }
