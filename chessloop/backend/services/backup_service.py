@@ -22,7 +22,7 @@ from models import Backup
 from models.user import User
 
 
-BACKUP_DIR = Path(os.getenv("CHESSLOOP_BACKUP_DIR", "/data/backups"))
+BACKUP_DIR = Path(os.getenv("CHESSLOOP_BACKUP_DIR", "./backups"))
 MAX_BACKUPS = 10
 
 

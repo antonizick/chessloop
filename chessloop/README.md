@@ -140,21 +140,33 @@ See `docker-compose.prod.yml` for full SSL-inside-Docker notes.
 
 ### 4. Create your first admin account
 
-Register normally in the UI. Then promote yourself to admin via the backend:
+Register normally in the UI. Then promote yourself to admin via Python:
 
 ```bash
-# Find your user ID:
-sqlite3 /var/lib/docker/volumes/chessloop-data/_data/chessloop.db \
-  "SELECT id, username FROM user;"
+cd backend
+source .venv/bin/activate
 
-# Set role:
-sqlite3 /var/lib/docker/volumes/chessloop-data/_data/chessloop.db \
-  "UPDATE user SET role='admin' WHERE username='yourname';"
+python3 << 'EOF'
+import sys
+from sqlmodel import Session, create_engine, select
+from models.user import User
+
+engine = create_engine("sqlite:///chessloop.db", echo=False)
+with Session(engine) as session:
+    user = session.exec(select(User).where(User.username == "yourname")).first()
+    if user:
+        user.role = "admin"
+        session.add(user)
+        session.commit()
+        print(f"✅ {user.username} promoted to admin")
+    else:
+        print("❌ User not found")
+EOF
 ```
 
-Once promoted, the **Admin panel** (⚙ Admin panel link in the sidebar) lets you:
-- Create and download database backups
-- Promote / demote other users
+Once promoted, the **Admin panel** (⚙ icon in the sidebar) grants:
+- Backup creation, download, and deletion
+- User promotion / demotion
 
 ---
 
@@ -273,7 +285,19 @@ Use the **Admin panel → Backups** tab to create named backups on-demand and do
 
 Up to 10 backups are retained; the oldest is pruned automatically when the limit is exceeded.
 
-For volume-level snapshots:
+### Backup location
+
+By default, backups are stored in `./backups/` (relative to the backend directory). You can override this:
+
+```bash
+# Development:
+CHESSLOOP_BACKUP_DIR=/path/to/backups uvicorn main:app --port 8100
+
+# Docker (in .env):
+CHESSLOOP_BACKUP_DIR=/data/backups
+```
+
+For volume-level snapshots in Docker:
 
 ```bash
 docker run --rm \

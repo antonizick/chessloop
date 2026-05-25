@@ -650,6 +650,22 @@ chessloop/
 
 ---
 
+## 12. Post-Phase 5 Fixes & Refinements
+
+### Backup Directory Fix (2026-05-24)
+
+**Issue:** Backup creation returned 500 error due to permission denied on `/data/backups`.
+
+**Root cause:** Default backup path was `/data/backups` (system-owned directory), but users lack write permission.
+
+**Fix:** Changed default backup directory to `./backups` (relative path, user-owned).
+- `backend/services/backup_service.py` line 25
+- Environment variable override still available: `CHESSLOOP_BACKUP_DIR`
+
+**Result:** Backups now work out-of-the-box; portable across dev and Docker deployments.
+
+---
+
 ## 13. Model Recommendation
 
 **Use Claude Opus for initial creation.**
