@@ -426,8 +426,15 @@ export function PracticeBoard() {
     const pos = positionRef.current;
     if (!pos) return;
 
-    const step = lineStepRef.current;
     const moves = pos.remaining_moves;
+    // Guard: remaining_moves is missing if the backend is running old code.
+    if (!moves || moves.length === 0) {
+      console.error("[ChessLoop] remaining_moves is missing — restart the backend.");
+      setError("Server response is stale. Please restart the backend and refresh.");
+      return;
+    }
+
+    const step = lineStepRef.current;
     if (step >= moves.length) return;
 
     const expected = moves[step];
