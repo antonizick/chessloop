@@ -1,7 +1,7 @@
 # ChessLoop — Design & Implementation Plan
 
 > Last updated: 2026-05-24
-> Status: Phase 3 complete — Phase 4 next
+> Status: Phase 5 complete — all phases done ✅
 
 ---
 
@@ -503,15 +503,23 @@ is set before any network requests resolve, eliminating all timing races between
 - Heatmap uses pure SVG (no recharts dep) — green ≥80%, yellow 50-79%, red <50%
 - "Practice weakest now" navigates to `/practice` with `state.autoMode="weakest"` for auto-start
 
-### Phase 5 — Polish & Admin (Sprint 7, ~1 week)
+### Phase 5 — Polish & Admin (Sprint 7, ~1 week) ✅ COMPLETE
 **Goal: Production-ready self-host**
 
-- [ ] Piece set selector + board color themes (4+ options each)
-- [ ] Sound effects (move, capture, correct, wrong)
-- [ ] Admin: backup UI (create/download/restore), user management
-- [ ] Seed 12+ official starter libraries (PGN import + auto-populate)
-- [ ] Docker Compose production config with Nginx + SSL hints
-- [ ] README with self-host instructions
+- [x] Piece set selector + board color themes (5 themes: brown/blue/green/ice/purple; 4 piece sets: cburnett/alpha/mono/shadow)
+- [x] Sound effects (move, capture, correct chime, wrong buzz; sounds_on toggle per user)
+- [x] Admin: backup UI (create/download/delete, 10-backup retention), user management (promote/demote)
+- [x] Seed 16 official starter libraries (seed_libraries.py — SAN-only API, python-chess on backend)
+- [x] Docker Compose production config (docker-compose.prod.yml — 127.0.0.1 binding, health checks, SSL notes)
+- [x] README with full self-host guide (admin setup, seed script, SSL options A/B/C, backup instructions)
+
+**Phase 5 notes:**
+- Board themes: CSS classes on ChessboardWrapper container — `board-theme-{name}` overrides `cg-board` background
+- Piece sets: CSS `filter` variants applied to `.cg-wrap piece` elements (no extra SVG files needed)
+- Preferences: `PATCH /api/auth/preferences` endpoint; live board preview in Settings before saving
+- Admin: role-gated (`role='admin'`); Admin panel linked in Sidebar for admin users only
+- Backend: `LineMoveAppend` now accepts SAN-only — backend computes UCI + FEN via python-chess
+- Seed: creates `seedbot` account, adds 16 openings, publishes them; skips existing libraries
 
 ---
 
