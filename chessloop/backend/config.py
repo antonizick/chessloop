@@ -1,3 +1,4 @@
+from typing import Optional
 from pydantic_settings import BaseSettings
 
 
@@ -12,6 +13,7 @@ class Settings(BaseSettings):
     class Config:
         env_prefix = "CHESSLOOP_"
         env_file = ".env"
+        extra = "ignore"  # ignore unknown env vars (e.g. LICHESS_API_TOKEN)
 
     @property
     def cors_origin_list(self) -> list[str]:

@@ -2,6 +2,8 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { publicApi } from "@/api/public";
+import { useAuthStore } from "@/stores/auth";
+import { AdminOpeningsPanel } from "@/components/admin/AdminOpeningsPanel";
 import type { PublicLibraryEntry } from "@/types";
 
 const COLOR_LABEL: Record<string, string> = {
@@ -92,6 +94,7 @@ export function Public() {
   const [color, setColor] = useState("");
   const [difficulty, setDifficulty] = useState("");
   const [sort, setSort] = useState<"stars" | "newest">("stars");
+  const user = useAuthStore((s) => s.user);
 
   const { data: libraries, isLoading } = useQuery({
     queryKey: ["public-libraries", q, color, difficulty, sort],
@@ -99,12 +102,19 @@ export function Public() {
     staleTime: 30_000,
   });
 
+  const publicLibraryNames = (libraries ?? []).map((l) => l.name);
+
   return (
     <div className="flex flex-col gap-6">
       <div>
         <h1>Public Libraries</h1>
         <p className="text-ink-300 mt-1 text-sm">Browse and fork community opening repertoires.</p>
       </div>
+
+      {/* Admin opening management panel — admins only */}
+      {user?.role === "admin" && (
+        <AdminOpeningsPanel publicLibraryNames={publicLibraryNames} />
+      )}
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3">

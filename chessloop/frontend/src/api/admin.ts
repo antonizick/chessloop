@@ -1,0 +1,58 @@
+import { api } from "@/api/client";
+
+export interface OpeningSearchResult {
+  eco: string;
+  name: string;
+  color: string;
+  difficulty: string;
+  description: string;
+  moves: string[];
+}
+
+export interface SeedOpeningsResponse {
+  seeded: number;
+  skipped: number;
+  errors: string[];
+}
+
+export interface ImportOpeningRequest {
+  eco: string;
+  name: string;
+  color: string;
+  difficulty: string;
+  description: string;
+  moves: string[];
+  publish?: boolean;
+}
+
+export interface ImportOpeningResponse {
+  id: string;
+  name: string;
+  status: "created" | "exists";
+}
+
+export interface PullVariationsResponse {
+  opening_name: string;
+  added: number;
+  message: string;
+}
+
+export const adminApi = {
+  searchOpenings: (q: string) =>
+    api<OpeningSearchResult[]>(`/admin/openings/search?q=${encodeURIComponent(q)}`),
+
+  seedOpenings: () =>
+    api<SeedOpeningsResponse>("/admin/openings/seed", { method: "POST" }),
+
+  importOpening: (body: ImportOpeningRequest) =>
+    api<ImportOpeningResponse>("/admin/openings/import", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+
+  pullVariations: (opening_name: string, count = 5) =>
+    api<PullVariationsResponse>("/admin/openings/pull-variations", {
+      method: "POST",
+      body: JSON.stringify({ opening_name, count }),
+    }),
+};
