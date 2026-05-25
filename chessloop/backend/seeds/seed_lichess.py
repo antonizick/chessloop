@@ -89,6 +89,86 @@ class Opening:
 
 # ── Lichess API client ────────────────────────────────────────────────────────
 
+def fetch_opening_continuations(initial_moves: list[str], branch_count: int = 2) -> list[list[str]] | None:
+    """
+    Query Lichess Explorer from a given position and fetch multiple popular continuations.
+
+    Args:
+        initial_moves: List of SAN moves to reach the starting position for this opening
+        branch_count: Number of variations to fetch (default 2: main line + 1 alternative)
+
+    Returns:
+        List of move sequences (one per variation), or None if error.
+    """
+    import chess
+
+    try:
+        board = chess.Board()
+        for san in initial_moves:
+            board.push_san(san)
+
+        fen = board.fen()
+
+        with httpx.Client(timeout=30) as client:
+            response = client.get(
+                f"{LICHESS_EXPLORER_URL}",
+                params={
+                    "fen": fen,
+                    "since": 2020,
+                    "until": 2026,
+                    "speeds": "blitz,rapid,classical",
+                    "ratings": "2000,2200,2400",
+                },
+            )
+
+            if response.status_code != 200:
+                return None
+
+            data = response.json()
+
+            if "moves" not in data or not data["moves"]:
+                return None
+
+            # Get top N moves from this position
+            moves_by_popularity = sorted(
+                data["moves"],
+                key=lambda m: m.get("games", 0),
+                reverse=True
+            )[:branch_count]
+
+            continuations = []
+            for top_move in moves_by_popularity:
+                san = top_move.get("san")
+                if not san:
+                    continue
+
+                # Start with initial + this branch's first move
+                variation = list(initial_moves) + [san]
+
+                # Follow best moves for ~15 more plies
+                current = top_move
+                for _ in range(15):
+                    if "moves" not in current or not current["moves"]:
+                        break
+
+                    best_move = max(current["moves"], key=lambda m: m.get("games", 0))
+                    next_san = best_move.get("san")
+
+                    if not next_san or best_move.get("games", 0) < 5:
+                        break
+
+                    variation.append(next_san)
+                    current = best_move
+
+                continuations.append(variation)
+
+            return continuations if continuations else None
+
+    except Exception as e:
+        print(f"    ✗ Error fetching from Lichess: {e}")
+        return None
+
+
 def fetch_opening_continuation(initial_moves: list[str]) -> list[str] | None:
     """
     Query Lichess Explorer from a given position and extend the opening with the most popular moves.
@@ -255,19 +335,21 @@ def seed_from_lichess(client: ChessLoopClient) -> None:
             continue
 
         print(f"  FETCH {opening_name} ({eco_code})…")
-        moves = fetch_opening_continuation(initial_moves)
 
-        if not moves or moves == initial_moves:
-            # Use initial moves if Lichess query failed or returned nothing
-            moves = initial_moves
-            print(f"    Using hardcoded mainline ({len(moves)} moves)")
+        # Fetch main line + 1 critical variation
+        variations = fetch_opening_continuations(initial_moves, branch_count=2)
+
+        if not variations or len(variations) == 0:
+            # Use initial moves if Lichess query failed
+            variations = [initial_moves]
+            print(f"    Using hardcoded mainline ({len(initial_moves)} moves)")
         else:
-            print(f"    Extended from Lichess ({len(moves)} moves total)")
+            print(f"    Fetched {len(variations)} variations from Lichess")
 
-        description = f"Popular opening from Lichess Explorer ({len(moves)} moves). ECO: {eco_code}. " \
+        description = f"Opening with {len(variations)} mainline(s) from Lichess Explorer. ECO: {eco_code}. " \
                      f"Sourced from master games 2020–2026, rated 2000+."
 
-        print(f"  CREATE {opening_name} ({len(moves)} moves, {color}, {difficulty})")
+        print(f"  CREATE {opening_name} ({color}, {difficulty})")
         lib_id = client.create_library(
             name=opening_name,
             color=color,
@@ -276,9 +358,13 @@ def seed_from_lichess(client: ChessLoopClient) -> None:
             description=description,
         )
 
-        line_id = client.create_line(lib_id, "Main line")
-        for san in moves:
-            client.append_move(line_id, san)
+        # Create a line for each variation
+        line_names = ["Main line"] + [f"Variation {i}" for i in range(1, len(variations))]
+        for line_name, moves in zip(line_names, variations):
+            line_id = client.create_line(lib_id, line_name)
+            print(f"    Line: {line_name} ({len(moves)} moves)")
+            for san in moves:
+                client.append_move(line_id, san)
 
         client.publish_library(lib_id)
         print(f"    Published ✓")
