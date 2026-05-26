@@ -42,11 +42,11 @@ export function MoveNoteEditor({
       if (moveIndex === null) return;
       return linesApi.updateMoveNote(lineId, moveIndex, text);
     },
-    onSuccess: (data) => {
+    onSuccess: (data, savedText) => {
       if (data && moveIndex !== null) {
         qc.setQueryData(["line", lineId], data);
         onSaved?.(data);
-        onNoteSaved?.(moveIndex, noteText);
+        onNoteSaved?.(moveIndex, savedText);
       }
     },
   });
@@ -141,7 +141,7 @@ export function MoveNoteEditor({
               No note yet
             </div>
           )}
-          <div className="flex gap-2">
+          <div className="flex gap-2 justify-end">
             <button
               onClick={() => setIsEditing(true)}
               className="px-3 py-1.5 rounded text-sm bg-ink-700 hover:bg-ink-600
