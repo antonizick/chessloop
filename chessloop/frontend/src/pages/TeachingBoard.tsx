@@ -256,18 +256,24 @@ export function TeachingBoard() {
   // ── Reset to start ───────────────────────────────────────────────────────
   function handleJumpToStart() {
     teaching.jumpTo(-1);
+    setSelectedMoveForNote(null);
   }
 
   // ── Navigation and export handlers ────────────────────────────────────────
   function handlePreviousMove() {
     if (teaching.viewIndex === null) {
       if (teaching.moves.length > 0) {
-        teaching.jumpTo(teaching.moves.length - 1);
+        const newIndex = teaching.moves.length - 1;
+        teaching.jumpTo(newIndex);
+        setSelectedMoveForNote(newIndex);
       }
     } else if (teaching.viewIndex > 0) {
-      teaching.jumpTo(teaching.viewIndex - 1);
+      const newIndex = teaching.viewIndex - 1;
+      teaching.jumpTo(newIndex);
+      setSelectedMoveForNote(newIndex);
     } else if (teaching.viewIndex === 0) {
       teaching.jumpTo(-1);
+      setSelectedMoveForNote(null);
     }
   }
 
@@ -276,9 +282,12 @@ export function TeachingBoard() {
       return;
     }
     if (teaching.viewIndex < teaching.moves.length - 1) {
-      teaching.jumpTo(teaching.viewIndex + 1);
+      const newIndex = teaching.viewIndex + 1;
+      teaching.jumpTo(newIndex);
+      setSelectedMoveForNote(newIndex);
     } else {
       teaching.jumpToEnd();
+      setSelectedMoveForNote(null);
     }
   }
 
@@ -454,7 +463,10 @@ export function TeachingBoard() {
                 </button>
                 <button
                   className="btn-ghost px-2 py-1 text-ink-400 hover:text-gold-400"
-                  onClick={teaching.jumpToEnd}
+                  onClick={() => {
+                    teaching.jumpToEnd();
+                    setSelectedMoveForNote(null);
+                  }}
                   title="Go to last move"
                 >
                   ⟫
