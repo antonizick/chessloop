@@ -36,6 +36,7 @@ import type { Api } from "chessground/api";
 import type { Key } from "chessground/types";
 
 import { ChessboardWrapper } from "@/components/board/ChessboardWrapper";
+import { ConflictEvaluator } from "@/components/board/ConflictEvaluator";
 import { PromotionModal } from "@/components/teaching/PromotionModal";
 import { ModeEntry } from "@/components/practice/ModeEntry";
 import type { PracticeOptions, UiMode } from "@/components/practice/ModeEntry";
@@ -196,6 +197,7 @@ export function PracticeBoard() {
       const color = turnFromFen(fen);
       cgRef.current?.set({
         fen,
+        orientation: pos.turn_color,
         viewOnly: false,
         turnColor: color,
         movable: {
@@ -220,7 +222,11 @@ export function PracticeBoard() {
   // computer's last reply.
   useEffect(() => {
     if (phase !== "waiting" || !position) return;
-    enableBoardForUser(position, currentFenRef.current || undefined);
+    const activeFen = currentFenRef.current || position.fen_before;
+    // Ensure board listeners are registered before configuring it.
+    // Set viewOnly:false first to guarantee bindBoard() sees the correct state.
+    cgRef.current?.set({ viewOnly: false });
+    enableBoardForUser(position, activeFen);
   }, [phase, position, enableBoardForUser]);
 
   // ── Auto-start from Dashboard "Practice weakest now" ──────────────────────
@@ -754,30 +760,40 @@ export function PracticeBoard() {
         {/* Board + panel */}
         <div className="grid grid-cols-1 lg:grid-cols-[auto_1fr] gap-6 items-start">
 
-          {/* Board */}
-          <div className="relative">
-            <ChessboardWrapper
-              size={480}
-              orientation={orientation}
-              viewOnly={isViewOnly}
-              onMove={onMove}
-              cgRef={cgRef}
-              boardTheme={boardTheme}
-              pieceSet={pieceSet}
-            />
+          {/* Board + conflict evaluator */}
+          <div className="flex flex-col gap-4">
+            {/* Board */}
+            <div className="relative">
+              <ChessboardWrapper
+                size={480}
+                orientation={orientation}
+                viewOnly={isViewOnly}
+                onMove={onMove}
+                cgRef={cgRef}
+                boardTheme={boardTheme}
+                pieceSet={pieceSet}
+              />
 
-            {/* Phase border overlays */}
-            {(phase === "feedback_wrong" || phase === "replaying") && (
-              <div className="absolute inset-0 border-2 border-red-500/50 rounded pointer-events-none" />
-            )}
-            {phase === "feedback_correct" && (
-              <div className="absolute inset-0 border-2 border-green-500/50 rounded pointer-events-none" />
-            )}
+              {/* Phase border overlays */}
+              {(phase === "feedback_wrong" || phase === "replaying") && (
+                <div className="absolute inset-0 border-2 border-red-500/50 rounded pointer-events-none" />
+              )}
+              {phase === "feedback_correct" && (
+                <div className="absolute inset-0 border-2 border-green-500/50 rounded pointer-events-none" />
+              )}
 
-            {/* Loading veil */}
-            {(phase === "loading" || phase === "submitting") && (
-              <div className="absolute inset-0 bg-ink-900/60 flex items-center justify-center rounded">
-                <div className="w-6 h-6 border-2 border-gold-400 border-t-transparent rounded-full animate-spin" />
+              {/* Loading veil */}
+              {(phase === "loading" || phase === "submitting") && (
+                <div className="absolute inset-0 bg-ink-900/60 flex items-center justify-center rounded">
+                  <div className="w-6 h-6 border-2 border-gold-400 border-t-transparent rounded-full animate-spin" />
+                </div>
+              )}
+            </div>
+
+            {/* Conflict evaluator - below board */}
+            {position?.library_id && (
+              <div className="card p-4">
+                <ConflictEvaluator libraryId={position.library_id} />
               </div>
             )}
           </div>
