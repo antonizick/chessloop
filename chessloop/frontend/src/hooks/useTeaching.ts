@@ -6,6 +6,7 @@ export interface RecordedMove {
   san: string;
   uci: string;
   fen_after: string;
+  note?: string;
 }
 
 export function getDests(chess: Chess): Map<Key, Key[]> {

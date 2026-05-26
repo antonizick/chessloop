@@ -6,6 +6,7 @@ import { Chess } from "chess.js";
 
 import { ChessboardWrapper } from "@/components/board/ChessboardWrapper";
 import { MoveList, generatePgn, exportPgn } from "@/components/teaching/MoveList";
+import { MoveNoteEditor } from "@/components/teaching/MoveNoteEditor";
 import { PromotionModal } from "@/components/teaching/PromotionModal";
 import { useTeaching } from "@/hooks/useTeaching";
 import { librariesApi } from "@/api/libraries";
@@ -45,6 +46,7 @@ export function TeachingBoard() {
   const [renameValue, setRenameValue] = useState("");
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [selectedMoveForNote, setSelectedMoveForNote] = useState<number | null>(null);
 
   // Sync orientation with library color on first load
   useEffect(() => {
@@ -399,7 +401,10 @@ export function TeachingBoard() {
                 moves={teaching.moves}
                 viewIndex={teaching.viewIndex}
                 isAtEnd={teaching.isAtEnd}
-                onJump={teaching.jumpTo}
+                onJump={(index) => {
+                  teaching.jumpTo(index);
+                  setSelectedMoveForNote(index);
+                }}
                 onJumpToEnd={teaching.jumpToEnd}
                 onDeleteFrom={handleDeleteFrom}
               />
@@ -447,8 +452,17 @@ export function TeachingBoard() {
                   ↓ PGN
                 </button>
               </div>
+              {selectedLine && selectedMoveForNote !== null && (
+                <div className="mt-3 border-t border-ink-700 pt-3">
+                  <MoveNoteEditor
+                    lineId={selectedLine.id}
+                    moveIndex={selectedMoveForNote}
+                    currentMove={teaching.moves[selectedMoveForNote] || null}
+                  />
+                </div>
+              )}
               {teaching.isAtEnd && !teaching.pendingPromotion && (
-                <p className="text-xs text-ink-400">
+                <p className="text-xs text-ink-400 mt-3 border-t border-ink-700 pt-3">
                   {teaching.liveTurnColor === "white" ? "♔" : "♚"}{" "}
                   {teaching.liveTurnColor.charAt(0).toUpperCase() + teaching.liveTurnColor.slice(1)} to move
                   {teaching.moves.length === 0 && " · drag a piece to begin"}

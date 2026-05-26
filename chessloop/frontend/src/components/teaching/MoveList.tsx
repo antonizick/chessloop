@@ -129,6 +129,14 @@ function MoveChip({ move, index, active, onJump, onDeleteFrom }: ChipProps) {
       onKeyDown={(e) => e.key === "Enter" && onJump(index)}
     >
       <span>{move.san}</span>
+      {move.note && (
+        <span
+          className={`w-1.5 h-1.5 rounded-full ${
+            active ? "bg-ink-900" : "bg-gold-300"
+          }`}
+          title={move.note}
+        />
+      )}
       <button
         className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-300
                    text-xs leading-none ml-1 transition-opacity"
