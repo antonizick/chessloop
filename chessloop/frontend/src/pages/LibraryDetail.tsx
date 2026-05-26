@@ -55,6 +55,28 @@ export function LibraryDetail() {
     },
   });
 
+  const publishLib = useMutation({
+    mutationFn: () => librariesApi.publish(id!),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["library", id] });
+      qc.invalidateQueries({ queryKey: ["libraries"] });
+    },
+  });
+
+  const exportPgn = useMutation({
+    mutationFn: async () => {
+      const blob = await librariesApi.exportPgn(id!);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${lib?.name.replace(/\s+/g, "_")}.pgn`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    },
+  });
+
   if (!lib) return <p className="text-ink-300">Loading…</p>;
 
   return (
@@ -103,11 +125,34 @@ export function LibraryDetail() {
       </div>
 
       {/* Action buttons */}
-      <div className="flex gap-2">
+      <div className="flex gap-2 flex-wrap">
         <Link to={`/libraries/${id}/teach`} className="btn-primary">Teaching board</Link>
         <button className="btn-ghost" onClick={() => createLine.mutate()}>
           + Add line
         </button>
+        <button
+          className="btn-ghost"
+          onClick={() => exportPgn.mutate()}
+          disabled={exportPgn.isPending || !lines?.length}
+          title={!lines?.length ? "Add lines to export" : "Export all lines as PGN"}
+        >
+          {exportPgn.isPending ? "…" : "↓ PGN"}
+        </button>
+        {!lib.is_public && (
+          <button
+            className="btn-ghost"
+            onClick={() => publishLib.mutate()}
+            disabled={publishLib.isPending}
+            title="Publish to Public Opening Libraries"
+          >
+            {publishLib.isPending ? "…" : "📢 Publish"}
+          </button>
+        )}
+        {lib.is_public && (
+          <span className="text-sm text-gold-400 flex items-center">
+            ✓ Published to Public Opening Libraries
+          </span>
+        )}
       </div>
 
       {/* Lines list */}

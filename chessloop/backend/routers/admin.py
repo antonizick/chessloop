@@ -664,28 +664,53 @@ def delete_opening(
         )
 
     # Delete all related data
-    from models import Line
+    from models import Line, ReviewLog
     from models.practice import PracticePosition
     from models.public_signal import PublicSignal
 
     # Delete practice positions and lines for this library
     lines = session.exec(select(Line).where(Line.library_id == lib.id)).all()
-    for line in lines:
-        # Delete practice positions
+    line_ids = [line.id for line in lines]
+
+    if line_ids:
+        # Get all practice positions for these lines
         positions = session.exec(
-            select(PracticePosition).where(PracticePosition.line_id == line.id)
+            select(PracticePosition).where(PracticePosition.line_id.in_(line_ids))
         ).all()
+        pos_ids = [pos.id for pos in positions]
+
+        # Delete review logs that reference these practice positions
+        if pos_ids:
+            review_logs = session.exec(
+                select(ReviewLog).where(ReviewLog.practice_pos_id.in_(pos_ids))
+            ).all()
+            for rl in review_logs:
+                session.delete(rl)
+            session.flush()  # Execute all review log deletes before continuing
+
+        # Delete practice positions
         for pos in positions:
             session.delete(pos)
-        # Delete the line
-        session.delete(line)
+        session.flush()  # Execute all practice position deletes before deleting lines
 
-    session.flush()
+    # Delete the lines
+    for line in lines:
+        session.delete(line)
+    session.flush()  # Execute all line deletes before deleting library
 
     # Delete public signals (stars, comments) for this library
     signals = session.exec(select(PublicSignal).where(PublicSignal.target_id == lib.id)).all()
     for sig in signals:
         session.delete(sig)
+
+    session.flush()
+
+    # Clear forked_from_id references from any libraries that forked from this one
+    # This prevents foreign key constraint failures when deleting the library
+    forked_libs = session.exec(select(Library).where(Library.forked_from_id == lib.id)).all()
+    for forked in forked_libs:
+        forked.forked_from_id = None
+        session.add(forked)
 
     session.flush()
 

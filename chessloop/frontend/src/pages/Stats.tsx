@@ -209,7 +209,7 @@ export function Stats() {
 
   return (
     <div className="flex flex-col gap-8">
-      <h1>Stats</h1>
+      <h1>My Stats</h1>
 
       {/* Accuracy heatmap */}
       <section>

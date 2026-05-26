@@ -27,10 +27,10 @@ export function Sidebar() {
   const dueTotal = dueCount?.count ?? 0;
 
   const navItems = [
-    { label: "Libraries", path: "/libraries" },
-    { label: "Practice", path: "/practice", badge: dueTotal > 0 ? dueTotal : null },
-    { label: "Stats", path: "/stats" },
-    { label: "Discover", path: "/public" },
+    { label: "My Opening Libraries", path: "/libraries" },
+    { label: "Rated Practice", path: "/practice", badge: dueTotal > 0 ? dueTotal : null },
+    { label: "My Stats", path: "/stats" },
+    { label: "Public Opening Libraries", path: "/public" },
   ];
 
   return (

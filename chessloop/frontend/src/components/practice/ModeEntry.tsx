@@ -118,7 +118,7 @@ export function ModeEntry({ onStart, isLoading, error }: Props) {
   return (
     <div className="max-w-lg mx-auto mt-8 flex flex-col gap-6">
       <div>
-        <h1>Practice</h1>
+        <h1>Rated Practice</h1>
         <p className="text-ink-300 text-sm mt-1">
           Choose a session mode and start drilling your openings.
         </p>

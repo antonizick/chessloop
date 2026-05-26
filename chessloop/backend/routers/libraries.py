@@ -1,6 +1,8 @@
 from datetime import datetime
 from uuid import UUID
+import json
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 
@@ -164,7 +166,18 @@ def publish(
     user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
 ):
-    lib = _owned_or_404(session, lib_id, user)
+    lib = session.get(Library, lib_id)
+    if not lib:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Library not found")
+
+    # Allow: owner, any admin, or the user 'nick'
+    is_owner = lib.owner_user_id == user.id
+    is_admin = user.role == "admin"
+    is_nick = user.username == "nick"
+
+    if not (is_owner or is_admin or is_nick):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Only owner, admins, or nick can publish libraries")
+
     lib.is_public = True
     lib.published_at = datetime.utcnow()
     lib.updated_at = lib.published_at
@@ -209,3 +222,43 @@ def fork(
         ))
     session.commit()
     return forked
+
+
+@router.get("/{lib_id}/export/pgn")
+def export_library_pgn(
+    lib_id: UUID,
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    lib = _owned_or_404(session, lib_id, user)
+    lines = session.exec(select(Line).where(Line.library_id == lib.id)).all()
+
+    pgn_content = ""
+    for line in lines:
+        pgn_content += f'[Event "{lib.name}"]\n'
+        if line.name:
+            pgn_content += f'[OpeningName "{line.name}"]\n'
+        if lib.eco_code:
+            pgn_content += f'[ECO "{lib.eco_code}"]\n'
+        pgn_content += f'[White "ChessLoop"]\n'
+        pgn_content += f'[Black "ChessLoop"]\n'
+        pgn_content += '\n'
+
+        moves = json.loads(line.moves)
+        for i, move in enumerate(moves):
+            if i % 2 == 0:
+                pgn_content += f'{(i // 2) + 1}. '
+            pgn_content += move['san']
+            if i < len(moves) - 1:
+                pgn_content += ' '
+        pgn_content += '\n\n'
+
+    def generate():
+        yield pgn_content
+
+    filename = f"{lib.name.replace(' ', '_')}.pgn"
+    return StreamingResponse(
+        generate(),
+        media_type="text/plain",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )

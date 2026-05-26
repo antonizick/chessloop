@@ -84,7 +84,7 @@ export function Libraries() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h1>Libraries</h1>
+        <h1>My Opening Libraries</h1>
         <Link to="/libraries/new" className="btn-primary">+ New library</Link>
       </div>
 

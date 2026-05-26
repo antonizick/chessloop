@@ -1,4 +1,5 @@
 import { api } from "./client";
+import { useAuthStore } from "@/stores/auth";
 import type { Library } from "@/types";
 
 export interface LibraryCreate {
@@ -24,4 +25,16 @@ export const librariesApi = {
     }),
   publish: (id: string) => api<Library>(`/libraries/${id}/publish`, { method: "POST" }),
   fork: (id: string) => api<Library>(`/libraries/${id}/fork`, { method: "POST" }),
+  exportPgn: async (id: string) => {
+    const token = useAuthStore.getState().accessToken;
+    const headers = new Headers();
+    if (token) headers.set("Authorization", `Bearer ${token}`);
+
+    const response = await fetch(`/api/libraries/${id}/export/pgn`, {
+      method: "GET",
+      headers,
+    });
+    if (!response.ok) throw new Error(`Failed to export library`);
+    return response.blob();
+  },
 };

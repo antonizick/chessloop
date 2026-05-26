@@ -11,6 +11,7 @@ export default defineConfig({
     port: 8090,
     strictPort: true,
     host: true,
+    allowedHosts: ['.ts.net'],        // ← Added for Tailscale Funnel
     proxy: {
       "/api": {
         target: "http://localhost:8100",

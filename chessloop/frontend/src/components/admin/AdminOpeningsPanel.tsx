@@ -1,6 +1,8 @@
 import { useState, useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { adminApi, type OpeningSearchResult } from "@/api/admin";
+import { librariesApi } from "@/api/libraries";
+import type { PublicLibraryEntry } from "@/types";
 
 // ── Tooltip ───────────────────────────────────────────────────────────────────
 
@@ -321,6 +323,100 @@ function ImportOpeningSection() {
   );
 }
 
+// ── Section: Publish user library ────────────────────────────────────────────
+
+function PublishUserLibrarySection({ publicLibraries }: { publicLibraries: PublicLibraryEntry[] }) {
+  const qc = useQueryClient();
+  const [selected, setSelected] = useState("");
+  const [confirmPublish, setConfirmPublish] = useState(false);
+
+  const { data: userLibraries } = useQuery({
+    queryKey: ["libraries"],
+    queryFn: librariesApi.list,
+  });
+
+  const publishMut = useMutation({
+    mutationFn: () => librariesApi.publish(selected),
+    onSuccess: () => {
+      setSelected("");
+      setConfirmPublish(false);
+      qc.invalidateQueries({ queryKey: ["public-libraries"], exact: false });
+    },
+  });
+
+  // Filter out already published libraries
+  const unpublishedLibs = userLibraries?.filter(
+    (lib) => !lib.is_public
+  ) || [];
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center gap-1">
+        <span className="text-sm font-medium text-ink-200">Publish to Public Opening Libraries</span>
+        <Tooltip text="Publish one of your private libraries to the public opening libraries. This makes it available to all users in the Public Discovery section. Only admins and nick can publish libraries.">
+          <InfoIcon />
+        </Tooltip>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <select
+          value={selected}
+          onChange={(e) => { setSelected(e.target.value); setConfirmPublish(false); }}
+          className="input text-sm py-1 flex-1 min-w-[200px]"
+        >
+          <option value="">— Select a library to publish —</option>
+          {unpublishedLibs.map((lib) => (
+            <option key={lib.id} value={lib.id}>{lib.name}</option>
+          ))}
+        </select>
+
+        {!confirmPublish ? (
+          <button
+            className="btn-primary text-sm py-1.5 px-4"
+            onClick={() => setConfirmPublish(true)}
+            disabled={!selected || publishMut.isPending}
+          >
+            Publish
+          </button>
+        ) : (
+          <div className="flex items-center gap-1.5">
+            <button
+              className="btn-primary text-xs py-1 px-3"
+              onClick={() => publishMut.mutate()}
+              disabled={publishMut.isPending}
+            >
+              {publishMut.isPending ? "Publishing…" : "Confirm Publish"}
+            </button>
+            <button
+              className="btn-ghost text-xs py-1 px-3 border border-ink-600"
+              onClick={() => setConfirmPublish(false)}
+              disabled={publishMut.isPending}
+            >
+              Cancel
+            </button>
+          </div>
+        )}
+      </div>
+
+      {publishMut.isError && (
+        <p className="text-xs text-red-400">
+          Error: {(publishMut.error as Error).message}
+        </p>
+      )}
+
+      {publishMut.isSuccess && (
+        <p className="text-xs text-gold-400">
+          ✓ Library published to Public Opening Libraries.
+        </p>
+      )}
+
+      {unpublishedLibs.length === 0 && (
+        <p className="text-xs text-ink-400">All your libraries are already published or there are no private libraries.</p>
+      )}
+    </div>
+  );
+}
+
 // ── Section: Delete opening ────────────────────────────────────────────────
 
 function DeleteOpeningSection({ publicLibraries }: { publicLibraries: PublicLibraryEntry[] }) {
@@ -403,8 +499,6 @@ function DeleteOpeningSection({ publicLibraries }: { publicLibraries: PublicLibr
 
 // ── Root panel ────────────────────────────────────────────────────────────────
 
-import type { PublicLibraryEntry } from "@/types";
-
 export function AdminOpeningsPanel({ publicLibraries }: { publicLibraries: PublicLibraryEntry[] }) {
   const [open, setOpen] = useState(false);
 
@@ -425,6 +519,8 @@ export function AdminOpeningsPanel({ publicLibraries }: { publicLibraries: Publi
       {open && (
         <div className="px-4 pb-4 flex flex-col gap-6 border-t border-ink-700 pt-4">
           <SeedSection />
+          <div className="border-t border-ink-700" />
+          <PublishUserLibrarySection publicLibraries={publicLibraries} />
           <div className="border-t border-ink-700" />
           <PullVariationsSection publicLibraries={publicLibraries} />
           <div className="border-t border-ink-700" />

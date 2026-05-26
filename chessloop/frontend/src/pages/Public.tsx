@@ -150,7 +150,7 @@ export function Public() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1>Public Libraries</h1>
+        <h1>Public Opening Libraries</h1>
         <p className="text-ink-300 mt-1 text-sm">Browse and fork community opening repertoires.</p>
       </div>
 
