@@ -212,6 +212,8 @@ export function TeachingBoard() {
     setIsSaving(true);
     try {
       await linesApi.appendMove(selectedLineId, result);
+      // Refresh the lines query so the move is persisted
+      qc.invalidateQueries({ queryKey: ["lines", libId] });
     } catch (err) {
       console.error("Save failed:", err);
     } finally {
@@ -226,6 +228,8 @@ export function TeachingBoard() {
     setIsSaving(true);
     try {
       await linesApi.appendMove(selectedLineId, result);
+      // Refresh the lines query so the move is persisted
+      qc.invalidateQueries({ queryKey: ["lines", libId] });
     } finally {
       setIsSaving(false);
     }

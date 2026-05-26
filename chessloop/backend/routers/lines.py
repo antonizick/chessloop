@@ -68,7 +68,7 @@ def create_line(
         session.exec(select(Line).where(Line.library_id == lib_id)).all()
     )
     # Generate default name if not provided
-    line_name = body.name or f"New Main Line [{existing_count + 1}]"
+    line_name = body.name or f"Opening Line [{existing_count + 1}]"
     line = Line(
         library_id=lib_id,
         name=line_name,

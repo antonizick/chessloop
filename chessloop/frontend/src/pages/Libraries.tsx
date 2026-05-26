@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import { librariesApi } from "@/api/libraries";
 
 /** Toggle switch — reused inline for the active/inactive state. */
@@ -42,6 +43,13 @@ export function Libraries() {
     queryFn: librariesApi.list,
   });
 
+  const [renameModal, setRenameModal] = useState<{
+    id: string;
+    currentName: string;
+  } | null>(null);
+  const [newName, setNewName] = useState("");
+  const [renameError, setRenameError] = useState<string | null>(null);
+
   const toggleActive = useMutation({
     mutationFn: ({ id, is_active }: { id: string; is_active: boolean }) =>
       librariesApi.setActive(id, is_active),
@@ -55,6 +63,22 @@ export function Libraries() {
   const remove = useMutation({
     mutationFn: (id: string) => librariesApi.remove(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["libraries"] }),
+  });
+
+  const rename = useMutation({
+    mutationFn: ({ id, name }: { id: string; name: string }) =>
+      librariesApi.update(id, { name }),
+    onSuccess: () => {
+      setRenameModal(null);
+      setNewName("");
+      setRenameError(null);
+      qc.invalidateQueries({ queryKey: ["libraries"] });
+    },
+    onError: (err: any) => {
+      setRenameError(
+        err.message || "Failed to rename library. This name may already exist."
+      );
+    },
   });
 
   return (
@@ -149,6 +173,16 @@ export function Libraries() {
                 Lines
               </Link>
               <button
+                className="btn-ghost text-xs text-ink-300 hover:text-ink-100"
+                onClick={() => {
+                  setRenameModal({ id: lib.id, currentName: lib.name });
+                  setNewName(lib.name);
+                  setRenameError(null);
+                }}
+              >
+                Rename
+              </button>
+              <button
                 className="btn-ghost text-xs text-red-400 ml-auto"
                 onClick={() => {
                   if (
@@ -164,6 +198,55 @@ export function Libraries() {
           </div>
         ))}
       </div>
+
+      {/* Rename modal */}
+      {renameModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-ink-800 rounded-lg p-6 w-full max-w-sm mx-4 border border-ink-700">
+            <h2 className="text-lg font-semibold mb-4">Rename library</h2>
+            <div className="mb-4">
+              <label className="block text-sm text-ink-300 mb-2">
+                New name
+              </label>
+              <input
+                type="text"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && newName.trim() && newName !== renameModal.currentName) {
+                    rename.mutate({ id: renameModal.id, name: newName });
+                  }
+                }}
+                placeholder="Library name"
+                className="input w-full"
+                autoFocus
+              />
+              {renameError && (
+                <p className="text-sm text-red-400 mt-2">{renameError}</p>
+              )}
+            </div>
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => setRenameModal(null)}
+                className="btn-ghost"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  if (newName.trim() && newName !== renameModal.currentName) {
+                    rename.mutate({ id: renameModal.id, name: newName });
+                  }
+                }}
+                disabled={rename.isPending || !newName.trim() || newName === renameModal.currentName}
+                className="btn-primary"
+              >
+                {rename.isPending ? "Saving…" : "Save"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

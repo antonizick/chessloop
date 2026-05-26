@@ -1,6 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 
 from database import get_session
@@ -63,11 +64,37 @@ def update_library(
     session: Session = Depends(get_session),
 ):
     lib = _owned_or_404(session, lib_id, user)
+
+    # If renaming, check for duplicates first
+    if "name" in body.model_dump(exclude_unset=True):
+        new_name = body.name
+        existing = session.exec(
+            select(Library).where(
+                Library.owner_user_id == user.id,
+                Library.name == new_name,
+                Library.id != lib_id,
+            )
+        ).first()
+        if existing:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                f"Library name '{new_name}' already exists in your account"
+            )
+
     for k, v in body.model_dump(exclude_unset=True).items():
         setattr(lib, k, v)
     lib.updated_at = datetime.utcnow()
     session.add(lib)
-    session.commit()
+    try:
+        session.commit()
+    except IntegrityError as e:
+        session.rollback()
+        if "uq_owner_library_name" in str(e):
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                f"Library name '{lib.name}' already exists in your account"
+            )
+        raise
     session.refresh(lib)
     return lib
 
