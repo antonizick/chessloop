@@ -41,9 +41,19 @@ The Teaching Board provides intuitive controls for recording and navigating thro
 | › | Go to next move (disabled when at live position) |
 | ⟫ | Jump to last move |
 | ↓ PGN | Download line as standard PGN file (with `[Event]` header) |
-| Delete (×) | Remove a move and all subsequent moves |
+| ⧭ | Duplicate line (creates a copy with all moves) |
+| Delete (🗑) | Remove a move and all subsequent moves |
 
-Move-by-move navigation lets you review and edit your lines without re-playing them. PGN export makes openings portable to other chess tools.
+Move-by-move navigation lets you review and edit your lines without re-playing them. PGN export makes openings portable to other chess tools. Line duplication lets you quickly create variations of existing lines.
+
+### Line Management
+
+In the **Lines** panel on the right side of the Teaching Board:
+- **Click a line** to select and view it on the board
+- **Double-click** to rename a line
+- **Hover to reveal controls:**
+  - **⧭** — Duplicate the line (creates "{name} copy" with all moves)
+  - **🗑** — Delete the line (with confirmation step)
 
 ---
 

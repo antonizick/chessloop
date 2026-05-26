@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Api } from "chessground/api";
 import { Chess } from "chess.js";
@@ -17,6 +17,7 @@ import type { Line } from "@/types";
 
 export function TeachingBoard() {
   const { id: libId } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
   const qc = useQueryClient();
   const user = useAuthStore((s) => s.user);
   const soundsOn = user?.sounds_on ?? true;
@@ -36,7 +37,8 @@ export function TeachingBoard() {
     enabled: !!libId,
   });
 
-  const [selectedLineId, setSelectedLineId] = useState<string | null>(null);
+  const urlLineId = searchParams.get("lineId");
+  const [selectedLineId, setSelectedLineId] = useState<string | null>(urlLineId);
   const [orientation, setOrientation] = useState<"white" | "black">("white");
   const [isSaving, setIsSaving] = useState(false);
   const [showImport, setShowImport] = useState(false);
@@ -108,6 +110,37 @@ export function TeachingBoard() {
     },
   });
 
+  const duplicateLine = useMutation({
+    mutationFn: async (lineId: string) => {
+      const lineToDuplicate = lines.find((l) => l.id === lineId);
+      if (!lineToDuplicate) throw new Error("Line not found");
+
+      // Create new line with duplicated name and same starting FEN
+      const newName = lineToDuplicate.name
+        ? `${lineToDuplicate.name} copy`
+        : "Unnamed copy";
+      const newLine = await linesApi.create(libId!, {
+        name: newName,
+        starting_fen: lineToDuplicate.starting_fen,
+      });
+
+      // Copy all moves to the new line
+      if (lineToDuplicate.moves.length > 0) {
+        const movesSans = lineToDuplicate.moves.map((m) => m.san);
+        await linesApi.importMoves(newLine.id, {
+          moves: movesSans,
+          starting_fen: lineToDuplicate.starting_fen,
+        });
+      }
+
+      return newLine;
+    },
+    onSuccess: (newLine) => {
+      qc.invalidateQueries({ queryKey: ["lines", libId] });
+      setSelectedLineId(newLine.id);
+    },
+  });
+
   const deleteLine = useMutation({
     mutationFn: (lineId: string) => linesApi.remove(lineId),
     onSuccess: () => {
@@ -149,7 +182,8 @@ export function TeachingBoard() {
 
     // Try PGN first (contains move numbers like "1.e4")
     try {
-      chess.loadPgn(text);
+      const cleanedPgn = stripVariations(text);
+      chess.loadPgn(cleanedPgn);
       moves = chess.history();
       importLinesMut.mutate({ moves, starting_fen });
       return;
@@ -186,6 +220,22 @@ export function TeachingBoard() {
       setImportError("Could not parse as PGN, FEN, or SAN list");
       return;
     }
+  }
+
+  function stripVariations(pgn: string): string {
+    let depth = 0;
+    let result = "";
+    for (let i = 0; i < pgn.length; i++) {
+      const char = pgn[i];
+      if (char === "(") {
+        depth++;
+      } else if (char === ")") {
+        depth--;
+      } else if (depth === 0) {
+        result += char;
+      }
+    }
+    return result;
   }
 
   // ── Move handler ─────────────────────────────────────────────────────────
@@ -596,14 +646,25 @@ export function TeachingBoard() {
                           </button>
                         </div>
                       ) : (
-                        <button
-                          type="button"
-                          className="btn-ghost py-1 px-1.5 text-xs text-red-400 hover:text-red-300 opacity-0 group-hover:opacity-100 transition-opacity"
-                          onClick={() => setDeleteConfirmId(line.id)}
-                          title="Delete line"
-                        >
-                          🗑
-                        </button>
+                        <>
+                          <button
+                            type="button"
+                            className="btn-ghost py-1 px-1.5 text-xs text-ink-400 hover:text-gold-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={() => duplicateLine.mutate(line.id)}
+                            disabled={duplicateLine.isPending}
+                            title="Duplicate line"
+                          >
+                            {duplicateLine.isPending ? "…" : "⧭"}
+                          </button>
+                          <button
+                            type="button"
+                            className="btn-ghost py-1 px-1.5 text-xs text-red-400 hover:text-red-300 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={() => setDeleteConfirmId(line.id)}
+                            title="Delete line"
+                          >
+                            🗑
+                          </button>
+                        </>
                       )}
                     </>
                   )}

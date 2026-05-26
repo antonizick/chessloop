@@ -715,6 +715,22 @@ chessloop/
 
 **Result:** Practice users start from the beginning of lines by default; library deletion now works properly with no orphaned database records.
 
+### Line Duplication Feature (2026-05-26)
+
+**Feature:** Added duplicate line button to Teaching Board line management panel
+
+**Implementation:**
+- **Button:** Duplicate button (⧭) appears on hover next to delete button in line list
+- **Behavior:** Creates a new line with "{name} copy" and duplicates all moves from original line
+- **UX:** Auto-selects new duplicated line; shows loading state ("…") during operation; disabled while copying
+- **API:** Single mutation combining `linesApi.create()` + `linesApi.importMoves()` for efficient duplication
+
+**Files modified:**
+- `frontend/src/pages/TeachingBoard.tsx` — added duplicateLine mutation and button UI
+- `chessloop/README.md` — updated Teaching Board Controls section with duplicate button documentation
+
+**Result:** Users can quickly create variations of existing lines without re-playing all moves.
+
 ---
 
 ## 13. Model Recommendation
