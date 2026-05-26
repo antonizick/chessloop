@@ -313,20 +313,33 @@ export function TeachingBoard() {
 
       {/* Board + move list + line selector */}
       <div className="grid grid-cols-1 lg:grid-cols-[auto_1fr_280px] gap-6 items-start">
-        <div className="relative">
-          <ChessboardWrapper
-            orientation={orientation}
-            viewOnly={!teaching.isAtEnd}
-            onMove={onMove}
-            cgRef={cgRef}
-            boardTheme={boardTheme}
-            pieceSet={pieceSet}
-          />
-          {/* Viewing-history banner */}
-          {!teaching.isAtEnd && (
-            <div
-              className="absolute inset-0 border-2 border-gold-500/40 rounded pointer-events-none"
+        <div className="flex flex-col gap-4">
+          <div className="relative">
+            <ChessboardWrapper
+              orientation={orientation}
+              viewOnly={!teaching.isAtEnd}
+              onMove={onMove}
+              cgRef={cgRef}
+              boardTheme={boardTheme}
+              pieceSet={pieceSet}
             />
+            {/* Viewing-history banner */}
+            {!teaching.isAtEnd && (
+              <div
+                className="absolute inset-0 border-2 border-gold-500/40 rounded pointer-events-none"
+              />
+            )}
+          </div>
+
+          {/* Move note editor - below board, same width */}
+          {selectedLine && selectedMoveForNote !== null && (
+            <div className="card p-4">
+              <MoveNoteEditor
+                lineId={selectedLine.id}
+                moveIndex={selectedMoveForNote}
+                currentMove={teaching.moves[selectedMoveForNote] || null}
+              />
+            </div>
           )}
         </div>
 
@@ -452,15 +465,6 @@ export function TeachingBoard() {
                   ↓ PGN
                 </button>
               </div>
-              {selectedLine && selectedMoveForNote !== null && (
-                <div className="mt-3 border-t border-ink-700 pt-3">
-                  <MoveNoteEditor
-                    lineId={selectedLine.id}
-                    moveIndex={selectedMoveForNote}
-                    currentMove={teaching.moves[selectedMoveForNote] || null}
-                  />
-                </div>
-              )}
               {teaching.isAtEnd && !teaching.pendingPromotion && (
                 <p className="text-xs text-ink-400 mt-3 border-t border-ink-700 pt-3">
                   {teaching.liveTurnColor === "white" ? "♔" : "♚"}{" "}
