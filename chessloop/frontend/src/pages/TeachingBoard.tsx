@@ -7,7 +7,6 @@ import { Chess } from "chess.js";
 import { ChessboardWrapper } from "@/components/board/ChessboardWrapper";
 import { MoveList, generatePgn, exportPgn } from "@/components/teaching/MoveList";
 import { PromotionModal } from "@/components/teaching/PromotionModal";
-import { LineSelector } from "@/components/teaching/LineSelector";
 import { useTeaching } from "@/hooks/useTeaching";
 import { librariesApi } from "@/api/libraries";
 import { linesApi } from "@/api/lines";
@@ -42,6 +41,10 @@ export function TeachingBoard() {
   const [showImport, setShowImport] = useState(false);
   const [importText, setImportText] = useState("");
   const [importError, setImportError] = useState<string | null>(null);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Sync orientation with library color on first load
   useEffect(() => {
@@ -306,29 +309,8 @@ export function TeachingBoard() {
         </div>
       </div>
 
-      {/* Line selector */}
-      <LineSelector
-        lines={lines}
-        selectedId={selectedLineId}
-        onSelect={setSelectedLineId}
-        onCreateNew={(name) => createLine.mutate(name)}
-        onRename={(lineId, newName) => new Promise<void>((resolve) => {
-          renameLine.mutate({ lineId, newName }, {
-            onSuccess: () => resolve(),
-            onError: () => resolve(),
-          });
-        })}
-        onDelete={(lineId) => new Promise<void>((resolve) => {
-          deleteLine.mutate(lineId, {
-            onSuccess: () => resolve(),
-            onError: () => resolve(),
-          });
-        })}
-        isCreating={createLine.isPending}
-      />
-
-      {/* Board + move list */}
-      <div className="grid grid-cols-1 lg:grid-cols-[auto_1fr] gap-6 items-start">
+      {/* Board + move list + line selector */}
+      <div className="grid grid-cols-1 lg:grid-cols-[auto_1fr_280px] gap-6 items-start">
         <div className="relative">
           <ChessboardWrapper
             orientation={orientation}
@@ -482,6 +464,128 @@ export function TeachingBoard() {
               {teaching.moves.length === 0 && " · drag a piece to begin"}
             </p>
           )}
+        </div>
+
+        {/* Line selector panel */}
+        <div className="card flex flex-col gap-3">
+          <h2 className="text-sm font-semibold text-ink-200">Lines</h2>
+          <div className="flex-1 overflow-y-auto">
+            <div className="flex flex-col gap-2">
+              {lines.map((line) => (
+                <div key={line.id} className="relative flex items-start gap-1 group">
+                  {renamingId === line.id ? (
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        if (!renameValue.trim()) return;
+                        renameLine.mutate({ lineId: line.id, newName: renameValue.trim() }, {
+                          onSuccess: () => {
+                            setRenamingId(null);
+                            setRenameValue("");
+                          },
+                          onError: () => {
+                            setRenamingId(null);
+                            setRenameValue("");
+                          },
+                        });
+                      }}
+                      className="flex flex-col gap-1 w-full"
+                    >
+                      <input
+                        autoFocus
+                        className="input text-xs py-1"
+                        value={renameValue}
+                        onChange={(e) => setRenameValue(e.target.value)}
+                      />
+                      <div className="flex gap-1">
+                        <button className="btn-primary py-1 text-xs flex-1" disabled={renameLine.isPending}>
+                          {renameLine.isPending ? "…" : "Save"}
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-ghost py-1 text-xs"
+                          onClick={() => {
+                            setRenamingId(null);
+                            setRenameValue("");
+                          }}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </form>
+                  ) : (
+                    <>
+                      <button
+                        className={`w-full text-left rounded px-2 py-1.5 text-xs font-medium transition-colors truncate
+                          ${selectedLineId === line.id
+                            ? "bg-gold-500 text-ink-900"
+                            : "bg-ink-700 text-ink-200 hover:bg-ink-600"
+                          }`}
+                        onClick={() => setSelectedLineId(line.id)}
+                        onDoubleClick={() => {
+                          setRenamingId(line.id);
+                          setRenameValue(line.name || "");
+                        }}
+                        title={line.name ? `${line.name} (${line.moves.length} moves)` : `${line.moves.length} moves`}
+                      >
+                        <span>{line.name || "Unnamed"}</span>
+                        <span className="text-xs opacity-60"> ({line.moves.length})</span>
+                      </button>
+                      {deleteConfirmId === line.id ? (
+                        <div className="flex gap-0.5">
+                          <button
+                            type="button"
+                            className="btn-ghost py-1 px-1.5 text-xs text-red-400 hover:bg-red-600/20"
+                            onClick={() => {
+                              setIsDeleting(true);
+                              deleteLine.mutate(line.id, {
+                                onSuccess: () => {
+                                  setIsDeleting(false);
+                                  setDeleteConfirmId(null);
+                                },
+                                onError: () => {
+                                  setIsDeleting(false);
+                                },
+                              });
+                            }}
+                            disabled={isDeleting}
+                            title="Confirm delete"
+                          >
+                            {isDeleting ? "…" : "✓"}
+                          </button>
+                          <button
+                            type="button"
+                            className="btn-ghost py-1 px-1.5 text-xs"
+                            onClick={() => setDeleteConfirmId(null)}
+                            disabled={isDeleting}
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          className="btn-ghost py-1 px-1.5 text-xs text-red-400 hover:text-red-300 opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={() => setDeleteConfirmId(line.id)}
+                          title="Delete line"
+                        >
+                          🗑
+                        </button>
+                      )}
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+          <button
+            className="rounded px-2 py-1.5 text-xs bg-ink-800 border border-ink-600
+                       text-ink-300 hover:border-gold-500 hover:text-gold-400 transition-colors"
+            onClick={() => createLine.mutate(null)}
+            disabled={createLine.isPending}
+          >
+            {createLine.isPending ? "Creating…" : "+ New line"}
+          </button>
         </div>
       </div>
 
