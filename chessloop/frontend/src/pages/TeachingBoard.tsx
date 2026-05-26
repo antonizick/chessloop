@@ -5,6 +5,7 @@ import type { Api } from "chessground/api";
 import { Chess } from "chess.js";
 
 import { ChessboardWrapper } from "@/components/board/ChessboardWrapper";
+import { ConflictEvaluator } from "@/components/board/ConflictEvaluator";
 import { MoveList, generatePgn, exportPgn } from "@/components/teaching/MoveList";
 import { MoveNoteEditor } from "@/components/teaching/MoveNoteEditor";
 import { PromotionModal } from "@/components/teaching/PromotionModal";
@@ -473,6 +474,13 @@ export function TeachingBoard() {
                   teaching.setMoveNote(index, noteText);
                 }}
               />
+            </div>
+          )}
+
+          {/* Conflict evaluator - below board */}
+          {libId && (
+            <div className="card p-4">
+              <ConflictEvaluator libraryId={libId} />
             </div>
           )}
         </div>

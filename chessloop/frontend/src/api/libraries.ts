@@ -18,6 +18,21 @@ export interface LichessImportResult {
   errors: string[];
 }
 
+export interface ConflictResponse {
+  line_a_name: string;
+  line_b_name: string;
+  move_number: number;
+  next_move_a: string;
+  next_move_b: string;
+  position_fen: string;
+}
+
+export interface EvaluateConflictsResult {
+  total_positions: number;
+  conflicts_found: number;
+  conflicts: ConflictResponse[];
+}
+
 export const librariesApi = {
   list: () => api<Library[]>("/libraries"),
   get: (id: string) => api<Library>(`/libraries/${id}`),
@@ -48,4 +63,7 @@ export const librariesApi = {
 
   importFromLichess: (id: string) =>
     api<LichessImportResult>(`/libraries/${id}/import-from-lichess`, { method: "POST" }),
+
+  evaluateConflicts: (id: string) =>
+    api<EvaluateConflictsResult>(`/libraries/${id}/conflicts`, { method: "GET" }),
 };

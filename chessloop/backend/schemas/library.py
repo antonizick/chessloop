@@ -38,3 +38,18 @@ class LibraryResponse(BaseModel):
     difficulty: Optional[str] = None
     created_at: datetime
     updated_at: datetime
+
+
+class ConflictResponse(BaseModel):
+    line_a_name: str
+    line_b_name: str
+    move_number: int
+    next_move_a: str
+    next_move_b: str
+    position_fen: str
+
+
+class EvaluateConflictsResult(BaseModel):
+    total_positions: int
+    conflicts_found: int
+    conflicts: list[ConflictResponse]

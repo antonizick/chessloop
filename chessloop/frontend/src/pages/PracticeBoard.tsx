@@ -78,14 +78,22 @@ type WrongMoveCtx = {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function legalDests(fen: string): Map<Key, Key[]> {
-  const chess = new Chess(fen);
-  const dests = new Map<Key, Key[]>();
-  for (const m of chess.moves({ verbose: true })) {
-    const targets = dests.get(m.from as Key) ?? [];
-    targets.push(m.to as Key);
-    dests.set(m.from as Key, targets);
+  try {
+    const chess = new Chess(fen);
+    const dests = new Map<Key, Key[]>();
+    const moves = chess.moves({ verbose: true });
+    console.log("[legalDests] FEN:", fen, "Moves count:", moves.length);
+    for (const m of moves) {
+      const targets = dests.get(m.from as Key) ?? [];
+      targets.push(m.to as Key);
+      dests.set(m.from as Key, targets);
+    }
+    console.log("[legalDests] Resulting dests:", dests.size, "keys");
+    return dests;
+  } catch (e) {
+    console.error("[legalDests] Error:", e);
+    return new Map();
   }
-  return dests;
 }
 
 function intervalLabel(days: number): string {
@@ -195,15 +203,21 @@ export function PracticeBoard() {
     (pos: NextPositionResponse, fenOverride?: string) => {
       const fen = fenOverride ?? pos.fen_before;
       const color = turnFromFen(fen);
+      const dests = legalDests(fen);
+      console.log("[PracticeBoard] Enabling board for user:", {
+        fen,
+        color,
+        destsSize: dests.size,
+        destsKeys: Array.from(dests.keys()),
+      });
       cgRef.current?.set({
         fen,
-        orientation: pos.turn_color,
         viewOnly: false,
         turnColor: color,
         movable: {
           free: false,
           color,
-          dests: legalDests(fen),
+          dests,
           showDests: true,
         },
         draggable: { enabled: true },
@@ -223,6 +237,12 @@ export function PracticeBoard() {
   useEffect(() => {
     if (phase !== "waiting" || !position) return;
     const activeFen = currentFenRef.current || position.fen_before;
+    console.log("[PracticeBoard] Phase is now 'waiting'", {
+      phase,
+      hasCgRef: !!cgRef.current,
+      position: position.id,
+      fen: activeFen?.substring(0, 50),
+    });
     // Ensure board listeners are registered before configuring it.
     // Set viewOnly:false first to guarantee bindBoard() sees the correct state.
     cgRef.current?.set({ viewOnly: false });

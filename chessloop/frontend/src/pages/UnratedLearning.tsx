@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { Api } from "chessground/api";
 
 import { ChessboardWrapper } from "@/components/board/ChessboardWrapper";
+import { ConflictEvaluator } from "@/components/board/ConflictEvaluator";
 import { MoveList, generatePgn, exportPgn } from "@/components/teaching/MoveList";
 import { useTeaching } from "@/hooks/useTeaching";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
@@ -207,6 +208,13 @@ export function UnratedLearning() {
               pieceSet={pieceSet}
             />
           </div>
+
+          {/* Conflict evaluator - below board */}
+          {libId && (
+            <div className="card p-4">
+              <ConflictEvaluator libraryId={libId} />
+            </div>
+          )}
         </div>
 
         <div className="card min-h-[480px] flex flex-col">
