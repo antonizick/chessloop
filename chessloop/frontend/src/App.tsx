@@ -52,6 +52,7 @@ export default function App() {
         <Route path="/libraries/:id/teach" element={<TeachingBoard />} />
         <Route path="/libraries/:id/unrated" element={<UnratedLearning />} />
         <Route path="/practice" element={<PracticeBoard />} />
+        <Route path="/practice/unrated" element={<PracticeBoard />} />
         <Route path="/stats" element={<Stats />} />
         <Route path="/public" element={<Public />} />
         <Route path="/public/:id" element={<PublicLibraryDetail />} />

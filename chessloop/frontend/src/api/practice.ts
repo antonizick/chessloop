@@ -11,10 +11,10 @@ import type {
 } from "@/types";
 
 export const practiceApi = {
-  start: (mode: PracticeMode, scope: Record<string, unknown> = {}) =>
+  start: (mode: PracticeMode, scope: Record<string, unknown> = {}, is_rated: boolean = true) =>
     api<SessionStartResponse>("/practice/session/start", {
       method: "POST",
-      body: JSON.stringify({ mode, scope }),
+      body: JSON.stringify({ mode, scope, is_rated }),
     }),
 
   next: (sid: string) =>

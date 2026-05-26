@@ -31,6 +31,7 @@ export function Sidebar() {
 
   const navItems = [
     { label: "My Opening Libraries", path: "/libraries" },
+    { label: "Unrated Practice", path: "/practice/unrated", badge: null },
     { label: "Rated Practice", path: "/practice", badge: dueTotal > 0 ? dueTotal : null },
     { label: "My Stats", path: "/stats" },
     { label: "Public Opening Libraries", path: "/public" },

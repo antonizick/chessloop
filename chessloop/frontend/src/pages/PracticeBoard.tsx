@@ -113,6 +113,7 @@ function isPromotion(fen: string, from: string, to: string): boolean {
 
 export function PracticeBoard() {
   const location = useLocation();
+  const isUnrated = location.pathname === "/practice/unrated";
 
   const { data: user = useAuthStore.getState().user } = useCurrentUser();
 
@@ -149,6 +150,10 @@ export function PracticeBoard() {
 
   // Animation
   const [animStep, setAnimStep] = useState(0);
+
+  // Track if we already recorded a wrong move for this round to prevent
+  // re-submission when user continues the line
+  const wasWrongThisRoundRef = useRef(false);
 
   // Response timing
   const startedAtRef = useRef(0);
@@ -252,7 +257,7 @@ export function PracticeBoard() {
         if (startPosition !== "auto") scope.start_position = startPosition;
       }
 
-      const sess = await practiceApi.start(backendMode, scope);
+      const sess = await practiceApi.start(backendMode, scope, !isUnrated);
       setSessionId(sess.id);
       sessionIdRef.current = sess.id;
       await advanceToNext(sess.id);
@@ -310,6 +315,7 @@ export function PracticeBoard() {
         currentFenRef.current = resp.fen_before;
         setWrongMoveCtx(null);
         wrongMoveCtxRef.current = null;
+        wasWrongThisRoundRef.current = false;
 
         if (resp.preceding_moves.length === 0) {
           // No animation needed — go straight to waiting.
@@ -375,31 +381,54 @@ export function PracticeBoard() {
         drawable: { shapes: [] },
       });
 
-      // Submit the wrong-round result to the server, then advance.
-      setPhase("submitting");
-      const elapsedMs = Date.now() - startedAtRef.current;
-      try {
-        const result = await practiceApi.answer(sid, {
-          practice_position_id: pos.practice_position_id,
-          // Send the first expected move for the audit log; line_correct
-          // overrides the correctness decision on the server.
-          move_uci: pos.remaining_moves[0]?.uci ?? `${from}${to}`,
-          ease: null,
-          response_ms: elapsedMs,
-          line_correct: false,
-        });
-        setAnswer(result);
-        setRunningStats((prev) => ({
-          correct: prev.correct,
-          wrong: prev.wrong + 1,
-          positions_seen: prev.positions_seen + 1,
-        }));
-      } catch {
-        setError("Network error.");
+      // Only submit the API call for the FIRST wrong move in this round.
+      // Subsequent wrong moves on the same line don't generate new records.
+      if (!wasWrongThisRoundRef.current) {
+        setPhase("submitting");
+        const elapsedMs = Date.now() - startedAtRef.current;
+        try {
+          const result = await practiceApi.answer(sid, {
+            practice_position_id: pos.practice_position_id,
+            // Send the first expected move for the audit log; line_correct
+            // overrides the correctness decision on the server.
+            move_uci: pos.remaining_moves[0]?.uci ?? `${from}${to}`,
+            ease: null,
+            response_ms: elapsedMs,
+            line_correct: false,
+          });
+          setAnswer(result);
+          setRunningStats((prev) => ({
+            correct: prev.correct,
+            wrong: prev.wrong + 1,
+            positions_seen: prev.positions_seen + 1,
+          }));
+          wasWrongThisRoundRef.current = true;
+        } catch {
+          setError("Network error.");
+          setPhase("waiting");
+          return;
+        }
       }
 
-      await new Promise((r) => setTimeout(r, 500));
-      advanceToNext(sid);
+      // Advance past the replayed move and continue the line
+      const replayedStep = lineStepRef.current;
+      const newStep = replayedStep + 1;
+      setLineStep(newStep);
+      lineStepRef.current = newStep;
+      setCurrentFen(ctx.fenAfter);
+      currentFenRef.current = ctx.fenAfter;
+      setWrongMoveCtx(null);
+      wrongMoveCtxRef.current = null;
+
+      const moves = pos.remaining_moves;
+      if (newStep >= moves.length) {
+        // Line exhausted right after the replay — advance to next position
+        advanceToNext(sid);
+      } else {
+        // Continue: computer's reply or user's next move
+        setPhase("computer_move");
+        playComputerMove();
+      }
       return;
     }
 
@@ -526,6 +555,15 @@ export function PracticeBoard() {
   async function finishRound(pos: NextPositionResponse) {
     const sid = sessionIdRef.current;
     if (!sid) return;
+
+    // Already recorded as wrong — don't re-submit. Just advance.
+    if (wasWrongThisRoundRef.current) {
+      wasWrongThisRoundRef.current = false;
+      playCorrectSound(soundsOn);
+      await new Promise((r) => setTimeout(r, 800));
+      advanceToNext(sid);
+      return;
+    }
 
     setPhase("submitting");
     const elapsedMs = Date.now() - startedAtRef.current;
@@ -655,7 +693,7 @@ export function PracticeBoard() {
 
       {/* ── Mode entry (shown when phase === "entry") ── */}
       {phase === "entry" && (
-        <ModeEntry onStart={startSession} isLoading={false} error={error} />
+        <ModeEntry onStart={startSession} isLoading={false} error={error} isUnrated={isUnrated} />
       )}
 
       {/* ── Session summary (shown when phase === "done") ── */}

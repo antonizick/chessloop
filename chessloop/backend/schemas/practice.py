@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 class SessionStartRequest(BaseModel):
     mode: Literal["weakest", "selected", "leech_drill"] = "weakest"
     scope: dict[str, Any] = Field(default_factory=dict)
+    is_rated: bool = True
 
 
 class SessionStartResponse(BaseModel):

@@ -141,6 +141,7 @@ def start_session(
         mode=body.mode,
         scope=json.dumps(body.scope),
         stats=json.dumps({"correct": 0, "wrong": 0, "positions_seen": 0}),
+        is_rated=body.is_rated,
     )
     db.add(ps)
     db.commit()
@@ -224,32 +225,34 @@ def submit_answer(
     else:
         was_correct = submitted == expected_uci
 
-    if was_correct:
-        srs_engine.apply_correct(pos, body.ease)
-    else:
-        srs_engine.apply_wrong(pos)
+    if ps.is_rated:
+        if was_correct:
+            srs_engine.apply_correct(pos, body.ease)
+        else:
+            srs_engine.apply_wrong(pos)
 
-    db.add(
-        ReviewLog(
-            user_id=user.id,
-            practice_pos_id=pos.id,
-            session_id=ps.id,
-            was_correct=was_correct,
-            ease_chosen=body.ease if was_correct else None,
-            response_ms=body.response_ms,
+        db.add(
+            ReviewLog(
+                user_id=user.id,
+                practice_pos_id=pos.id,
+                session_id=ps.id,
+                was_correct=was_correct,
+                ease_chosen=body.ease if was_correct else None,
+                response_ms=body.response_ms,
+            )
         )
-    )
 
-    # Update session stats
-    stats = json.loads(ps.stats or "{}")
-    stats["positions_seen"] = stats.get("positions_seen", 0) + 1
-    if was_correct:
-        stats["correct"] = stats.get("correct", 0) + 1
-    else:
-        stats["wrong"] = stats.get("wrong", 0) + 1
-    ps.stats = json.dumps(stats)
+        # Update session stats
+        stats = json.loads(ps.stats or "{}")
+        stats["positions_seen"] = stats.get("positions_seen", 0) + 1
+        if was_correct:
+            stats["correct"] = stats.get("correct", 0) + 1
+        else:
+            stats["wrong"] = stats.get("wrong", 0) + 1
+        ps.stats = json.dumps(stats)
 
-    db.add(pos)
+        db.add(pos)
+
     db.add(ps)
     db.commit()
     db.refresh(pos)

@@ -43,3 +43,4 @@ class PracticeSession(SQLModel, table=True):
     mode: str  # 'weakest' | 'selected' | 'leech_drill'
     scope: str = "{}"  # JSON
     stats: str = "{}"  # JSON
+    is_rated: bool = True

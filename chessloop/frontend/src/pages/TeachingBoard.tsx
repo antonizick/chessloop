@@ -478,28 +478,26 @@ export function TeachingBoard() {
         </div>
 
         <div className="card min-h-[480px] flex flex-col">
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex flex-col gap-2 mb-3">
             <h2>
               {selectedLine?.name ?? "Select a line"}
             </h2>
-            <div className="flex items-center gap-2">
-              {selectedLine && (
-                <span className="text-xs text-ink-400">
-                  {teaching.moves.length} move{teaching.moves.length !== 1 ? "s" : ""}
-                </span>
-              )}
-              {selectedLine && (
-                <button
-                  className="btn-ghost text-xs px-2 py-1"
-                  onClick={() => {
-                    setShowImport(!showImport);
-                    setImportError(null);
-                  }}
-                >
-                  ↓ Import
-                </button>
-              )}
-            </div>
+            {selectedLine && (
+              <span className="text-xs text-ink-400">
+                {teaching.moves.length} move{teaching.moves.length !== 1 ? "s" : ""}
+              </span>
+            )}
+            {selectedLine && (
+              <button
+                className="btn-ghost text-xs px-2 py-1 w-fit"
+                onClick={() => {
+                  setShowImport(!showImport);
+                  setImportError(null);
+                }}
+              >
+                ↓ Import
+              </button>
+            )}
           </div>
 
           {/* Import panel */}

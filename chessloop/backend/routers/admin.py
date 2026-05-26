@@ -482,9 +482,14 @@ def import_opening(
     """
     Import a specific opening (by ECO/name/moves) into the admin's library.
     Optionally publishes immediately and imports additional variations.
+    When publishing to public libraries, uses SEEDBOT_USER_ID as owner.
     """
     import json
     import chess
+
+    # Use SEEDBOT_USER_ID as owner when publishing to public libraries
+    owner_user_id = SEEDBOT_USER_ID if body.publish else None
+
     try:
         lib, status_str = opening_import.import_opening(
             eco=body.eco,
@@ -495,6 +500,7 @@ def import_opening(
             moves=body.moves,
             user_id=admin.id,
             session=session,
+            owner_user_id=owner_user_id,
         )
     except ValueError as e:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(e))
