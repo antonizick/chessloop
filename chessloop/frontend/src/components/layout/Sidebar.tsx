@@ -10,9 +10,12 @@ export function Sidebar() {
   const token = useAuthStore((s) => s.accessToken);
   const location = useLocation();
   const [showNav, setShowNav] = useState(true);
-  const { data: libraries } = useQuery({
-    queryKey: ["libraries"],
+  const { data: libraries = [] } = useQuery({
+    queryKey: ["libraries", token],
     queryFn: librariesApi.list,
+    enabled: !!token,
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 
   const { data: dueCount } = useQuery({

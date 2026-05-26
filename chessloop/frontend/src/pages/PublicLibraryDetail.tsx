@@ -3,11 +3,13 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { publicApi } from "@/api/public";
 import { api } from "@/api/client";
+import { useAuthStore } from "@/stores/auth";
 
 export function PublicLibraryDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const user = useAuthStore((s) => s.user);
   const [commentText, setCommentText] = useState("");
 
   const { data: lib, isLoading, error } = useQuery({
@@ -88,6 +90,14 @@ export function PublicLibraryDetail() {
             >
               ★ {lib.star_count}
             </button>
+            {user?.role === "admin" && (
+              <button
+                onClick={() => navigate(`/public/${id}/teach`)}
+                className="btn-primary text-sm"
+              >
+                ✎ Edit
+              </button>
+            )}
             <button
               onClick={() => forkMut.mutate()}
               disabled={forkMut.isPending}

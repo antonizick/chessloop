@@ -12,6 +12,10 @@ export function LibraryDetail() {
   const [renameValue, setRenameValue] = useState("");
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [lichessResult, setLichessResult] = useState<LichessImportResult | null>(null);
+  const [editingLibrary, setEditingLibrary] = useState(false);
+  const [editForm, setEditForm] = useState({ name: "", eco_code: "", description: "" });
+  const [selectedLines, setSelectedLines] = useState<Set<string>>(new Set());
+  const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false);
 
   const { data: lib } = useQuery({
     queryKey: ["library", id],
@@ -57,6 +61,17 @@ export function LibraryDetail() {
     },
   });
 
+  const bulkDeleteLines = useMutation({
+    mutationFn: async (lineIds: string[]) => {
+      await Promise.all(lineIds.map((lineId) => linesApi.remove(lineId)));
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["lines", id] });
+      setSelectedLines(new Set());
+      setBulkDeleteConfirm(false);
+    },
+  });
+
   const publishLib = useMutation({
     mutationFn: () => librariesApi.publish(id!),
     onSuccess: () => {
@@ -87,51 +102,163 @@ export function LibraryDetail() {
     },
   });
 
+  const updateLibrary = useMutation({
+    mutationFn: (form: { name?: string; eco_code?: string; description?: string }) =>
+      librariesApi.update(id!, form),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["library", id] });
+      qc.invalidateQueries({ queryKey: ["libraries"] });
+      setEditingLibrary(false);
+    },
+  });
+
   if (!lib) return <p className="text-ink-300">Loading…</p>;
+
+  const startEdit = () => {
+    setEditForm({
+      name: lib.name,
+      eco_code: lib.eco_code ?? "",
+      description: lib.description ?? "",
+    });
+    setEditingLibrary(true);
+  };
+
+  const toggleLineSelection = (lineId: string) => {
+    const newSelected = new Set(selectedLines);
+    if (newSelected.has(lineId)) {
+      newSelected.delete(lineId);
+    } else {
+      newSelected.add(lineId);
+    }
+    setSelectedLines(newSelected);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedLines.size === lines?.length) {
+      setSelectedLines(new Set());
+    } else {
+      setSelectedLines(new Set(lines?.map((l) => l.id) ?? []));
+    }
+  };
 
   return (
     <div className="flex flex-col gap-4">
       {/* Header */}
       <div>
         <Link to="/libraries" className="text-sm text-ink-300">← All libraries</Link>
-        <div className="flex items-center justify-between mt-1">
-          <h1>{lib.name}</h1>
 
-          {/* Active toggle */}
-          <div className="flex items-center gap-2">
-            <span
-              className={[
-                "text-sm font-medium",
-                lib.is_active ? "text-green-400" : "text-ink-500",
-              ].join(" ")}
-            >
-              {lib.is_active ? "Active in practice" : "Inactive (excluded from practice)"}
-            </span>
-            <button
-              onClick={() => toggleActive.mutate(!lib.is_active)}
-              disabled={toggleActive.isPending}
-              title={lib.is_active ? "Click to exclude from practice" : "Click to include in practice"}
-              className={[
-                "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 transition-colors duration-150",
-                lib.is_active
-                  ? "bg-green-500 border-green-500"
-                  : "bg-ink-600 border-ink-600",
-                toggleActive.isPending ? "opacity-50" : "",
-              ].join(" ")}
-            >
-              <span
-                className={[
-                  "inline-block h-5 w-5 rounded-full bg-white shadow transform transition-transform duration-150",
-                  lib.is_active ? "translate-x-5" : "translate-x-0",
-                ].join(" ")}
+        {editingLibrary ? (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              updateLibrary.mutate({
+                name: editForm.name.trim() || undefined,
+                eco_code: editForm.eco_code.trim() || undefined,
+                description: editForm.description.trim() || undefined,
+              });
+            }}
+            className="mt-3 card p-4 flex flex-col gap-3"
+          >
+            <div>
+              <label className="label text-sm">Name</label>
+              <input
+                className="input text-sm"
+                value={editForm.name}
+                onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                autoFocus
               />
-            </button>
-          </div>
-        </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="label text-sm">ECO code</label>
+                <input
+                  className="input text-sm"
+                  value={editForm.eco_code}
+                  onChange={(e) => setEditForm({ ...editForm, eco_code: e.target.value })}
+                  placeholder="e.g. B90"
+                />
+              </div>
+              <div>
+                <label className="label text-sm">Color</label>
+                <select className="input text-sm bg-ink-700 text-ink-100" disabled>
+                  <option>{lib.color}</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label className="label text-sm">Description</label>
+              <textarea
+                className="input text-sm"
+                value={editForm.description}
+                onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                rows={2}
+              />
+            </div>
+            <div className="flex gap-2 justify-end">
+              <button
+                type="button"
+                className="btn-ghost text-sm py-1 px-2"
+                onClick={() => setEditingLibrary(false)}
+                disabled={updateLibrary.isPending}
+              >
+                Cancel
+              </button>
+              <button className="btn-primary text-sm py-1 px-2" disabled={updateLibrary.isPending}>
+                {updateLibrary.isPending ? "Saving…" : "Save"}
+              </button>
+            </div>
+          </form>
+        ) : (
+          <>
+            <div className="flex items-center justify-between mt-1">
+              <h1>{lib.name}</h1>
 
-        <p className="text-ink-300 text-sm mt-1">
-          {lib.color} · {lib.eco_code ?? "no ECO"} · {lib.difficulty ?? "—"}
-        </p>
+              {/* Active toggle */}
+              <div className="flex items-center gap-2">
+                <span
+                  className={[
+                    "text-sm font-medium",
+                    lib.is_active ? "text-green-400" : "text-ink-500",
+                  ].join(" ")}
+                >
+                  {lib.is_active ? "Active in practice" : "Inactive (excluded from practice)"}
+                </span>
+                <button
+                  onClick={() => toggleActive.mutate(!lib.is_active)}
+                  disabled={toggleActive.isPending}
+                  title={lib.is_active ? "Click to exclude from practice" : "Click to include in practice"}
+                  className={[
+                    "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 transition-colors duration-150",
+                    lib.is_active
+                      ? "bg-green-500 border-green-500"
+                      : "bg-ink-600 border-ink-600",
+                    toggleActive.isPending ? "opacity-50" : "",
+                  ].join(" ")}
+                >
+                  <span
+                    className={[
+                      "inline-block h-5 w-5 rounded-full bg-white shadow transform transition-transform duration-150",
+                      lib.is_active ? "translate-x-5" : "translate-x-0",
+                    ].join(" ")}
+                  />
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <p className="text-ink-300 text-sm">
+                {lib.color} · {lib.eco_code ?? "no ECO"} · {lib.difficulty ?? "—"}
+              </p>
+              <button
+                onClick={startEdit}
+                className="btn-ghost text-xs py-1 px-2"
+                title="Edit library details"
+              >
+                ✎
+              </button>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Action buttons */}
@@ -188,11 +315,79 @@ export function LibraryDetail() {
 
       {/* Lines list */}
       <div className="card">
-        <h2 className="mb-3">Lines</h2>
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <h2>Lines</h2>
+            {selectedLines.size > 0 && (
+              <span className="text-xs text-ink-400">({selectedLines.size} selected)</span>
+            )}
+          </div>
+          {lines && lines.length > 0 && (
+            <button
+              className="text-xs btn-ghost py-1 px-2"
+              onClick={toggleSelectAll}
+              title={selectedLines.size === lines.length ? "Deselect all" : "Select all"}
+            >
+              {selectedLines.size === lines.length ? "Deselect all" : "Select all"}
+            </button>
+          )}
+        </div>
+
         {lines?.length === 0 && <p className="text-ink-300 text-sm">No lines yet.</p>}
+
+        {selectedLines.size > 0 && (
+          <div className="mb-3 p-3 bg-red-900/20 border border-red-700 rounded flex items-center justify-between">
+            <span className="text-sm text-red-300">
+              {selectedLines.size} line{selectedLines.size === 1 ? "" : "s"} selected for deletion
+            </span>
+            {bulkDeleteConfirm ? (
+              <div className="flex gap-2">
+                <button
+                  className="btn-ghost text-xs py-1 px-2"
+                  onClick={() => setBulkDeleteConfirm(false)}
+                  disabled={bulkDeleteLines.isPending}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="text-xs py-1 px-2 bg-red-600 hover:bg-red-700 text-red-100 rounded transition-colors"
+                  onClick={() => bulkDeleteLines.mutate(Array.from(selectedLines))}
+                  disabled={bulkDeleteLines.isPending}
+                >
+                  {bulkDeleteLines.isPending ? "Deleting…" : "Confirm delete"}
+                </button>
+              </div>
+            ) : (
+              <button
+                className="text-xs py-1 px-2 bg-red-600 hover:bg-red-700 text-red-100 rounded transition-colors"
+                onClick={() => setBulkDeleteConfirm(true)}
+                title={`Delete ${selectedLines.size} line${selectedLines.size === 1 ? "" : "s"}`}
+              >
+                Delete selected
+              </button>
+            )}
+          </div>
+        )}
+
+        {bulkDeleteConfirm && (
+          <div className="mb-3 p-3 bg-red-950 border border-red-600 rounded">
+            <p className="text-sm text-red-200 font-medium">
+              Are you sure? You are deleting {selectedLines.size} line{selectedLines.size === 1 ? "" : "s"}. This step is permanent and cannot be undone.
+            </p>
+          </div>
+        )}
+
         <ul className="flex flex-col divide-y divide-ink-700">
           {lines?.map((line) => (
-            <li key={line.id} className="py-3 flex items-center justify-between gap-3">
+            <li key={line.id} className="py-3 flex items-center gap-3">
+              <input
+                type="checkbox"
+                checked={selectedLines.has(line.id)}
+                onChange={() => toggleLineSelection(line.id)}
+                className="shrink-0 w-4 h-4 cursor-pointer"
+                title="Select for bulk delete"
+              />
+
               {renamingLineId === line.id ? (
                 <form
                   onSubmit={(e) => {
@@ -229,10 +424,15 @@ export function LibraryDetail() {
                 </form>
               ) : (
                 <>
-                  <div className="flex-1 cursor-pointer" onClick={() => {
-                    navigate(`/libraries/${id}/teach?lineId=${line.id}`);
-                  }}>
-                    <div className="text-ink-100 hover:text-gold-400 transition-colors">{line.name ?? "Untitled line"}</div>
+                  <div
+                    className="flex-1 cursor-pointer"
+                    onClick={() => {
+                      navigate(`/libraries/${id}/teach?lineId=${line.id}`);
+                    }}
+                  >
+                    <div className="text-ink-100 hover:text-gold-400 transition-colors">
+                      {line.name ?? "Untitled line"}
+                    </div>
                     <div className="text-xs text-ink-400">{line.moves.length} moves</div>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">

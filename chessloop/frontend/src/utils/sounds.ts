@@ -18,7 +18,9 @@ function getAudioContext(): AudioContext {
     ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
   }
   // Resume if suspended (browser autoplay policy)
-  if (ctx.state === "suspended") ctx.resume();
+  if (ctx.state === "suspended") {
+    ctx.resume().catch(err => console.error("Failed to resume AudioContext:", err));
+  }
   return ctx;
 }
 
@@ -85,11 +87,17 @@ function playTone(freq: number, durationSec: number, gainPeak: number, type: Osc
 
 /** Standard piece placement — a soft wooden clack. */
 export function playMoveSound(enabled = true): void {
-  if (!enabled) return;
+  if (!enabled) {
+    console.log("playMoveSound: disabled");
+    return;
+  }
   try {
-    playNoiseBurst(0.08, 0.4, 1800, 1);
-  } catch {
-    // Silently ignore if audio isn't available
+    console.log("playMoveSound: playing");
+    const ctx = getAudioContext();
+    console.log("AudioContext state:", ctx.state, "sampleRate:", ctx.sampleRate);
+    playNoiseBurst(0.08, 0.6, 1800, 1);
+  } catch (e) {
+    console.error("playMoveSound error:", e);
   }
 }
 
@@ -97,9 +105,10 @@ export function playMoveSound(enabled = true): void {
 export function playCaptureSound(enabled = true): void {
   if (!enabled) return;
   try {
-    playNoiseBurst(0.12, 0.6, 2400, 1.4);
-  } catch {
-    // Silently ignore if audio isn't available
+    console.log("playCaptureSound: playing");
+    playNoiseBurst(0.12, 0.75, 2400, 1.4);
+  } catch (e) {
+    console.error("playCaptureSound error:", e);
   }
 }
 
@@ -107,8 +116,9 @@ export function playCaptureSound(enabled = true): void {
 export function playCorrectSound(enabled = true): void {
   if (!enabled) return;
   try {
+    console.log("playCorrectSound: playing");
     const audio = getAudioContext();
-    playTone(523.25, 0.18, 0.35, "sine"); // C5
+    playTone(523.25, 0.18, 0.5, "sine"); // C5, increased volume
     setTimeout(() => {
       // Schedule E5 slightly after so they're distinct
       const osc = audio.createOscillator();
@@ -116,15 +126,15 @@ export function playCorrectSound(enabled = true): void {
       osc.type = "sine";
       osc.frequency.value = 659.25; // E5
       gain.gain.setValueAtTime(0, audio.currentTime);
-      gain.gain.linearRampToValueAtTime(0.3, audio.currentTime + 0.01);
+      gain.gain.linearRampToValueAtTime(0.5, audio.currentTime + 0.01);
       gain.gain.exponentialRampToValueAtTime(0.001, audio.currentTime + 0.25);
       osc.connect(gain);
       gain.connect(audio.destination);
       osc.start(audio.currentTime);
       osc.stop(audio.currentTime + 0.25);
     }, 100);
-  } catch {
-    // Silently ignore
+  } catch (e) {
+    console.error("playCorrectSound error:", e);
   }
 }
 
@@ -132,6 +142,7 @@ export function playCorrectSound(enabled = true): void {
 export function playWrongSound(enabled = true): void {
   if (!enabled) return;
   try {
+    console.log("playWrongSound: playing");
     const audio = getAudioContext();
     // Low buzz
     const osc = audio.createOscillator();
@@ -139,15 +150,26 @@ export function playWrongSound(enabled = true): void {
     osc.type = "sawtooth";
     osc.frequency.value = 220; // A3
     osc.frequency.exponentialRampToValueAtTime(165, audio.currentTime + 0.3); // slide down to E3
-    gain.gain.setValueAtTime(0.25, audio.currentTime);
+    gain.gain.setValueAtTime(0.35, audio.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.001, audio.currentTime + 0.3);
     osc.connect(gain);
     gain.connect(audio.destination);
     osc.start(audio.currentTime);
     osc.stop(audio.currentTime + 0.3);
     // Noise layer for texture
-    playNoiseBurst(0.15, 0.15, 800, 2);
-  } catch {
-    // Silently ignore
+    playNoiseBurst(0.15, 0.25, 800, 2);
+  } catch (e) {
+    console.error("playWrongSound error:", e);
+  }
+}
+
+/** Navigation feedback — subtle tick for move history browsing. */
+export function playNavigationSound(enabled = true): void {
+  if (!enabled) return;
+  try {
+    console.log("playNavigationSound: playing");
+    playNoiseBurst(0.04, 0.25, 2500, 0.8);
+  } catch (e) {
+    console.error("playNavigationSound error:", e);
   }
 }

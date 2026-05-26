@@ -41,6 +41,7 @@ import { ModeEntry } from "@/components/practice/ModeEntry";
 import type { PracticeOptions, UiMode } from "@/components/practice/ModeEntry";
 import { SessionSummary } from "@/components/practice/SessionSummary";
 import { practiceApi } from "@/api/practice";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useAuthStore } from "@/stores/auth";
 import { playMoveSound, playCorrectSound, playWrongSound } from "@/utils/sounds";
 import type {
@@ -112,7 +113,9 @@ function isPromotion(fen: string, from: string, to: string): boolean {
 
 export function PracticeBoard() {
   const location = useLocation();
-  const user = useAuthStore((s) => s.user);
+
+  const { data: user = useAuthStore.getState().user } = useCurrentUser();
+
   const soundsOn = user?.sounds_on ?? true;
   const boardTheme = user?.board_theme ?? "brown";
   const pieceSet = user?.piece_set ?? "cburnett";

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useParams, useSearchParams } from "react-router-dom";
+import { Link, useParams, useSearchParams, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Api } from "chessground/api";
 import { Chess } from "chess.js";
@@ -10,15 +10,16 @@ import { MoveNoteEditor } from "@/components/teaching/MoveNoteEditor";
 import { PromotionModal } from "@/components/teaching/PromotionModal";
 import { useTeaching } from "@/hooks/useTeaching";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { librariesApi } from "@/api/libraries";
+import { publicApi } from "@/api/public";
 import { linesApi } from "@/api/lines";
 import { useAuthStore } from "@/stores/auth";
-import { playMoveSound, playNavigationSound } from "@/utils/sounds";
+import { playMoveSound } from "@/utils/sounds";
 import type { Line } from "@/types";
 
-export function TeachingBoard() {
+export function PublicTeachingBoard() {
   const { id: libId } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const qc = useQueryClient();
 
   const { data: user = useAuthStore.getState().user } = useCurrentUser();
@@ -27,10 +28,22 @@ export function TeachingBoard() {
   const boardTheme = user?.board_theme ?? "brown";
   const pieceSet = user?.piece_set ?? "cburnett";
 
+  // Check authorization - only admins can edit public libraries
+  if (user?.role !== "admin") {
+    return (
+      <div className="card text-center py-10">
+        <p className="text-ink-400">You do not have permission to edit public opening libraries.</p>
+        <Link to="/public" className="text-gold-400 hover:underline text-sm mt-2 block">
+          ← Back to public libraries
+        </Link>
+      </div>
+    );
+  }
+
   // ── Data ─────────────────────────────────────────────────────────────────
   const { data: lib } = useQuery({
-    queryKey: ["library", libId],
-    queryFn: () => librariesApi.get(libId!),
+    queryKey: ["public-library", libId],
+    queryFn: () => publicApi.getLibrary(libId!),
     enabled: !!libId,
   });
 
@@ -76,8 +89,6 @@ export function TeachingBoard() {
   useEffect(() => {
     if (!selectedLine) return;
     teaching.resetToLine(selectedLine.starting_fen, selectedLine.moves);
-    // Update board after reset (cgRef might not be ready on very first render)
-    // Chessground sync happens via the teaching-state useEffect below
   }, [selectedLine?.id]);
 
   // Sync Chessground whenever teaching state changes (fen, dests, turn)
@@ -119,7 +130,6 @@ export function TeachingBoard() {
       const lineToDuplicate = lines.find((l) => l.id === lineId);
       if (!lineToDuplicate) throw new Error("Line not found");
 
-      // Create new line with duplicated name and same starting FEN
       const newName = lineToDuplicate.name
         ? `${lineToDuplicate.name} copy`
         : "Unnamed copy";
@@ -128,7 +138,6 @@ export function TeachingBoard() {
         starting_fen: lineToDuplicate.starting_fen,
       });
 
-      // Copy all moves to the new line
       if (lineToDuplicate.moves.length > 0) {
         const movesSans = lineToDuplicate.moves.map((m) => m.san);
         await linesApi.importMoves(newLine.id, {
@@ -184,33 +193,23 @@ export function TeachingBoard() {
     let moves: string[] = [];
     let starting_fen: string | undefined;
 
-    // Try PGN first (contains move numbers like "1.e4")
     try {
       const cleanedPgn = stripVariations(text);
       chess.loadPgn(cleanedPgn);
       moves = chess.history();
-      importLinesMut.mutate({ moves, starting_fen }, {
-        onSuccess: () => {
-          playMoveSound(soundsOn);
-        },
-      });
+      importLinesMut.mutate({ moves, starting_fen });
       return;
     } catch {
       // PGN failed, try other formats
     }
 
-    // Check if it looks like a FEN (has "/" and starts with piece placement)
     const looksLikeFen = /^[rnbqkpRNBQKP1-8\/]+ [wb] /.test(text);
     if (looksLikeFen) {
       try {
         chess.load(text);
         starting_fen = text;
         moves = [];
-        importLinesMut.mutate({ moves, starting_fen }, {
-          onSuccess: () => {
-            playMoveSound(soundsOn);
-          },
-        });
+        importLinesMut.mutate({ moves, starting_fen });
         return;
       } catch {
         setImportError("Invalid FEN string");
@@ -218,7 +217,6 @@ export function TeachingBoard() {
       }
     }
 
-    // Try as plain SAN list (e.g. "e4 c5 Nf3 d6")
     try {
       const sans = text.replace(/\d+\./g, "").trim().split(/\s+/).filter(Boolean);
       chess.reset();
@@ -226,11 +224,7 @@ export function TeachingBoard() {
         chess.move(san);
       }
       moves = chess.history();
-      importLinesMut.mutate({ moves, starting_fen }, {
-        onSuccess: () => {
-          playMoveSound(soundsOn);
-        },
-      });
+      importLinesMut.mutate({ moves, starting_fen });
       return;
     } catch {
       setImportError("Could not parse as PGN, FEN, or SAN list");
@@ -259,7 +253,6 @@ export function TeachingBoard() {
     const result = teaching.tryMove(from as any, to as any);
 
     if (result === "promotion") {
-      // Reset Chessground visually — pawn jumped but we haven't committed
       cgRef.current?.set({ fen: teaching.boardFen });
       return;
     }
@@ -268,7 +261,6 @@ export function TeachingBoard() {
 
     playMoveSound(soundsOn);
 
-    // Chessground already shows the moved piece; update legal dests for next move
     cgRef.current?.set({
       turnColor: teaching.liveTurnColor,
       movable: {
@@ -279,11 +271,9 @@ export function TeachingBoard() {
       },
     });
 
-    // Persist to backend
     setIsSaving(true);
     try {
       await linesApi.appendMove(selectedLineId, result);
-      // Refresh the lines query so the move is persisted
       qc.invalidateQueries({ queryKey: ["lines", libId] });
     } catch (err) {
       console.error("Save failed:", err);
@@ -296,13 +286,9 @@ export function TeachingBoard() {
   async function handlePromotionSelect(piece: "q" | "r" | "b" | "n") {
     const result = teaching.confirmPromotion(piece);
     if (!result || result === "promotion" || !selectedLineId) return;
-
-    playMoveSound(soundsOn);
-
     setIsSaving(true);
     try {
       await linesApi.appendMove(selectedLineId, result);
-      // Refresh the lines query so the move is persisted
       qc.invalidateQueries({ queryKey: ["lines", libId] });
     } finally {
       setIsSaving(false);
@@ -315,7 +301,6 @@ export function TeachingBoard() {
     teaching.deleteFrom(index);
     try {
       await linesApi.deleteMove(selectedLineId, index);
-      // Refresh lines so move count is accurate in selector
       qc.invalidateQueries({ queryKey: ["lines", libId] });
     } catch (err) {
       console.error("Delete failed:", err);
@@ -326,43 +311,7 @@ export function TeachingBoard() {
   function handleJumpToStart() {
     teaching.jumpTo(-1);
     setSelectedMoveForNote(null);
-    playNavigationSound(soundsOn);
   }
-
-  // ── Keyboard navigation ───────────────────────────────────────────────────
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      const target = e.target as HTMLElement;
-      // Ignore if typing in input or textarea
-      if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") return;
-
-      switch (e.key) {
-        case "ArrowLeft":
-          e.preventDefault();
-          handlePreviousMove();
-          break;
-        case "ArrowRight":
-          e.preventDefault();
-          handleNextMove();
-          break;
-        case "ArrowDown":
-          e.preventDefault();
-          handleJumpToStart();
-          break;
-        case "ArrowUp":
-          e.preventDefault();
-          if (selectedLine) {
-            teaching.jumpToEnd();
-            setSelectedMoveForNote(null);
-            playNavigationSound(soundsOn);
-          }
-          break;
-      }
-    }
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [teaching, selectedLine]);
 
   // ── Navigation and export handlers ────────────────────────────────────────
   function handlePreviousMove() {
@@ -380,7 +329,6 @@ export function TeachingBoard() {
       teaching.jumpTo(-1);
       setSelectedMoveForNote(null);
     }
-    playNavigationSound(soundsOn);
   }
 
   function handleNextMove() {
@@ -395,7 +343,6 @@ export function TeachingBoard() {
       teaching.jumpToEnd();
       setSelectedMoveForNote(null);
     }
-    playNavigationSound(soundsOn);
   }
 
   function handleExportPgn() {
@@ -424,11 +371,19 @@ export function TeachingBoard() {
     <div className="flex flex-col gap-4">
       {/* Header */}
       <div>
-        <Link to={`/libraries/${libId}`} className="text-sm text-ink-300">
+        <button
+          onClick={() => navigate(`/public/${libId}`)}
+          className="text-sm text-ink-300 hover:text-gold-400"
+        >
           ← {lib?.name ?? "Library"}
-        </Link>
+        </button>
         <div className="flex items-center justify-between mt-1">
-          <h1>Teaching board</h1>
+          <div className="flex items-center gap-2">
+            <h1>Teaching board</h1>
+            <span className="text-xs px-2 py-1 bg-gold-500/20 text-gold-400 rounded">
+              Admin Editing
+            </span>
+          </div>
           <div className="flex items-center gap-2 text-sm">
             {isSaving && <span className="text-ink-400 animate-pulse">saving…</span>}
             <button
@@ -454,7 +409,6 @@ export function TeachingBoard() {
               boardTheme={boardTheme}
               pieceSet={pieceSet}
             />
-            {/* Viewing-history banner */}
             {!teaching.isAtEnd && (
               <div
                 className="absolute inset-0 border-2 border-gold-500/40 rounded pointer-events-none"
@@ -462,7 +416,6 @@ export function TeachingBoard() {
             )}
           </div>
 
-          {/* Move note editor - below board, same width */}
           {selectedLine && selectedMoveForNote !== null && (
             <div className="card p-4">
               <MoveNoteEditor
@@ -502,7 +455,6 @@ export function TeachingBoard() {
             </div>
           </div>
 
-          {/* Import panel */}
           {showImport && selectedLine && (
             <div className="mb-3 flex flex-col gap-2 p-3 rounded-md bg-ink-900 border border-ink-700">
               <p className="text-xs text-ink-400">
@@ -551,12 +503,8 @@ export function TeachingBoard() {
                 onJump={(index) => {
                   teaching.jumpTo(index);
                   setSelectedMoveForNote(index);
-                  playNavigationSound(soundsOn);
                 }}
-                onJumpToEnd={() => {
-                  teaching.jumpToEnd();
-                  playNavigationSound(soundsOn);
-                }}
+                onJumpToEnd={teaching.jumpToEnd}
                 onDeleteFrom={handleDeleteFrom}
               />
             </div>
@@ -568,14 +516,14 @@ export function TeachingBoard() {
                 <button
                   className="btn-ghost px-2 py-1 text-ink-400 hover:text-gold-400"
                   onClick={handleJumpToStart}
-                  title="Go to first move (↓)"
+                  title="Go to first move"
                 >
                   ⟪
                 </button>
                 <button
                   className="btn-ghost px-2 py-1 text-ink-400 hover:text-gold-400"
                   onClick={handlePreviousMove}
-                  title="Previous move (←)"
+                  title="Previous move"
                 >
                   ‹
                 </button>
@@ -583,7 +531,7 @@ export function TeachingBoard() {
                   className="btn-ghost px-2 py-1 text-ink-400 hover:text-gold-400"
                   onClick={handleNextMove}
                   disabled={teaching.isAtEnd}
-                  title="Next move (→)"
+                  title="Next move"
                 >
                   ›
                 </button>
@@ -592,9 +540,8 @@ export function TeachingBoard() {
                   onClick={() => {
                     teaching.jumpToEnd();
                     setSelectedMoveForNote(null);
-                    playNavigationSound(soundsOn);
                   }}
-                  title="Go to last move (↑)"
+                  title="Go to last move"
                 >
                   ⟫
                 </button>

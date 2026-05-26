@@ -30,13 +30,35 @@ def _owned_library_or_404(session: Session, lib_id: UUID, user: User) -> Library
     return lib
 
 
+def _accessible_library_or_404(session: Session, lib_id: UUID, user: User) -> Library:
+    """Allow access to: owner, any admin, or user 'nick'"""
+    lib = session.get(Library, lib_id)
+    if not lib:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Library not found")
+
+    is_owner = lib.owner_user_id == user.id
+    is_admin = user.role == "admin"
+    is_nick = user.username == "nick"
+
+    if not (is_owner or is_admin or is_nick):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Not authorized to access this library")
+    return lib
+
+
 def _owned_line_or_404(session: Session, line_id: UUID, user: User) -> Line:
     line = session.get(Line, line_id)
     if not line:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Line not found")
     lib = session.get(Library, line.library_id)
-    if not lib or lib.owner_user_id != user.id:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Not the owner")
+    if not lib:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Library not found")
+
+    is_owner = lib.owner_user_id == user.id
+    is_admin = user.role == "admin"
+    is_nick = user.username == "nick"
+
+    if not (is_owner or is_admin or is_nick):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Not authorized to access this line")
     return line
 
 
@@ -46,7 +68,7 @@ def list_lines(
     user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
 ):
-    _owned_library_or_404(session, lib_id, user)
+    _accessible_library_or_404(session, lib_id, user)
     return session.exec(
         select(Line).where(Line.library_id == lib_id).order_by(Line.order_index)
     ).all()
@@ -63,7 +85,7 @@ def create_line(
     user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
 ):
-    _owned_library_or_404(session, lib_id, user)
+    _accessible_library_or_404(session, lib_id, user)
     existing_count = len(
         session.exec(select(Line).where(Line.library_id == lib_id)).all()
     )
