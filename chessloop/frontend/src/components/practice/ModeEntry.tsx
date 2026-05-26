@@ -110,7 +110,7 @@ function SegmentedControl<T extends string>({
 
 export function ModeEntry({ onStart, isLoading, error }: Props) {
   const [mode, setMode] = useState<UiMode>("weakest");
-  const [startPosition, setStartPosition] = useState<StartPosition>("auto");
+  const [startPosition, setStartPosition] = useState<StartPosition>("first");
 
   // "all_active" overrides start_position to "random" — hide the selector for it
   const showStartPosition = mode !== "all_active" && mode !== "leech_drill";

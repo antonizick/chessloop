@@ -5,7 +5,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 
 from database import get_session
-from models import User, Library, Line
+from models import User, Library, Line, PracticePosition, ReviewLog
 from auth.dependencies import get_current_user
 from schemas.library import (
     LibraryCreate,
@@ -106,9 +106,38 @@ def delete_library(
     session: Session = Depends(get_session),
 ):
     lib = _owned_or_404(session, lib_id, user)
-    for line in session.exec(select(Line).where(Line.library_id == lib.id)).all():
+
+    # Get all lines in this library
+    lines = session.exec(select(Line).where(Line.library_id == lib.id)).all()
+    line_ids = [line.id for line in lines]
+
+    if line_ids:
+        # Get all practice positions for these lines
+        practice_positions = session.exec(
+            select(PracticePosition).where(PracticePosition.line_id.in_(line_ids))
+        ).all()
+        pp_ids = [pp.id for pp in practice_positions]
+
+        # Delete review logs that reference these practice positions
+        if pp_ids:
+            review_logs = session.exec(
+                select(ReviewLog).where(ReviewLog.practice_pos_id.in_(pp_ids))
+            ).all()
+            for rl in review_logs:
+                session.delete(rl)
+            session.flush()  # Execute all review log deletes before continuing
+
+        # Delete practice positions
+        for pp in practice_positions:
+            session.delete(pp)
+        session.flush()  # Execute all practice position deletes before deleting lines
+
+    # Delete lines
+    for line in lines:
         session.delete(line)
-    session.flush()  # ensure child rows are gone before deleting the parent under FK
+    session.flush()  # Execute all line deletes before deleting library
+
+    # Delete library
     session.delete(lib)
     session.commit()
 

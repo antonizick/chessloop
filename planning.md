@@ -680,6 +680,41 @@ chessloop/
 
 **Result:** Users can easily navigate through recorded moves and export openings in standard PGN format for use in other tools.
 
+### Navigation Refactor & Teaching Board Layout (2026-05-25)
+
+**Feature:** Moved main navigation to collapsible left sidebar; reorganized Teaching Board layout
+
+**Implementation:**
+- **Topbar:** Removed Libraries, Practice, Stats, Discover nav items; kept Settings and Logout
+- **Sidebar:** Added collapsible Menu section with all 4 main navigation items + Practice due-count badge
+- **Teaching Board:** Changed from 2-column (board | movelist) to 3-column (board | movelist | lines panel) grid layout
+- **Line Management:** Inlined LineSelector component into right panel; full create/rename/delete in right sidebar
+
+**Files modified:**
+- `frontend/src/components/layout/Topbar.tsx` — removed nav items and unused dueCount query
+- `frontend/src/components/layout/Sidebar.tsx` — added Menu toggle and main navigation items
+- `frontend/src/pages/TeachingBoard.tsx` — changed grid layout and inlined line management UI
+
+**Result:** Navigation consolidated in sidebar for cleaner topbar; Teaching Board now has dedicated panel for line management, reducing visual clutter and improving usability.
+
+### Practice Screen Default & Library Deletion Bug Fix (2026-05-25)
+
+**Changes:**
+1. **Practice Default:** Changed default "where to start in each line" option from "SRS picks" to "First move"
+   - File: `frontend/src/components/practice/ModeEntry.tsx` line 113
+   
+2. **Library Deletion Bug:** Fixed 500 error when deleting libraries due to unhandled foreign key constraints
+   - Issue: ReviewLog and PracticePosition records were referencing deleted lines
+   - Fix: Updated `delete_library` endpoint in `backend/routers/libraries.py` to properly cascade deletes
+     - Delete ReviewLog entries → PracticePosition entries → Line entries → Library (in order)
+     - Added explicit `session.flush()` calls between each deletion level to respect FK constraints
+
+**Files modified:**
+- `frontend/src/components/practice/ModeEntry.tsx` — changed default startPosition to "first"
+- `backend/routers/libraries.py` — added PracticePosition and ReviewLog imports; fixed deletion cascade logic
+
+**Result:** Practice users start from the beginning of lines by default; library deletion now works properly with no orphaned database records.
+
 ---
 
 ## 13. Model Recommendation
