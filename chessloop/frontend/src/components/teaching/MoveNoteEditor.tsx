@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { linesApi } from "@/api/lines";
 import type { Line, LineMove } from "@/types";
@@ -21,12 +21,21 @@ export function MoveNoteEditor({
   const qc = useQueryClient();
   const [noteText, setNoteText] = useState("");
   const [isEditing, setIsEditing] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     if (currentMove) {
       setNoteText(currentMove.note || "");
     }
   }, [currentMove?.uci]);
+
+  // Auto-expand textarea as user types
+  useEffect(() => {
+    if (textareaRef.current && isEditing) {
+      textareaRef.current.style.height = "auto";
+      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 400)}px`;
+    }
+  }, [noteText, isEditing]);
 
   const updateNote = useMutation({
     mutationFn: async (text: string) => {
@@ -46,6 +55,13 @@ export function MoveNoteEditor({
     await updateNote.mutateAsync(noteText);
     setIsEditing(false);
   }, [noteText, updateNote]);
+
+  const handleClear = useCallback(async () => {
+    if (confirm("Clear this note?")) {
+      await updateNote.mutateAsync("");
+      setNoteText("");
+    }
+  }, [updateNote]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && e.ctrlKey) {
@@ -81,14 +97,15 @@ export function MoveNoteEditor({
       {isEditing ? (
         <div className="flex flex-col gap-2">
           <textarea
+            ref={textareaRef}
             value={noteText}
             onChange={(e) => setNoteText(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Add notes about this move... (Ctrl+Enter to save, Esc to cancel)"
             className="p-3 rounded bg-ink-700 border border-ink-600 text-ink-100
                        placeholder-ink-500 text-sm focus:outline-none focus:border-gold-500
-                       focus:ring-1 focus:ring-gold-400 resize-none"
-            rows={4}
+                       focus:ring-1 focus:ring-gold-400 resize-none overflow-hidden
+                       min-h-[100px]"
             autoFocus
           />
           <div className="flex gap-2 justify-end">
@@ -124,13 +141,26 @@ export function MoveNoteEditor({
               No note yet
             </div>
           )}
-          <button
-            onClick={() => setIsEditing(true)}
-            className="px-3 py-1.5 rounded text-sm bg-ink-700 hover:bg-ink-600
-                       text-gold-300 hover:text-gold-200 transition-colors"
-          >
-            {noteText ? "Edit" : "Add note"}
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setIsEditing(true)}
+              className="px-3 py-1.5 rounded text-sm bg-ink-700 hover:bg-ink-600
+                         text-gold-300 hover:text-gold-200 transition-colors"
+            >
+              {noteText ? "Edit" : "Add note"}
+            </button>
+            {noteText && (
+              <button
+                onClick={handleClear}
+                disabled={updateNote.isPending}
+                className="px-2 py-1.5 rounded text-xs bg-ink-700 hover:bg-red-600/30
+                           text-red-400 hover:text-red-300 transition-colors disabled:opacity-50"
+                title="Clear note"
+              >
+                ✕ Clear
+              </button>
+            )}
+          </div>
         </div>
       )}
     </div>
