@@ -68,7 +68,7 @@ def list_users(
     session: Session = Depends(get_session),
     _: User = Depends(require_admin),
 ):
-    users = session.exec(select(User).order_by(User.created_at)).all()  # type: ignore[arg-type]
+    users = session.exec(select(User).where(User.id != SEEDBOT_USER_ID).order_by(User.created_at)).all()  # type: ignore[arg-type]
     return [
         UserAdminResponse(
             id=u.id,
@@ -128,6 +128,10 @@ def update_user(
     session: Session = Depends(get_session),
     admin: User = Depends(require_admin),
 ):
+    # Protect seedbot from modification
+    if user_id == SEEDBOT_USER_ID:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Cannot modify the seedbot account")
+
     target = session.get(User, user_id)
     if not target:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
@@ -177,6 +181,10 @@ def delete_user(
     session: Session = Depends(get_session),
     admin: User = Depends(require_admin),
 ):
+    # Protect seedbot from deletion
+    if user_id == SEEDBOT_USER_ID:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Cannot delete the seedbot account")
+
     target = session.get(User, user_id)
     if not target:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
