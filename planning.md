@@ -731,6 +731,45 @@ chessloop/
 
 **Result:** Users can quickly create variations of existing lines without re-playing all moves.
 
+### Unrated Learning Feature (2026-05-26)
+
+**Feature:** Added read-only "Unrated Learning" mode for browsing opening libraries without any editing capabilities
+
+**Implementation:**
+- **New Component:** `frontend/src/pages/UnratedLearning.tsx` (330 lines)
+  - Copied from TeachingBoard.tsx and stripped all write operations
+  - Board always `viewOnly={true}` — pieces cannot be moved under any circumstances
+  - No mutations: no create/rename/delete/duplicate lines, no move recording, no imports
+
+**Removed from Teaching Board:**
+- All 5 mutations: createLine, renameLine, deleteLine, duplicateLine, importLinesMut
+- All write UI: import panel, rename form, duplicate button (⧭), delete button (🗑), "+ New line" button
+- All edit state: isSaving, showImport, importText, importError, renamingId, renameValue, deleteConfirmId, isDeleting
+- PromotionModal and handlePromotionSelect (no new moves possible)
+- Note editor (kept simple for read-only mode)
+
+**Preserved Features:**
+- Full navigation: arrow keys (← → ↑ ↓), navigation buttons (⟪ ‹ › ⟫)
+- PGN export and clipboard copy
+- Flip board button
+- Clean read-only line selector
+- User preferences: sounds, board theme, piece set
+
+**Entry Points (2 locations):**
+1. **Libraries.tsx:** Added "Unrated Learning" button left of "✎ Teach" in library grid cards
+2. **LibraryDetail.tsx:** Added "Unrated Learning" button left of "Teaching Board" in detail page
+
+**Route Configuration:**
+- Added to App.tsx: `<Route path="/libraries/:id/unrated" element={<UnratedLearning />} />`
+
+**Files modified:**
+- `frontend/src/pages/UnratedLearning.tsx` — NEW (330 lines)
+- `frontend/src/App.tsx` — added import and route
+- `frontend/src/pages/Libraries.tsx` — added entry point button
+- `frontend/src/pages/LibraryDetail.tsx` — added entry point button
+
+**Result:** Users can now browse and study opening lines in a distraction-free, read-only mode with full navigation and export capabilities but no ability to modify content.
+
 ---
 
 ## 13. Model Recommendation

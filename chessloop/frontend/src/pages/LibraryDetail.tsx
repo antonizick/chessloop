@@ -263,6 +263,7 @@ export function LibraryDetail() {
 
       {/* Action buttons */}
       <div className="flex gap-2 flex-wrap">
+        <Link to={`/libraries/${id}/unrated`} className="btn-primary">Unrated Learning</Link>
         <Link to={`/libraries/${id}/teach`} className="btn-primary">Teaching board</Link>
         <button className="btn-ghost" onClick={() => createLine.mutate()}>
           + Add line

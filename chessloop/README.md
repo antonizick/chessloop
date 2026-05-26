@@ -46,6 +46,28 @@ The Teaching Board provides intuitive controls for recording and navigating thro
 
 Move-by-move navigation lets you review and edit your lines without re-playing them. PGN export makes openings portable to other chess tools. Line duplication lets you quickly create variations of existing lines.
 
+---
+
+## Unrated Learning Mode
+
+The **Unrated Learning** mode provides a distraction-free, read-only way to browse and study opening libraries:
+
+| Feature | Available | Why |
+|---|---|---|
+| View opening lines | ✅ | Study your repertoire |
+| Navigate moves | ✅ | Arrow keys, navigation buttons |
+| Export PGN | ✅ | Use lines in other tools |
+| Flip board | ✅ | View from Black's perspective |
+| Add/edit/delete lines | ❌ | Read-only mode |
+| Add moves | ❌ | No piece dragging allowed |
+| Make changes | ❌ | Board is always locked |
+
+**Access Unrated Learning from two places:**
+1. **Library grid cards** — Click "Unrated Learning" button (left of "✎ Teach")
+2. **Library detail page** — Click "Unrated Learning" button (left of "Teaching board")
+
+Perfect for reviewing openings before practice sessions or sharing repertoires in a controlled way.
+
 ### Line Management
 
 In the **Lines** panel on the right side of the Teaching Board:

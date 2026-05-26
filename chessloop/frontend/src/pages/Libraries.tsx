@@ -166,6 +166,9 @@ export function Libraries() {
 
             {/* Action buttons */}
             <div className="flex items-center gap-2 pt-1 border-t border-ink-700">
+              <Link to={`/libraries/${lib.id}/unrated`} className="btn-ghost text-xs">
+                Unrated Learning
+              </Link>
               <Link to={`/libraries/${lib.id}/teach`} className="btn-ghost text-xs">
                 ✎ Teach
               </Link>

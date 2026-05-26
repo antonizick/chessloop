@@ -10,6 +10,7 @@ import { Libraries } from "@/pages/Libraries";
 import { LibraryNew } from "@/pages/LibraryNew";
 import { LibraryDetail } from "@/pages/LibraryDetail";
 import { TeachingBoard } from "@/pages/TeachingBoard";
+import { UnratedLearning } from "@/pages/UnratedLearning";
 import { PublicTeachingBoard } from "@/pages/PublicTeachingBoard";
 import { PracticeBoard } from "@/pages/PracticeBoard";
 import { Stats } from "@/pages/Stats";
@@ -49,6 +50,7 @@ export default function App() {
         <Route path="/libraries/new" element={<LibraryNew />} />
         <Route path="/libraries/:id" element={<LibraryDetail />} />
         <Route path="/libraries/:id/teach" element={<TeachingBoard />} />
+        <Route path="/libraries/:id/unrated" element={<UnratedLearning />} />
         <Route path="/practice" element={<PracticeBoard />} />
         <Route path="/stats" element={<Stats />} />
         <Route path="/public" element={<Public />} />
