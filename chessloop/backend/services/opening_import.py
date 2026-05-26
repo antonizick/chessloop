@@ -287,6 +287,9 @@ def import_opening(
 
     If owner_user_id is provided, use that instead of user_id for ownership
     (useful for seed libraries that should be owned by a system user).
+
+    Automatically loads opening lines from the Lichess GitHub chess-openings
+    repository for the given ECO code after creating the library.
     """
     import chess
 
@@ -344,6 +347,14 @@ def import_opening(
     session.add(line)
     session.commit()
     session.refresh(lib)
+
+    # Automatically load opening lines from Lichess GitHub for this ECO code
+    try:
+        import_lichess_lines_into_library(lib.id, eco, session)
+    except Exception:
+        # Silently fail if GitHub import doesn't work — the library is created regardless
+        pass
+
     return lib, "created"
 
 

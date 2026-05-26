@@ -217,6 +217,25 @@ EOF
 Once promoted, the **Admin panel** (⚙ icon in the sidebar) grants:
 - Backup creation, download, and deletion
 - User promotion / demotion
+- Opening import from Lichess (with automatic GitHub line population)
+
+### Importing Openings from Lichess
+
+In the Admin panel, you can import openings from the Lichess database:
+
+1. **Search** for an opening by name or ECO code (the system provides 50+ curated openings)
+2. **Select** an opening and review its information (difficulty, description, ECO code)
+3. **Import** the opening — the system creates a Library with:
+   - A **Main line** with the opening's starting moves
+   - **All matching opening lines** from the Lichess GitHub chess-openings repository (automatically loaded)
+   - Optional additional variations from Lichess Explorer games (if requested)
+
+**Automatic GitHub line loading:**
+When you import an opening, the system immediately fetches all opening lines from the [Lichess chess-openings repository](https://github.com/lichess-org/chess-openings) that match the opening's ECO code. This populates your library with a comprehensive set of variations without any extra steps.
+
+You can optionally:
+- **Publish** the opening immediately to Public Discovery
+- **Import variations** from recent master games (Lichess Explorer data)
 
 ---
 

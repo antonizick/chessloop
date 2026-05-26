@@ -770,6 +770,30 @@ chessloop/
 
 **Result:** Users can now browse and study opening lines in a distraction-free, read-only mode with full navigation and export capabilities but no ability to modify content.
 
+### Automatic Lichess GitHub Line Loading (2026-05-26)
+
+**Feature:** Automatic loading of opening lines from Lichess GitHub repository when a new opening library is imported
+
+**Implementation:**
+- Modified `import_opening()` function in `backend/services/opening_import.py` to automatically call `import_lichess_lines_into_library()` after library creation
+- The GitHub import happens silently after the main library is created; if it fails for any reason, the library is still successfully created
+
+**Behavior:**
+1. When admin imports an opening (via `/admin/openings/import` endpoint), the library is created with its ECO code
+2. Immediately after, the system automatically fetches all matching opening lines from the Lichess GitHub chess-openings repository
+3. These lines are loaded directly into the library based on ECO code matching
+4. This mirrors the previously added functionality but now happens automatically without manual triggering
+
+**Why automatic:**
+- Users no longer need to manually call `/admin/openings/import-lichess-lines` after importing
+- New openings are instantly populated with comprehensive line data from the chess-openings repository
+- Simplified workflow: import once, get complete library with variations
+
+**Files modified:**
+- `backend/services/opening_import.py` — modified `import_opening()` function to auto-load GitHub lines
+
+**Result:** Opening imports are now fully automated — when a library is created, all available opening lines from the Lichess GitHub repository are loaded immediately.
+
 ---
 
 ## 13. Model Recommendation
