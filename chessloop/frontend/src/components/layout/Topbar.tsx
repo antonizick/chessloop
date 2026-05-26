@@ -14,13 +14,14 @@ export function Topbar() {
         </Link>
 
         <nav className="flex items-center gap-5 text-sm">
-          <Link to="/settings" className="text-ink-200 hover:text-gold-400">
-            Settings
-          </Link>
-
           {user && (
             <div className="flex items-center gap-3 pl-4 border-l border-ink-700">
-              <span className="text-ink-300">{user.username}</span>
+              <button
+                onClick={() => navigate("/settings")}
+                className="text-ink-300 hover:text-gold-400 cursor-pointer transition-colors"
+              >
+                {user.username}
+              </button>
               <button
                 className="btn-ghost text-xs"
                 onClick={() => {
