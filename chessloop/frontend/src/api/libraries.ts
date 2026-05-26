@@ -10,6 +10,14 @@ export interface LibraryCreate {
   difficulty?: "beginner" | "intermediate" | "advanced";
 }
 
+export interface LichessImportResult {
+  library_name: string;
+  eco_code: string;
+  imported: number;
+  skipped: number;
+  errors: string[];
+}
+
 export const librariesApi = {
   list: () => api<Library[]>("/libraries"),
   get: (id: string) => api<Library>(`/libraries/${id}`),
@@ -37,4 +45,7 @@ export const librariesApi = {
     if (!response.ok) throw new Error(`Failed to export library`);
     return response.blob();
   },
+
+  importFromLichess: (id: string) =>
+    api<LichessImportResult>(`/libraries/${id}/import-from-lichess`, { method: "POST" }),
 };

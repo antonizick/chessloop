@@ -44,6 +44,14 @@ export interface DeleteOpeningResponse {
   message: string;
 }
 
+export interface LichessImportResponse {
+  library_name: string;
+  eco_code: string;
+  imported: number;
+  skipped: number;
+  errors: string[];
+}
+
 export const adminApi = {
   searchOpenings: (q: string) =>
     api<OpeningSearchResult[]>(`/admin/openings/search?q=${encodeURIComponent(q)}`),
@@ -66,5 +74,11 @@ export const adminApi = {
   deleteOpening: (name: string) =>
     api<DeleteOpeningResponse>(`/admin/openings/delete?name=${encodeURIComponent(name)}`, {
       method: "DELETE",
+    }),
+
+  importLichessLines: (library_id: string) =>
+    api<LichessImportResponse>("/admin/openings/import-lichess-lines", {
+      method: "POST",
+      body: JSON.stringify({ library_id }),
     }),
 };

@@ -1,15 +1,17 @@
 import { useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { librariesApi } from "@/api/libraries";
+import { librariesApi, type LichessImportResult } from "@/api/libraries";
 import { linesApi } from "@/api/lines";
 
 export function LibraryDetail() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const qc = useQueryClient();
   const [renamingLineId, setRenamingLineId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [lichessResult, setLichessResult] = useState<LichessImportResult | null>(null);
 
   const { data: lib } = useQuery({
     queryKey: ["library", id],
@@ -77,6 +79,14 @@ export function LibraryDetail() {
     },
   });
 
+  const importFromLichess = useMutation({
+    mutationFn: () => librariesApi.importFromLichess(id!),
+    onSuccess: (data) => {
+      setLichessResult(data);
+      qc.invalidateQueries({ queryKey: ["lines", id] });
+    },
+  });
+
   if (!lib) return <p className="text-ink-300">Loading…</p>;
 
   return (
@@ -138,6 +148,16 @@ export function LibraryDetail() {
         >
           {exportPgn.isPending ? "…" : "↓ PGN"}
         </button>
+        {lib.eco_code && !lib.is_public && (
+          <button
+            className="btn-ghost"
+            onClick={() => { setLichessResult(null); importFromLichess.mutate(); }}
+            disabled={importFromLichess.isPending}
+            title={`Import all ${lib.eco_code} variations from Lichess`}
+          >
+            {importFromLichess.isPending ? "…" : "↓ Lichess"}
+          </button>
+        )}
         {!lib.is_public && (
           <button
             className="btn-ghost"
@@ -154,6 +174,17 @@ export function LibraryDetail() {
           </span>
         )}
       </div>
+
+      {lichessResult && (
+        <div className="text-xs text-ink-300 bg-ink-800 border border-ink-700 rounded px-3 py-2 flex flex-col gap-0.5">
+          <p>✓ <span className="text-gold-400">{lichessResult.imported}</span> lines imported · <span className="text-ink-400">{lichessResult.skipped}</span> skipped from <span className="font-mono text-gold-500">{lichessResult.eco_code}</span></p>
+          {lichessResult.errors.length > 0 && (
+            <ul className="mt-1 text-red-400 list-disc list-inside">
+              {lichessResult.errors.map((e, i) => <li key={i}>{e}</li>)}
+            </ul>
+          )}
+        </div>
+      )}
 
       {/* Lines list */}
       <div className="card">
@@ -199,8 +230,7 @@ export function LibraryDetail() {
               ) : (
                 <>
                   <div className="flex-1 cursor-pointer" onClick={() => {
-                    setRenamingLineId(line.id);
-                    setRenameValue(line.name ?? "");
+                    navigate(`/libraries/${id}/teach?lineId=${line.id}`);
                   }}>
                     <div className="text-ink-100 hover:text-gold-400 transition-colors">{line.name ?? "Untitled line"}</div>
                     <div className="text-xs text-ink-400">{line.moves.length} moves</div>

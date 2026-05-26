@@ -3,6 +3,7 @@ from uuid import UUID
 import json
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
+from pydantic import BaseModel
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 
@@ -15,6 +16,7 @@ from schemas.library import (
     LibraryActiveToggle,
     LibraryResponse,
 )
+from services import opening_import
 
 router = APIRouter(prefix="/libraries", tags=["libraries"])
 
@@ -26,6 +28,14 @@ def _owned_or_404(session: Session, lib_id: UUID, user: User) -> Library:
     if lib.owner_user_id != user.id:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Not the owner")
     return lib
+
+
+class LichessImportResult(BaseModel):
+    library_name: str
+    eco_code: str
+    imported: int
+    skipped: int
+    errors: list[str]
 
 
 @router.get("", response_model=list[LibraryResponse])
@@ -262,3 +272,33 @@ def export_library_pgn(
         media_type="text/plain",
         headers={"Content-Disposition": f"attachment; filename={filename}"}
     )
+
+
+@router.post("/{lib_id}/import-from-lichess", response_model=LichessImportResult)
+def import_from_lichess(
+    lib_id: UUID,
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    """Import opening lines from Lichess into a user's own library by ECO code."""
+    lib = _owned_or_404(session, lib_id, user)
+
+    if lib.is_public:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "Use the admin panel to import into public libraries",
+        )
+
+    if not lib.eco_code:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "Library must have an ECO code set to import from Lichess",
+        )
+
+    try:
+        result = opening_import.import_lichess_lines_into_library(lib_id, lib.eco_code, session)
+        return LichessImportResult(**result)
+    except ValueError as e:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e))
+    except Exception as e:
+        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, f"Import failed: {e}")

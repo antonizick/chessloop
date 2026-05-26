@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { adminApi, type OpeningSearchResult } from "@/api/admin";
+import { adminApi, type OpeningSearchResult, type LichessImportResponse } from "@/api/admin";
 import { librariesApi } from "@/api/libraries";
 import type { PublicLibraryEntry } from "@/types";
 
@@ -325,7 +325,7 @@ function ImportOpeningSection() {
 
 // ── Section: Publish user library ────────────────────────────────────────────
 
-function PublishUserLibrarySection({ publicLibraries }: { publicLibraries: PublicLibraryEntry[] }) {
+function PublishUserLibrarySection() {
   const qc = useQueryClient();
   const [selected, setSelected] = useState("");
   const [confirmPublish, setConfirmPublish] = useState(false);
@@ -412,6 +412,81 @@ function PublishUserLibrarySection({ publicLibraries }: { publicLibraries: Publi
 
       {unpublishedLibs.length === 0 && (
         <p className="text-xs text-ink-400">All your libraries are already published or there are no private libraries.</p>
+      )}
+    </div>
+  );
+}
+
+// ── Section: Import from Lichess GitHub ────────────────────────────────────
+
+function ImportLichessLinesSection({ publicLibraries }: { publicLibraries: PublicLibraryEntry[] }) {
+  const qc = useQueryClient();
+  const [selected, setSelected] = useState("");
+  const [result, setResult] = useState<LichessImportResponse | null>(null);
+
+  const importMut = useMutation({
+    mutationFn: () => adminApi.importLichessLines(selected),
+    onSuccess: (data) => {
+      setResult(data);
+      qc.invalidateQueries({ queryKey: ["public-libraries"], exact: false });
+    },
+  });
+
+  // Filter to only libraries with eco_code set
+  const librariesWithEco = publicLibraries.filter((lib) => lib.eco_code);
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center gap-1">
+        <span className="text-sm font-medium text-ink-200">Import from Lichess</span>
+        <Tooltip text="Fetches all opening lines matching this library's ECO code from the Lichess chess-openings repository on GitHub and adds them as new lines. Matches on ECO code prefix (e.g. B90 matches B90, B90a, B90b, etc.).">
+          <InfoIcon />
+        </Tooltip>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <select
+          value={selected}
+          onChange={(e) => { setSelected(e.target.value); setResult(null); }}
+          className="input text-sm py-1 flex-1 min-w-[200px]"
+        >
+          <option value="">— Select a library with an ECO code —</option>
+          {librariesWithEco.map((lib) => (
+            <option key={lib.id} value={lib.id}>
+              {lib.name} [{lib.eco_code}]
+            </option>
+          ))}
+        </select>
+
+        <button
+          className="btn-primary text-sm py-1.5 px-4"
+          onClick={() => importMut.mutate()}
+          disabled={!selected || importMut.isPending}
+        >
+          {importMut.isPending ? "Importing…" : "Import from Lichess"}
+        </button>
+      </div>
+
+      {importMut.isError && (
+        <p className="text-xs text-red-400">
+          Error: {(importMut.error as Error).message}
+        </p>
+      )}
+
+      {result && (
+        <div className="text-xs text-ink-300 bg-ink-800 border border-ink-700 rounded px-3 py-2 space-y-0.5">
+          <p>✓ <span className="text-gold-400">{result.imported}</span> lines imported &nbsp;·&nbsp;
+             <span className="text-ink-400">{result.skipped}</span> skipped</p>
+          {result.errors.length > 0 && (
+            <ul className="mt-1 text-red-400 list-disc list-inside">
+              {result.errors.map((e, i) => <li key={i}>{e}</li>)}
+            </ul>
+          )}
+        </div>
+      )}
+
+      {librariesWithEco.length === 0 && (
+        <p className="text-xs text-ink-400">No public libraries with ECO codes found. Set an ECO code on a library first.</p>
       )}
     </div>
   );
@@ -520,11 +595,13 @@ export function AdminOpeningsPanel({ publicLibraries }: { publicLibraries: Publi
         <div className="px-4 pb-4 flex flex-col gap-6 border-t border-ink-700 pt-4">
           <SeedSection />
           <div className="border-t border-ink-700" />
-          <PublishUserLibrarySection publicLibraries={publicLibraries} />
+          <PublishUserLibrarySection />
           <div className="border-t border-ink-700" />
           <PullVariationsSection publicLibraries={publicLibraries} />
           <div className="border-t border-ink-700" />
           <ImportOpeningSection />
+          <div className="border-t border-ink-700" />
+          <ImportLichessLinesSection publicLibraries={publicLibraries} />
           <div className="border-t border-ink-700" />
           <DeleteOpeningSection publicLibraries={publicLibraries} />
         </div>

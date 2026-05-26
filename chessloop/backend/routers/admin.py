@@ -639,6 +639,18 @@ class DeleteOpeningResponse(BaseModel):
     message: str
 
 
+class LichessImportRequest(BaseModel):
+    library_id: UUID
+
+
+class LichessImportResponse(BaseModel):
+    library_name: str
+    eco_code: str
+    imported: int
+    skipped: int
+    errors: list[str]
+
+
 @router.delete("/openings/delete", response_model=DeleteOpeningResponse, status_code=status.HTTP_200_OK)
 def delete_opening(
     name: str = Query(...),
@@ -759,3 +771,36 @@ def delete_all_public_openings(
 
     session.commit()
     return {"deleted": count, "message": f"Deleted {count} public libraries and all associated data."}
+
+
+@router.post("/openings/import-lichess-lines", response_model=LichessImportResponse)
+def import_lichess_lines(
+    body: LichessImportRequest,
+    admin: User = Depends(require_admin),
+    session: Session = Depends(get_session),
+):
+    """
+    Import all opening lines from the Lichess GitHub chess-openings repository
+    that match the given library's ECO code. The library must have an eco_code set.
+    """
+    lib = session.get(Library, body.library_id)
+    if not lib:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Library not found")
+
+    if not lib.eco_code:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "Library must have an eco_code set to import Lichess lines",
+        )
+
+    try:
+        result = opening_import.import_lichess_lines_into_library(
+            body.library_id,
+            lib.eco_code,
+            session,
+        )
+        return LichessImportResponse(**result)
+    except ValueError as e:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e))
+    except Exception as e:
+        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, f"Failed to import: {e}")

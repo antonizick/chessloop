@@ -6,10 +6,13 @@ share the same code path.
 """
 from __future__ import annotations
 
+import csv
+import io
 import json
 from typing import Optional
 from uuid import UUID
 
+import chess
 import httpx
 from sqlmodel import Session, select
 
@@ -385,3 +388,119 @@ STARTER_OPENINGS: list[tuple[str, str, list[str], str, str]] = [
     ("B01", "Scandinavian Defence",     ["e4","d5","exd5"],                                                           "black", "beginner"),
     ("A80", "Dutch Defence",            ["d4","f5"],                                                                  "black", "intermediate"),
 ]
+
+
+# ── Lichess GitHub TSV import ────────────────────────────────────────────────
+
+
+def fetch_lichess_tsv_by_eco(eco_code: str) -> list[dict]:
+    """Fetch Lichess TSV file for the given ECO prefix and return matching rows."""
+    eco_prefix = eco_code[0].lower()
+    url = f"https://raw.githubusercontent.com/lichess-org/chess-openings/master/{eco_prefix}.tsv"
+
+    with httpx.Client(timeout=30) as client:
+        response = client.get(url)
+        response.raise_for_status()
+
+    rows = []
+    reader = csv.DictReader(io.StringIO(response.text), delimiter='\t')
+    for row in reader:
+        if row['eco'].startswith(eco_code):
+            rows.append(row)
+
+    return rows
+
+
+def import_lichess_lines_into_library(
+    library_id: UUID,
+    eco_code: str,
+    session: Session,
+) -> dict:
+    """Import all Lichess opening lines with matching ECO into an existing library."""
+    lib = session.get(Library, library_id)
+    if not lib:
+        raise ValueError(f"Library {library_id} not found")
+
+    rows = fetch_lichess_tsv_by_eco(eco_code)
+
+    # Build dedup sets: by name and by move sequence
+    existing_lines = session.exec(select(Line).where(Line.library_id == library_id)).all()
+    existing_names = {line.name for line in existing_lines}
+    existing_move_fingerprints = set()
+    for line in existing_lines:
+        try:
+            moves = json.loads(line.moves)
+            fp = " ".join(m["san"] for m in moves)
+            existing_move_fingerprints.add(fp)
+        except Exception:
+            pass  # malformed line; skip for dedup purposes
+    next_idx = len(existing_lines)
+
+    imported = 0
+    skipped = 0
+    errors: list[str] = []
+
+    for row in rows:
+        line_name = f"{row['eco']} — {row['name']}"
+        if line_name in existing_names:
+            skipped += 1
+            continue
+
+        # Parse PGN moves to SAN + FEN
+        pgn_str = row.get('pgn', '').strip()
+        if not pgn_str:
+            errors.append(f"No PGN moves for {row['name']}")
+            continue
+
+        board = chess.Board()
+        parsed: list[dict] = []
+        valid = True
+
+        # Remove move numbers and parse SAN moves
+        # PGN format: "1. e4 c5 2. Nf3 d6 3. d4 cxd4" etc.
+        # We need to extract just the moves: e4 c5 Nf3 d6 d4 cxd4
+        move_tokens = pgn_str.split()
+        for token in move_tokens:
+            # Skip move numbers (they end with a dot)
+            if token.endswith('.'):
+                continue
+
+            try:
+                move = board.push_san(token)
+                uci = move.uci()
+                parsed.append({"san": token, "uci": uci, "fen_after": board.fen()})
+            except Exception as e:
+                errors.append(f"Invalid move '{token}' in {row['name']}: {e}")
+                valid = False
+                break
+
+        if not valid or not parsed:
+            continue
+
+        # Check deduplication by move sequence as well as name
+        fingerprint = " ".join(m["san"] for m in parsed)
+        if line_name in existing_names or fingerprint in existing_move_fingerprints:
+            skipped += 1
+            continue
+
+        new_line = Line(
+            library_id=library_id,
+            name=line_name,
+            starting_fen=STARTING_FEN,
+            moves=json.dumps(parsed),
+            order_index=next_idx + imported,
+        )
+        session.add(new_line)
+        existing_move_fingerprints.add(fingerprint)  # Track for dedup within this batch
+        imported += 1
+
+    if imported:
+        session.commit()
+
+    return {
+        "library_name": lib.name,
+        "eco_code": eco_code,
+        "imported": imported,
+        "skipped": skipped,
+        "errors": errors,
+    }
