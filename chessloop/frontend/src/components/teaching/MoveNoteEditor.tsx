@@ -8,6 +8,7 @@ interface Props {
   moveIndex: number | null;
   currentMove: LineMove | null;
   onSaved?: (updatedLine: Line) => void;
+  onNoteSaved?: (moveIndex: number, noteText: string) => void;
 }
 
 export function MoveNoteEditor({
@@ -15,6 +16,7 @@ export function MoveNoteEditor({
   moveIndex,
   currentMove,
   onSaved,
+  onNoteSaved,
 }: Props) {
   const qc = useQueryClient();
   const [noteText, setNoteText] = useState("");
@@ -32,9 +34,10 @@ export function MoveNoteEditor({
       return linesApi.updateMoveNote(lineId, moveIndex, text);
     },
     onSuccess: (data) => {
-      if (data) {
+      if (data && moveIndex !== null) {
         qc.setQueryData(["line", lineId], data);
         onSaved?.(data);
+        onNoteSaved?.(moveIndex, noteText);
       }
     },
   });

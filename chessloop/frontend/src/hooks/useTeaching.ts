@@ -123,6 +123,17 @@ export function useTeaching() {
   const jumpTo = useCallback((index: number) => setViewIndex(index), []);
   const jumpToEnd = useCallback(() => setViewIndex(null), []);
 
+  /** Update note text for a move at a specific index. */
+  const setMoveNote = useCallback((index: number, note: string) => {
+    setMoves((prev) => {
+      const updated = [...prev];
+      if (updated[index]) {
+        updated[index] = { ...updated[index], note: note || undefined };
+      }
+      return updated;
+    });
+  }, []);
+
   return {
     moves,
     viewIndex,
@@ -138,6 +149,7 @@ export function useTeaching() {
     deleteFrom,
     jumpTo,
     jumpToEnd,
+    setMoveNote,
     startFenRef,
   };
 }

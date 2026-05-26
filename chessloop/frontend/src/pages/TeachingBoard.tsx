@@ -338,6 +338,9 @@ export function TeachingBoard() {
                 lineId={selectedLine.id}
                 moveIndex={selectedMoveForNote}
                 currentMove={teaching.moves[selectedMoveForNote] || null}
+                onNoteSaved={(index, noteText) => {
+                  teaching.setMoveNote(index, noteText);
+                }}
               />
             </div>
           )}
