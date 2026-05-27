@@ -732,7 +732,7 @@ export function PracticeBoard() {
     setTimeout(() => {
       setOrientation(originalOrientation);
     }, 10);
-  }, [isActive, phase, orientation]);
+  }, [isActive, phase]);
 
   // ── Render ─────────────────────────────────────────────────────────────────
   //
