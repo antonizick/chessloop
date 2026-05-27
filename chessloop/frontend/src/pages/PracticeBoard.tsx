@@ -82,13 +82,11 @@ function legalDests(fen: string): Map<Key, Key[]> {
     const chess = new Chess(fen);
     const dests = new Map<Key, Key[]>();
     const moves = chess.moves({ verbose: true });
-    console.log("[legalDests] FEN:", fen, "Moves count:", moves.length);
     for (const m of moves) {
       const targets = dests.get(m.from as Key) ?? [];
       targets.push(m.to as Key);
       dests.set(m.from as Key, targets);
     }
-    console.log("[legalDests] Resulting dests:", dests.size, "keys");
     return dests;
   } catch (e) {
     console.error("[legalDests] Error:", e);
@@ -204,28 +202,40 @@ export function PracticeBoard() {
       const fen = fenOverride ?? pos.fen_before;
       const color = turnFromFen(fen);
       const dests = legalDests(fen);
-      console.log("[PracticeBoard] Enabling board for user:", {
-        fen,
-        color,
-        destsSize: dests.size,
-        destsKeys: Array.from(dests.keys()),
-      });
-      cgRef.current?.set({
-        fen,
-        viewOnly: false,
-        turnColor: color,
-        movable: {
-          free: false,
-          color,
-          dests,
-          showDests: true,
-        },
-        draggable: { enabled: true },
-        drawable: { shapes: [] },
-      });
+
+      try {
+        if (cgRef.current) {
+          // Reset board to clean state
+          cgRef.current.set({
+            viewOnly: false,
+            movable: { free: false, color: undefined, dests: new Map() },
+            draggable: { enabled: true },
+          });
+
+          // Set the interactive configuration with dests as Map
+          cgRef.current.set({
+            fen,
+            orientation,
+            viewOnly: false,
+            turnColor: color,
+            movable: {
+              free: false,
+              color,
+              dests,
+              showDests: true,
+            },
+            draggable: { enabled: true },
+            drawable: { shapes: [] },
+          });
+        } else {
+          console.error("[enableBoardForUser] cgRef.current is null/undefined!");
+        }
+      } catch (e) {
+        console.error("[enableBoardForUser] Error calling set():", e);
+      }
       startedAtRef.current = Date.now();
     },
-    [],
+    [orientation],
   );
 
   // ── Enable board when phase → "waiting" ────────────────────────────────────
@@ -237,12 +247,6 @@ export function PracticeBoard() {
   useEffect(() => {
     if (phase !== "waiting" || !position) return;
     const activeFen = currentFenRef.current || position.fen_before;
-    console.log("[PracticeBoard] Phase is now 'waiting'", {
-      phase,
-      hasCgRef: !!cgRef.current,
-      position: position.id,
-      fen: activeFen?.substring(0, 50),
-    });
     // Ensure board listeners are registered before configuring it.
     // Set viewOnly:false first to guarantee bindBoard() sees the correct state.
     cgRef.current?.set({ viewOnly: false });
@@ -706,6 +710,29 @@ export function PracticeBoard() {
   const isActive = phase !== "entry" && phase !== "done";
   const isViewOnly = phase !== "waiting" && phase !== "replaying";
   // "computer_move" is intentionally view-only (included by the line above).
+
+  // ── Reinitialize board when it becomes visible ─────────────────────────────
+  // The board is hidden with visibility:hidden during entry/done phases.
+  // When Chessground initializes in a hidden state, it can't properly register
+  // event listeners. Also, if orientation stays the same (e.g., "white" for white
+  // openings), the ChessboardWrapper's orientation useEffect won't fire, leaving
+  // listeners unregistered. Force a temporary orientation flip to trigger registration.
+  useEffect(() => {
+    if (!isActive || !cgRef.current || phase !== "waiting") return;
+
+    // Force orientation to change (even if just temporarily) to trigger
+    // ChessboardWrapper's useEffect that registers event listeners
+    const originalOrientation = orientation;
+    const flippedOrientation = orientation === "white" ? "black" : "white";
+
+    // Set to flipped orientation
+    setOrientation(flippedOrientation);
+
+    // Immediately flip back (using setTimeout to ensure state change registers)
+    setTimeout(() => {
+      setOrientation(originalOrientation);
+    }, 10);
+  }, [isActive, phase, orientation]);
 
   // ── Render ─────────────────────────────────────────────────────────────────
   //
