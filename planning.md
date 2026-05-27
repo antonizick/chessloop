@@ -823,3 +823,44 @@ ChessLoop has several intersecting complexity domains that benefit from Opus's d
 - Use **Haiku** for: simple utility functions, CSS tweaks, rename/move operations
 
 This hybrid approach keeps costs reasonable while using Opus where architectural correctness matters most.
+
+---
+
+## 14. Infrastructure & Networking Fixes (2026-05-26)
+
+### Tailscale VPN & HMR Support
+
+**Problem:** 
+- Intermittent 502 errors when accessing the frontend through Tailscale VPN (https://bld2.taild1bb43.ts.net:8443)
+- Mixed content warnings: HTTPS pages trying to connect to insecure WebSocket (ws://)
+- Vite dev server HMR not auto-detecting host from browser requests
+
+**Solution:**
+1. **HMR Protocol Auto-Detection** (vite.config.ts):
+   - Changed `hmr.protocol` from `'ws'` to `'auto'`
+   - Vite now auto-detects based on page protocol:
+     - HTTPS (Tailscale) → `wss://` (secure WebSocket)
+     - HTTP (localhost) → `ws://` (regular WebSocket)
+   - Eliminates mixed content errors and 502 gateway failures
+
+2. **React Warning Fix** (PracticeBoard.tsx):
+   - Removed `flushSync` calls from useEffect (React 19 compatibility)
+   - Replaced with `Promise.resolve().then()` microtask for deferred state updates
+   - Maintains minimal flickering while respecting React's rendering constraints
+   - Removed unused `flushSync` import from react-dom
+
+**Files Modified:**
+- `chessloop/frontend/vite.config.ts` — HMR protocol config
+- `chessloop/frontend/src/pages/PracticeBoard.tsx` — board initialization workaround
+
+**Testing & Verification:**
+- ✅ Localhost access (http://localhost:8090) — fully functional
+- ✅ Tailscale access (https://bld2.taild1bb43.ts.net:8443) — fully functional, no 502 errors
+- ✅ Practice boards — pieces draggable, no console warnings
+- ✅ HMR — hot reloads work transparently over both connections
+
+**Impact:**
+This enables the development environment to work seamlessly over VPN, allowing Nick to:
+- Access ChessLoop through Tailscale from anywhere
+- Use full development server with HMR across different network interfaces
+- Work with localhost and production-like HTTPS configurations simultaneously

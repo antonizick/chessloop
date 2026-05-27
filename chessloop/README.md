@@ -126,6 +126,19 @@ npm run dev   # http://localhost:8090
 
 The Vite dev server proxies `/api/*` → `http://localhost:8100`.
 
+### Network Access
+
+The frontend dev server is automatically accessible via:
+- **Localhost:** `http://localhost:8090`
+- **Local network:** `http://<machine-ip>:8090` (requires `host: true` in vite.config.ts)
+- **Tailscale VPN:** `https://<machine-tailscale-ip>:8443` (HMR auto-configures `wss://` for HTTPS)
+
+HMR (Hot Module Reload) automatically detects the connection protocol and adapts:
+- HTTP connections → use `ws://` for HMR WebSocket
+- HTTPS connections → use `wss://` (secure WebSocket) for HMR
+
+This allows seamless development access across different networks without manual configuration.
+
 ---
 
 ## Production self-hosting (Docker)
