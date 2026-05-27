@@ -44,6 +44,7 @@ class ConflictResponse(BaseModel):
     line_a_name: str
     line_b_name: str
     move_number: int
+    turn_color: str
     next_move_a: str
     next_move_b: str
     position_fen: str

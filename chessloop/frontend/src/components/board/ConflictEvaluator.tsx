@@ -4,15 +4,17 @@ import { librariesApi, type EvaluateConflictsResult } from "@/api/libraries";
 
 interface ConflictEvaluatorProps {
   libraryId: string;
+  currentFen?: string;
+  currentLineId?: string;
 }
 
-export function ConflictEvaluator({ libraryId }: ConflictEvaluatorProps) {
+export function ConflictEvaluator({ libraryId, currentFen, currentLineId }: ConflictEvaluatorProps) {
   const [showResults, setShowResults] = useState(false);
   const [results, setResults] = useState<EvaluateConflictsResult | null>(null);
 
   const { mutate: evaluate, isPending } = useMutation({
     mutationFn: async () => {
-      return await librariesApi.evaluateConflicts(libraryId);
+      return await librariesApi.evaluateConflicts(libraryId, currentFen, currentLineId);
     },
     onSuccess: (data) => {
       setResults(data);
@@ -91,7 +93,7 @@ export function ConflictEvaluator({ libraryId }: ConflictEvaluatorProps) {
                       <td className="px-3 py-2 text-slate-100">{conflict.line_a_name}</td>
                       <td className="px-3 py-2 text-slate-100">{conflict.line_b_name}</td>
                       <td className="px-3 py-2 text-slate-300 text-xs">
-                        After move {conflict.move_number}
+                        Move {conflict.move_number}, {conflict.turn_color.charAt(0).toUpperCase() + conflict.turn_color.slice(1)}
                       </td>
                       <td className="px-3 py-2 text-amber-400 font-semibold">
                         {conflict.next_move_a}

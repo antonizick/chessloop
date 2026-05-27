@@ -224,9 +224,9 @@ export function UnratedLearning() {
           )}
 
           {/* Conflict evaluator - below board */}
-          {libId && (
+          {libId && selectedLineId && (
             <div className="card p-4">
-              <ConflictEvaluator libraryId={libId} />
+              <ConflictEvaluator libraryId={libId} currentFen={teaching.boardFen} currentLineId={selectedLineId} />
             </div>
           )}
         </div>

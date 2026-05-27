@@ -22,6 +22,7 @@ export interface ConflictResponse {
   line_a_name: string;
   line_b_name: string;
   move_number: number;
+  turn_color: string;
   next_move_a: string;
   next_move_b: string;
   position_fen: string;
@@ -64,6 +65,12 @@ export const librariesApi = {
   importFromLichess: (id: string) =>
     api<LichessImportResult>(`/libraries/${id}/import-from-lichess`, { method: "POST" }),
 
-  evaluateConflicts: (id: string) =>
-    api<EvaluateConflictsResult>(`/libraries/${id}/conflicts`, { method: "GET" }),
+  evaluateConflicts: (id: string, currentFen?: string, currentLineId?: string) => {
+    const params = new URLSearchParams();
+    if (currentFen) params.append("current_fen", currentFen);
+    if (currentLineId) params.append("current_line_id", currentLineId);
+    const queryString = params.toString();
+    const url = `/libraries/${id}/conflicts${queryString ? `?${queryString}` : ""}`;
+    return api<EvaluateConflictsResult>(url, { method: "GET" });
+  },
 };

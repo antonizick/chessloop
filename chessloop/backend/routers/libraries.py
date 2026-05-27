@@ -310,20 +310,75 @@ def import_from_lichess(
 @router.get("/{lib_id}/conflicts", response_model=EvaluateConflictsResult)
 def evaluate_conflicts(
     lib_id: UUID,
+    current_fen: str = None,
+    current_line_id: str = None,
     user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
 ):
-    """Find positions where opening lines in a library have different follow-on moves."""
+    """Find all lines that share the current position and show their next moves."""
     lib = _owned_or_404(session, lib_id, user)
 
     # Get all lines in the library
     lines = session.exec(select(Line).where(Line.library_id == lib_id).order_by(Line.order_index)).all()
 
-    # Build position map: (position_hash, side_to_move) -> [(line_name, line_id, move_number, next_move)]
-    # Key includes color to move so we only compare positions from the same perspective
-    position_map = {}
+    if not current_fen:
+        # If no position specified, use the starting FEN
+        if lines:
+            current_fen = lines[0].starting_fen
+        else:
+            return EvaluateConflictsResult(total_positions=0, conflicts_found=0, conflicts=[])
+
+    # Extract just the piece placement from the FEN (ignore turn, castling, etc.)
+    current_position_key = current_fen.split()[0]
+    # Also get whose turn it is
+    current_turn = current_fen.split()[1] if len(current_fen.split()) > 1 else 'w'
+
+    # Find the next move in the current line at this position
+    current_line_next_move = None
+    current_line_name = None
+
+    if current_line_id:
+        current_line = session.get(Line, UUID(current_line_id))
+        if current_line:
+            current_line_name = current_line.name or f"Line {current_line.order_index}"
+            try:
+                moves = json.loads(current_line.moves) if isinstance(current_line.moves, str) else current_line.moves
+                board = chess.Board(current_line.starting_fen)
+
+                # Check starting position
+                board_position_key = board.fen().split()[0]
+                board_turn = board.fen().split()[1] if len(board.fen().split()) > 1 else 'w'
+
+                if board_position_key == current_position_key and board_turn == current_turn:
+                    # This line starts at our position
+                    if moves:
+                        current_line_next_move = moves[0].get('san', '')
+                else:
+                    # Look for the position later in the line
+                    for move_index, move_obj in enumerate(moves):
+                        san = move_obj.get('san', '')
+                        try:
+                            board.push_san(san)
+                            board_position_key = board.fen().split()[0]
+                            board_turn = board.fen().split()[1] if len(board.fen().split()) > 1 else 'w'
+
+                            if board_position_key == current_position_key and board_turn == current_turn:
+                                if move_index + 1 < len(moves):
+                                    current_line_next_move = moves[move_index + 1].get('san', '')
+                                break
+                        except Exception:
+                            continue
+            except Exception:
+                pass
+
+    # Find all lines that contain this position and what they play next
+    other_lines_by_move = {}  # next_move -> [line_name, line_id]
 
     for line in lines:
+        # Skip the current line
+        if current_line_id and str(line.id) == current_line_id:
+            continue
+
         try:
             moves = json.loads(line.moves) if isinstance(line.moves, str) else line.moves
             if not moves:
@@ -331,36 +386,46 @@ def evaluate_conflicts(
 
             board = chess.Board(line.starting_fen)
 
-            # Record starting position
-            fen_key = board.fen().split()[0]  # piece positions only
-            side_key = 'w' if board.turn else 'b'  # whose turn it is
-            position_key = (fen_key, side_key)
-            if position_key not in position_map:
-                position_map[position_key] = []
+            # Check starting position
+            board_position_key = board.fen().split()[0]
+            board_turn = board.fen().split()[1] if len(board.fen().split()) > 1 else 'w'
 
-            # Process each move
+            if board_position_key == current_position_key and board_turn == current_turn:
+                # This line starts at our position, next move is the first move
+                if len(moves) > 0:
+                    next_move = moves[0].get('san', '')
+                    if next_move:
+                        if next_move not in other_lines_by_move:
+                            other_lines_by_move[next_move] = []
+                        other_lines_by_move[next_move].append({
+                            'line_name': line.name or f"Line {line.order_index}",
+                            'line_id': str(line.id)
+                        })
+                continue
+
+            # Process each move to find if this position appears later
             for move_index, move_obj in enumerate(moves):
                 san = move_obj.get('san', '')
                 try:
-                    move = board.push_san(san)
+                    board.push_san(san)
 
-                    # After this move, record what position we're at and what the next move would be
-                    fen_key = board.fen().split()[0]  # piece positions only
-                    side_key = 'w' if board.turn else 'b'  # whose turn it will be for the next move
-                    position_key = (fen_key, side_key)
-                    if position_key not in position_map:
-                        position_map[position_key] = []
+                    # Check if we're at the target position
+                    board_position_key = board.fen().split()[0]
+                    board_turn = board.fen().split()[1] if len(board.fen().split()) > 1 else 'w'
 
-                    # If there's a next move, record it as the follow-on
-                    if move_index + 1 < len(moves):
-                        next_move_san = moves[move_index + 1].get('san', '')
-                        position_map[position_key].append({
-                            'line_name': line.name or f"Line {line.order_index}",
-                            'line_id': str(line.id),
-                            'move_number': move_index + 1,
-                            'next_move': next_move_san,
-                            'fen': board.fen()
-                        })
+                    if board_position_key == current_position_key and board_turn == current_turn:
+                        # Found the position, get the next move if it exists
+                        if move_index + 1 < len(moves):
+                            next_move = moves[move_index + 1].get('san', '')
+                            if next_move:
+                                if next_move not in other_lines_by_move:
+                                    other_lines_by_move[next_move] = []
+                                other_lines_by_move[next_move].append({
+                                    'line_name': line.name or f"Line {line.order_index}",
+                                    'line_id': str(line.id)
+                                })
+                        break
+
                 except Exception:
                     # Skip invalid moves
                     continue
@@ -369,27 +434,27 @@ def evaluate_conflicts(
             # Skip lines with parsing errors
             continue
 
-    # Find conflicts: positions with different follow-on moves (same position, same color to move)
+    # Create conflict entries: current line vs other lines with different moves
     conflicts = []
-    for position_key, entries in position_map.items():
-        if len(entries) > 1:
-            # Check all pairs for different next moves
-            for i in range(len(entries)):
-                for j in range(i + 1, len(entries)):
-                    entry_a = entries[i]
-                    entry_b = entries[j]
-                    if entry_a['next_move'] != entry_b['next_move']:
-                        conflicts.append(ConflictResponse(
-                            line_a_name=entry_a['line_name'],
-                            line_b_name=entry_b['line_name'],
-                            move_number=entry_a['move_number'],
-                            next_move_a=entry_a['next_move'],
-                            next_move_b=entry_b['next_move'],
-                            position_fen=entry_a['fen']
-                        ))
+
+    if current_line_next_move and current_line_name:
+        # Look for other lines with different next moves
+        for other_move, other_lines in other_lines_by_move.items():
+            if other_move != current_line_next_move:
+                # Create a conflict for each line with a different move
+                for other_line in other_lines:
+                    conflicts.append(ConflictResponse(
+                        line_a_name=current_line_name,
+                        line_b_name=other_line['line_name'],
+                        move_number=chess.Board(current_fen).fullmove_number,
+                        turn_color='white' if current_turn == 'w' else 'black',
+                        next_move_a=current_line_next_move,
+                        next_move_b=other_move,
+                        position_fen=current_fen
+                    ))
 
     return EvaluateConflictsResult(
-        total_positions=len(position_map),
+        total_positions=1,
         conflicts_found=len(conflicts),
         conflicts=conflicts
     )

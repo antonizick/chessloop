@@ -847,9 +847,9 @@ export function PracticeBoard() {
             </div>
 
             {/* Conflict evaluator - below board */}
-            {position?.library_id && (
+            {position?.library_id && position?.line_id && (
               <div className="card p-4">
-                <ConflictEvaluator libraryId={position.library_id} />
+                <ConflictEvaluator libraryId={position.library_id} currentFen={currentFen} currentLineId={position.line_id} />
               </div>
             )}
           </div>
