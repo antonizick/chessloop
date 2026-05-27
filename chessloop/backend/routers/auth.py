@@ -166,6 +166,10 @@ def update_preferences(
         user.board_theme = body.board_theme
     if body.sounds_on is not None:
         user.sounds_on = body.sounds_on
+    if body.tts_enabled is not None:
+        user.tts_enabled = body.tts_enabled
+    if body.tts_voice is not None:
+        user.tts_voice = body.tts_voice
     session.add(user)
     session.commit()
     session.refresh(user)

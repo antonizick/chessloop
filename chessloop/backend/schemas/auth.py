@@ -49,6 +49,8 @@ class PreferencesRequest(BaseModel):
     piece_set: Optional[str] = None
     board_theme: Optional[str] = None
     sounds_on: Optional[bool] = None
+    tts_enabled: Optional[bool] = None
+    tts_voice: Optional[str] = None
 
 
 class UserResponse(BaseModel):
@@ -61,5 +63,7 @@ class UserResponse(BaseModel):
     piece_set: str
     board_theme: str
     sounds_on: bool
+    tts_enabled: bool
+    tts_voice: str
     created_at: datetime
     last_login: Optional[datetime] = None

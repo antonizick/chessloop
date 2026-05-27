@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { authApi } from "@/api/auth";
 import { useAuthStore } from "@/stores/auth";
 import { ChessboardWrapper } from "@/components/board/ChessboardWrapper";
+import { ttsService } from "@/services/textToSpeech";
 
 // ── Option lists ──────────────────────────────────────────────────────────────
 
@@ -65,6 +66,23 @@ export function Settings() {
     onError: (e: any) => setConfirmMsg(e.message ?? "Failed"),
   });
 
+  // ── Load available voices ──────────────────────────────────────────────────
+
+  useEffect(() => {
+    const loadVoices = () => {
+      const voices = ttsService.getAvailableVoices();
+      setAvailableVoices(voices);
+    };
+
+    loadVoices();
+    // Some browsers load voices asynchronously
+    window.speechSynthesis.addEventListener("voiceschanged", loadVoices);
+
+    return () => {
+      window.speechSynthesis.removeEventListener("voiceschanged", loadVoices);
+    };
+  }, []);
+
   // ── Preferences ────────────────────────────────────────────────────────────
 
   // Local optimistic state for instant preview
@@ -72,7 +90,10 @@ export function Settings() {
   const [localBoardTheme, setLocalBoardTheme] = useState<string>(user?.board_theme ?? "brown");
   const [localPieceSet,   setLocalPieceSet]   = useState<string>(user?.piece_set   ?? "cburnett");
   const [localSoundsOn,   setLocalSoundsOn]   = useState<boolean>(user?.sounds_on  ?? true);
+  const [localTtsEnabled, setLocalTtsEnabled] = useState<boolean>(user?.tts_enabled ?? true);
+  const [localTtsVoice,   setLocalTtsVoice]   = useState<string>(user?.tts_voice   ?? "Microsoft Zira");
   const [prefSaved, setPrefSaved] = useState(false);
+  const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
 
   const updatePrefs = useMutation({
     mutationFn: authApi.updatePreferences,
@@ -90,9 +111,14 @@ export function Settings() {
       board_theme: localBoardTheme,
       piece_set: localPieceSet,
       sounds_on: localSoundsOn,
+      tts_enabled: localTtsEnabled,
+      tts_voice: localTtsVoice,
     });
     // Apply theme immediately to root element
     applyTheme(localTheme);
+    // Update TTS service settings
+    ttsService.setEnabled(localTtsEnabled);
+    ttsService.setDefaultVoice(localTtsVoice);
   }
 
   function applyTheme(themeName: string) {
@@ -223,6 +249,56 @@ export function Settings() {
             />
           </button>
         </div>
+      </div>
+
+      {/* ── Audio Settings ────────────────────────────────────────────────── */}
+      <div className="card flex flex-col gap-5">
+        <h2>Audio</h2>
+
+        {/* Text-to-speech toggle */}
+        <div className="flex items-center justify-between py-1">
+          <div>
+            <div className="text-sm font-medium text-ink-100">Read move notes aloud</div>
+            <div className="text-xs text-ink-400 mt-0.5">Speak move instructions during practice</div>
+          </div>
+          <button
+            onClick={() => setLocalTtsEnabled((v) => !v)}
+            className={`relative w-11 h-6 rounded-full transition-colors ${
+              localTtsEnabled ? "bg-gold-500" : "bg-ink-600"
+            }`}
+            role="switch"
+            aria-checked={localTtsEnabled}
+          >
+            <span
+              className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${
+                localTtsEnabled ? "translate-x-5" : "translate-x-0"
+              }`}
+            />
+          </button>
+        </div>
+
+        {/* Voice selector */}
+        {localTtsEnabled && (
+          <div>
+            <label className="label">Voice</label>
+            <select
+              value={localTtsVoice}
+              onChange={(e) => setLocalTtsVoice(e.target.value)}
+              className="w-full px-3 py-2 rounded bg-ink-700 border border-ink-600 text-ink-100 text-sm focus:outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-400"
+            >
+              {availableVoices.length === 0 ? (
+                <option>Microsoft Zira (default)</option>
+              ) : (
+                availableVoices.map((voice) => (
+                  <option key={voice.name} value={voice.name}>
+                    {voice.name}
+                  </option>
+                ))
+              )}
+            </select>
+            <p className="text-xs text-ink-400 mt-2">Default voice: Microsoft Zira (rate 1.0, pitch 1.0)</p>
+          </div>
+        )}
 
         <div className="flex items-center gap-3 pt-1 border-t border-ink-700">
           <button

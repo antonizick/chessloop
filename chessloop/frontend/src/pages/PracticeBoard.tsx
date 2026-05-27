@@ -46,6 +46,7 @@ import { practiceApi } from "@/api/practice";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useAuthStore } from "@/stores/auth";
 import { playMoveSound, playCorrectSound, playWrongSound } from "@/utils/sounds";
+import { ttsService } from "@/services/textToSpeech";
 import type {
   PracticeMode,
   NextPositionResponse,
@@ -135,6 +136,8 @@ export function PracticeBoard() {
   const soundsOn = user?.sounds_on ?? true;
   const boardTheme = user?.board_theme ?? "brown";
   const pieceSet = user?.piece_set ?? "cburnett";
+  const ttsEnabled = user?.tts_enabled ?? true;
+  const ttsVoice = user?.tts_voice ?? "Microsoft Zira";
 
   // cgRef is set once when ChessboardWrapper mounts (at page load, not on Start).
   // It stays valid for the entire session — no timing race with network requests.
@@ -284,6 +287,23 @@ export function PracticeBoard() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.state]);
+
+  // ── Initialize TTS service with user preferences ───────────────────────────
+  useEffect(() => {
+    ttsService.setEnabled(ttsEnabled);
+    ttsService.setDefaultVoice(ttsVoice);
+  }, [ttsEnabled, ttsVoice]);
+
+  // ── Read note aloud when displaying feedback with a note ───────────────────
+  useEffect(() => {
+    if (phase === "feedback_correct" && answer?.note && ttsEnabled) {
+      // Small delay to let UI render first
+      const timer = setTimeout(() => {
+        ttsService.speak(answer.note!);
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [phase, answer?.note, ttsEnabled]);
 
   // ── Start session ──────────────────────────────────────────────────────────
 

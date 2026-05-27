@@ -15,6 +15,7 @@ import { librariesApi } from "@/api/libraries";
 import { linesApi } from "@/api/lines";
 import { useAuthStore } from "@/stores/auth";
 import { playMoveSound, playNavigationSound } from "@/utils/sounds";
+import { ttsService } from "@/services/textToSpeech";
 import type { Line } from "@/types";
 
 export function TeachingBoard() {
@@ -27,6 +28,14 @@ export function TeachingBoard() {
   const soundsOn = user?.sounds_on ?? true;
   const boardTheme = user?.board_theme ?? "brown";
   const pieceSet = user?.piece_set ?? "cburnett";
+  const ttsEnabled = user?.tts_enabled ?? true;
+  const ttsVoice = user?.tts_voice ?? "Microsoft Zira";
+
+  // Initialize TTS service with user preferences
+  useEffect(() => {
+    ttsService.setEnabled(ttsEnabled);
+    ttsService.setDefaultVoice(ttsVoice);
+  }, [ttsEnabled, ttsVoice]);
 
   // ── Data ─────────────────────────────────────────────────────────────────
   const { data: lib } = useQuery({
@@ -97,6 +106,16 @@ export function TeachingBoard() {
       },
     });
   }, [teaching.boardFen, teaching.liveDests, teaching.liveTurnColor, teaching.isAtEnd]);
+
+  // Read note aloud when navigating to a move with notes
+  useEffect(() => {
+    if (ttsEnabled && teaching.viewIndex !== null && teaching.viewIndex >= 0) {
+      const currentMove = teaching.moves[teaching.viewIndex];
+      if (currentMove?.note) {
+        ttsService.speak(currentMove.note);
+      }
+    }
+  }, [teaching.viewIndex, ttsEnabled, teaching.moves]);
 
   // ── Mutations ────────────────────────────────────────────────────────────
   const createLine = useMutation({

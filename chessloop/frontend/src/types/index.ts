@@ -8,6 +8,8 @@ export interface User {
   piece_set: string;
   board_theme: string;
   sounds_on: boolean;
+  tts_enabled: boolean;
+  tts_voice: string;
   created_at: string;
   last_login: string | null;
 }

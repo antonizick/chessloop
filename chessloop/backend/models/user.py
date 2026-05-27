@@ -16,5 +16,7 @@ class User(SQLModel, table=True):
     piece_set: str = Field(default="cburnett")
     board_theme: str = Field(default="brown")
     sounds_on: bool = True
+    tts_enabled: bool = True
+    tts_voice: str = Field(default="Microsoft Zira")
     created_at: datetime = Field(default_factory=datetime.utcnow)
     last_login: Optional[datetime] = None
