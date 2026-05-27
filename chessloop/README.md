@@ -46,6 +46,18 @@ The Teaching Board provides intuitive controls for recording and navigating thro
 
 Move-by-move navigation lets you review and edit your lines without re-playing them. PGN export makes openings portable to other chess tools. Line duplication lets you quickly create variations of existing lines.
 
+### Move Notes
+
+Add annotations to any move to document strategy, warnings, or variations:
+
+- **Click on a move** in the move list to select it
+- **Click "Add note"** (or "Edit" if a note exists) to open the editor
+- **Type your annotation** — use Ctrl+Enter to save or Escape to cancel
+- **Notes persist** — switching lines and returning shows all saved notes immediately
+- **Visible everywhere** — notes appear in Teaching Board, Unrated Learning, and Practice modes
+
+Perfect for documenting why you play a move, warning about traps, or linking to analysis.
+
 ---
 
 ## Unrated Learning Mode
@@ -56,9 +68,11 @@ The **Unrated Learning** mode provides a distraction-free, read-only way to brow
 |---|---|---|
 | View opening lines | ✅ | Study your repertoire |
 | Navigate moves | ✅ | Arrow keys, navigation buttons |
+| Read move notes | ✅ | See annotations added in Teaching mode |
 | Export PGN | ✅ | Use lines in other tools |
 | Flip board | ✅ | View from Black's perspective |
-| Add/edit/delete lines | ❌ | Read-only mode |
+| Edit/delete lines | ❌ | Read-only mode |
+| Edit/delete notes | ❌ | Notes are read-only here |
 | Add moves | ❌ | No piece dragging allowed |
 | Make changes | ❌ | Board is always locked |
 
@@ -66,7 +80,7 @@ The **Unrated Learning** mode provides a distraction-free, read-only way to brow
 1. **Library grid cards** — Click "Unrated Learning" button (left of "✎ Teach")
 2. **Library detail page** — Click "Unrated Learning" button (left of "Teaching board")
 
-Perfect for reviewing openings before practice sessions or sharing repertoires in a controlled way.
+Perfect for reviewing openings before practice sessions or sharing repertoires in a controlled way. All move notes you added in Teaching mode are displayed above the board as read-only, so you can see your annotations and analysis without making accidental changes.
 
 ### Line Management
 

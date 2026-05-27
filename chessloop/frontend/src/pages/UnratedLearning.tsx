@@ -6,6 +6,7 @@ import type { Api } from "chessground/api";
 import { ChessboardWrapper } from "@/components/board/ChessboardWrapper";
 import { ConflictEvaluator } from "@/components/board/ConflictEvaluator";
 import { MoveList, generatePgn, exportPgn } from "@/components/teaching/MoveList";
+import { MoveNoteEditor } from "@/components/teaching/MoveNoteEditor";
 import { useTeaching } from "@/hooks/useTeaching";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { librariesApi } from "@/api/libraries";
@@ -208,6 +209,19 @@ export function UnratedLearning() {
               pieceSet={pieceSet}
             />
           </div>
+
+          {/* Move note display - below board, read-only */}
+          {selectedLine && teaching.viewIndex !== null && (
+            <div className="card p-4">
+              <MoveNoteEditor
+                lineId={selectedLine.id}
+                moveIndex={teaching.viewIndex}
+                currentMove={teaching.moves[teaching.viewIndex] || null}
+                libraryId={libId}
+                readOnly={true}
+              />
+            </div>
+          )}
 
           {/* Conflict evaluator - below board */}
           {libId && (

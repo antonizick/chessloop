@@ -265,6 +265,18 @@ export function PracticeBoard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ── Reset session when navigating to same page via menu ─────────────────
+  // When the user clicks a practice menu button from within a session,
+  // the URL doesn't change, but location.state.restart is set to true.
+  // This detects the request and resets the session.
+  useEffect(() => {
+    const shouldRestart = (location.state as { restart?: boolean } | null)?.restart;
+    if (shouldRestart && phase !== "entry" && phase !== "done") {
+      endSessionEarly();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state]);
+
   // ── Start session ──────────────────────────────────────────────────────────
 
   async function startSession({ mode: uiMode, startPosition }: PracticeOptions) {

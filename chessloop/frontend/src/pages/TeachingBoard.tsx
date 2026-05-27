@@ -470,6 +470,7 @@ export function TeachingBoard() {
                 lineId={selectedLine.id}
                 moveIndex={selectedMoveForNote}
                 currentMove={teaching.moves[selectedMoveForNote] || null}
+                libraryId={libId}
                 onNoteSaved={(index, noteText) => {
                   teaching.setMoveNote(index, noteText);
                 }}

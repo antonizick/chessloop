@@ -7,16 +7,20 @@ interface Props {
   lineId: string;
   moveIndex: number | null;
   currentMove: LineMove | null;
+  libraryId?: string;
   onSaved?: (updatedLine: Line) => void;
   onNoteSaved?: (moveIndex: number, noteText: string) => void;
+  readOnly?: boolean;
 }
 
 export function MoveNoteEditor({
   lineId,
   moveIndex,
   currentMove,
+  libraryId,
   onSaved,
   onNoteSaved,
+  readOnly = false,
 }: Props) {
   const qc = useQueryClient();
   const [noteText, setNoteText] = useState("");
@@ -45,6 +49,9 @@ export function MoveNoteEditor({
     onSuccess: (data, savedText) => {
       if (data && moveIndex !== null) {
         qc.setQueryData(["line", lineId], data);
+        if (libraryId) {
+          qc.invalidateQueries({ queryKey: ["lines", libraryId] });
+        }
         onSaved?.(data);
         onNoteSaved?.(moveIndex, savedText);
       }
@@ -141,26 +148,28 @@ export function MoveNoteEditor({
               No note yet
             </div>
           )}
-          <div className="flex gap-2 justify-end">
-            <button
-              onClick={() => setIsEditing(true)}
-              className="px-3 py-1.5 rounded text-sm bg-ink-700 hover:bg-ink-600
-                         text-gold-300 hover:text-gold-200 transition-colors"
-            >
-              {noteText ? "Edit" : "Add note"}
-            </button>
-            {noteText && (
+          {!readOnly && (
+            <div className="flex gap-2 justify-end">
               <button
-                onClick={handleClear}
-                disabled={updateNote.isPending}
-                className="px-2 py-1.5 rounded text-xs bg-ink-700 hover:bg-red-600/30
-                           text-red-400 hover:text-red-300 transition-colors disabled:opacity-50"
-                title="Clear note"
+                onClick={() => setIsEditing(true)}
+                className="px-3 py-1.5 rounded text-sm bg-ink-700 hover:bg-ink-600
+                           text-gold-300 hover:text-gold-200 transition-colors"
               >
-                ✕ Clear
+                {noteText ? "Edit" : "Add note"}
               </button>
-            )}
-          </div>
+              {noteText && (
+                <button
+                  onClick={handleClear}
+                  disabled={updateNote.isPending}
+                  className="px-2 py-1.5 rounded text-xs bg-ink-700 hover:bg-red-600/30
+                             text-red-400 hover:text-red-300 transition-colors disabled:opacity-50"
+                  title="Clear note"
+                >
+                  ✕ Clear
+                </button>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>
