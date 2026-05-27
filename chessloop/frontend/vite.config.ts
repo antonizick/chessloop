@@ -11,7 +11,13 @@ export default defineConfig({
     port: 8090,
     strictPort: true,
     host: true,
-    allowedHosts: ['.ts.net'],        // ← Added for Tailscale Funnel
+    allowedHosts: ['.ts.net'],        // Allow Tailscale Funnel access
+    hmr: {
+      // Allow HMR connections from both localhost and Tailscale
+      // Vite auto-detects the host from the browser request
+      host: undefined,
+      protocol: 'ws',
+    },
     proxy: {
       "/api": {
         target: "http://localhost:8100",
