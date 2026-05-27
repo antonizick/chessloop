@@ -97,3 +97,27 @@ def delete_backup(session: Session, backup: Backup) -> None:
         p.unlink()
     session.delete(backup)
     session.commit()
+
+
+def restore_backup(backup: Backup) -> None:
+    src = Path(backup.file_path)
+    if not src.exists():
+        raise FileNotFoundError(f"Backup file missing: {src}")
+
+    dst = _db_path()
+
+    # WAL checkpoint the backup source first to ensure consistent snapshot
+    src_conn = sqlite3.connect(str(src))
+    try:
+        src_conn.execute("PRAGMA wal_checkpoint(FULL)")
+    finally:
+        src_conn.close()
+
+    # Use SQLite's online backup API to safely overwrite live DB
+    src_conn = sqlite3.connect(str(src))
+    dst_conn = sqlite3.connect(str(dst))
+    try:
+        src_conn.backup(dst_conn)
+    finally:
+        src_conn.close()
+        dst_conn.close()

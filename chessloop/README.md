@@ -6,6 +6,30 @@ Self-hosted, move-based spaced-repetition chess opening trainer.
 
 ---
 
+## 🚀 Quick Deploy
+
+Deploy to a fresh Ubuntu/Debian server in one command:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/antonizick/chessloop/main/deploy.sh | bash
+```
+
+The script automatically:
+- Installs Docker and Docker Compose
+- Clones the repository
+- Generates a JWT secret
+- Prompts for configuration (port, domain)
+- Starts all services
+- Sets up autostart on boot via systemd
+
+After deploy, access ChessLoop at `http://your-server-ip:8090`, register an account, and promote yourself to admin. Full instructions are printed at the end of the deploy script.
+
+**For updates:** Re-run the same deploy command. It will pull the latest code and rebuild services.
+
+**For backups:** Use the Admin panel → Database backups to create, download, and restore backups without downtime.
+
+---
+
 ## What it does
 
 ChessLoop lets you teach it your opening repertoire by playing moves on a board, then drills you back with intelligent spaced-repetition scheduling. The core loop:

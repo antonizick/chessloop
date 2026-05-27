@@ -39,6 +39,8 @@ const adminApi = {
   listBackups: () => api<BackupEntry[]>("/admin/backups"),
   createBackup: (name: string, type: string) =>
     api<BackupEntry>("/admin/backups", { method: "POST", body: JSON.stringify({ name, type }) }),
+  restoreBackup: (id: string) =>
+    api<{ status: string; name: string; message: string }>(`/admin/backups/${id}/restore`, { method: "POST" }),
   deleteBackup: (id: string) =>
     api<void>(`/admin/backups/${id}`, { method: "DELETE" }),
   downloadUrl: (id: string) => `/api/admin/backups/${id}/download`,
@@ -89,6 +91,14 @@ function BackupsSection() {
       setCreateErr(null);
     },
     onError: (e: any) => setCreateErr(e.message ?? "Failed to create backup"),
+  });
+
+  const restoreMut = useMutation({
+    mutationFn: (id: string) => adminApi.restoreBackup(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-backups"] });
+      setTimeout(() => window.location.reload(), 1500);
+    },
   });
 
   const deleteMut = useMutation({
@@ -163,6 +173,18 @@ function BackupsSection() {
                   <td className="py-2 pr-4 text-ink-400 text-xs">{fmtDate(b.created_at)}</td>
                   <td className="py-2">
                     <div className="flex items-center gap-2 justify-end">
+                      <button
+                        className="btn-ghost text-xs px-2 py-1"
+                        onClick={() => {
+                          if (window.confirm(`Restore this backup? This will replace ALL current data with the contents of '${b.name}'. This cannot be undone.`)) {
+                            restoreMut.mutate(b.id);
+                          }
+                        }}
+                        disabled={restoreMut.isPending}
+                        title="Restore from backup"
+                      >
+                        {restoreMut.isPending ? "Restoring…" : "⟲ Restore"}
+                      </button>
                       <a
                         href={adminApi.downloadUrl(b.id)}
                         className="btn-ghost text-xs px-2 py-1"

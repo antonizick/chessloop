@@ -317,6 +317,25 @@ def download_backup(
     )
 
 
+@router.post("/backups/{backup_id}/restore", status_code=status.HTTP_200_OK)
+def restore_backup(
+    backup_id: UUID,
+    session: Session = Depends(get_session),
+    _: User = Depends(require_admin),
+):
+    backup = session.get(Backup, backup_id)
+    if not backup:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Backup not found")
+    path = backup_service.get_backup_path(backup)
+    if not path.exists():
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Backup file missing on disk")
+    try:
+        backup_service.restore_backup(backup)
+    except Exception as e:
+        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, f"Restore failed: {e}")
+    return {"status": "restored", "name": backup.name, "message": "Restore complete. Reload the page to see updated data."}
+
+
 @router.delete("/backups/{backup_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_backup(
     backup_id: UUID,
