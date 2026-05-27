@@ -3,6 +3,50 @@
 @import "chessground/assets/chessground.cburnett.css";
 
 /* ═══════════════════════════════════════════════════════════
+   THEME COLOR VARIABLES — CSS custom properties for dark/light
+   ═══════════════════════════════════════════════════════════ */
+
+:root {
+  /* Dark theme (default) */
+  --color-ink-900: 10 10 11;
+  --color-ink-800: 18 18 21;
+  --color-ink-700: 26 26 31;
+  --color-ink-600: 38 38 48;
+  --color-ink-500: 58 58 71;
+  --color-ink-400: 90 90 107;
+  --color-ink-300: 139 139 156;
+  --color-ink-200: 196 196 208;
+  --color-ink-100: 232 232 238;
+
+  --color-gold-900: 58 44 8;
+  --color-gold-700: 122 91 20;
+  --color-gold-500: 199 154 45;
+  --color-gold-400: 212 175 68;
+  --color-gold-300: 229 196 102;
+  --color-gold-200: 240 217 154;
+}
+
+html.light-theme {
+  /* Light theme */
+  --color-ink-900: 245 245 247;
+  --color-ink-800: 255 255 255;
+  --color-ink-700: 242 242 247;
+  --color-ink-600: 230 230 240;
+  --color-ink-500: 200 200 215;
+  --color-ink-400: 120 120 140;
+  --color-ink-300: 100 100 120;
+  --color-ink-200: 60 60 80;
+  --color-ink-100: 20 20 30;
+
+  --color-gold-900: 255 250 220;
+  --color-gold-700: 220 180 80;
+  --color-gold-500: 199 154 45;
+  --color-gold-400: 180 140 30;
+  --color-gold-300: 160 120 20;
+  --color-gold-200: 140 100 10;
+}
+
+/* ═══════════════════════════════════════════════════════════
    BOARD THEMES — applied via .board-theme-{name} on cg-wrap
    The brown theme comes from chessground.brown.css (default).
    All others override cg-board background-color / background-image.

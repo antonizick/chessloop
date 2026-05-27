@@ -45,6 +45,7 @@ class RefreshRequest(BaseModel):
 
 
 class PreferencesRequest(BaseModel):
+    theme: Optional[str] = None
     piece_set: Optional[str] = None
     board_theme: Optional[str] = None
     sounds_on: Optional[bool] = None

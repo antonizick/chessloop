@@ -141,6 +141,7 @@ def mfa_confirm(
     session.commit()
 
 
+_VALID_THEMES = {"dark", "light"}
 _VALID_PIECE_SETS = {"cburnett", "alpha", "mono", "shadow"}
 _VALID_BOARD_THEMES = {"brown", "blue", "green", "ice", "purple"}
 
@@ -151,6 +152,10 @@ def update_preferences(
     user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
 ):
+    if body.theme is not None:
+        if body.theme not in _VALID_THEMES:
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, f"Invalid theme. Choose from: {', '.join(_VALID_THEMES)}")
+        user.theme = body.theme
     if body.piece_set is not None:
         if body.piece_set not in _VALID_PIECE_SETS:
             raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, f"Invalid piece_set. Choose from: {', '.join(_VALID_PIECE_SETS)}")

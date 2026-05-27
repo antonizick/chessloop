@@ -3,6 +3,15 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import { useAuthStore } from "@/stores/auth";
 import { api } from "@/api/client";
 import { Layout } from "@/components/layout/Layout";
+
+function applyTheme(themeName: string | undefined) {
+  const html = document.documentElement;
+  if (themeName === "light") {
+    html.classList.add("light-theme");
+  } else {
+    html.classList.remove("light-theme");
+  }
+}
 import { Login } from "@/pages/Login";
 import { Register } from "@/pages/Register";
 import { Dashboard } from "@/pages/Dashboard";
@@ -21,13 +30,23 @@ import { Admin } from "@/pages/Admin";
 
 function RequireAuth({ children }: { children: JSX.Element }) {
   const token = useAuthStore((s) => s.accessToken);
+  const user = useAuthStore((s) => s.user);
   const setUser = useAuthStore((s) => s.setUser);
 
   useEffect(() => {
     if (token && !useAuthStore.getState().user) {
-      api("/auth/me").then(setUser).catch(() => {});
+      api("/auth/me").then((userData) => {
+        setUser(userData);
+        applyTheme(userData.theme);
+      }).catch(() => {});
     }
   }, [token, setUser]);
+
+  useEffect(() => {
+    if (user) {
+      applyTheme(user.theme);
+    }
+  }, [user?.theme]);
 
   if (!token) return <Navigate to="/login" replace />;
   return children;

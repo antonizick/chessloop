@@ -1,10 +1,38 @@
 import { Link, useNavigate } from "react-router-dom";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuthStore } from "@/stores/auth";
+import { authApi } from "@/api/auth";
+
+function applyTheme(themeName: string) {
+  const html = document.documentElement;
+  if (themeName === "light") {
+    html.classList.add("light-theme");
+  } else {
+    html.classList.remove("light-theme");
+  }
+}
 
 export function Topbar() {
   const user = useAuthStore((s) => s.user);
+  const setUser = useAuthStore((s) => s.setUser);
   const logout = useAuthStore((s) => s.logout);
   const navigate = useNavigate();
+  const qc = useQueryClient();
+
+  const updateTheme = useMutation({
+    mutationFn: (theme: string) =>
+      authApi.updatePreferences({ theme }),
+    onSuccess: (updatedUser) => {
+      setUser(updatedUser);
+      applyTheme(updatedUser.theme);
+      qc.invalidateQueries({ queryKey: ["me"] });
+    },
+  });
+
+  const toggleTheme = () => {
+    const newTheme = user?.theme === "light" ? "dark" : "light";
+    updateTheme.mutate(newTheme);
+  };
 
   return (
     <header className="border-b border-ink-700 bg-ink-800/60 backdrop-blur">
@@ -21,6 +49,14 @@ export function Topbar() {
                 className="text-ink-300 hover:text-gold-400 cursor-pointer transition-colors"
               >
                 {user.username}
+              </button>
+              <button
+                onClick={toggleTheme}
+                disabled={updateTheme.isPending}
+                className="text-ink-400 hover:text-ink-200 transition-colors"
+                title={`Switch to ${user.theme === "light" ? "dark" : "light"} theme`}
+              >
+                {user.theme === "light" ? "☀️" : "🌙"}
               </button>
               <button
                 className="btn-ghost text-xs"

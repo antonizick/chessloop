@@ -6,6 +6,11 @@ import { ChessboardWrapper } from "@/components/board/ChessboardWrapper";
 
 // ── Option lists ──────────────────────────────────────────────────────────────
 
+const APP_THEMES = [
+  { value: "dark",  label: "Dark",  desc: "Deep ink-black with gold accents" },
+  { value: "light", label: "Light", desc: "Bright background with dark text" },
+] as const;
+
 const BOARD_THEMES = [
   { value: "brown",  label: "Brown",  desc: "Classic walnut — the Lichess default" },
   { value: "blue",   label: "Blue",   desc: "Slate blue-grey — easy on the eyes" },
@@ -62,7 +67,8 @@ export function Settings() {
 
   // ── Preferences ────────────────────────────────────────────────────────────
 
-  // Local optimistic state for instant board preview
+  // Local optimistic state for instant preview
+  const [localTheme,      setLocalTheme]      = useState<string>(user?.theme       ?? "dark");
   const [localBoardTheme, setLocalBoardTheme] = useState<string>(user?.board_theme ?? "brown");
   const [localPieceSet,   setLocalPieceSet]   = useState<string>(user?.piece_set   ?? "cburnett");
   const [localSoundsOn,   setLocalSoundsOn]   = useState<boolean>(user?.sounds_on  ?? true);
@@ -80,10 +86,22 @@ export function Settings() {
 
   function savePreferences() {
     updatePrefs.mutate({
+      theme: localTheme,
       board_theme: localBoardTheme,
       piece_set: localPieceSet,
       sounds_on: localSoundsOn,
     });
+    // Apply theme immediately to root element
+    applyTheme(localTheme);
+  }
+
+  function applyTheme(themeName: string) {
+    const html = document.documentElement;
+    if (themeName === "light") {
+      html.classList.add("light-theme");
+    } else {
+      html.classList.remove("light-theme");
+    }
   }
 
   return (
@@ -100,6 +118,30 @@ export function Settings() {
           <dt className="text-ink-300">MFA</dt>
           <dd>{me?.mfa_enabled ? "Enabled" : "Disabled"}</dd>
         </dl>
+      </div>
+
+      {/* ── App theme ─────────────────────────────────────────────────────── */}
+      <div className="card flex flex-col gap-5">
+        <h2>App theme</h2>
+        <div>
+          <label className="label">Theme</label>
+          <div className="grid grid-cols-2 gap-2 mt-1">
+            {APP_THEMES.map((t) => (
+              <button
+                key={t.value}
+                onClick={() => setLocalTheme(t.value)}
+                className={`rounded-md border p-2.5 text-left text-sm transition-colors ${
+                  localTheme === t.value
+                    ? "border-gold-500 bg-gold-500/10 text-gold-300"
+                    : "border-ink-600 text-ink-300 hover:border-ink-400"
+                }`}
+              >
+                <div className="font-medium">{t.label}</div>
+                <div className="text-xs text-ink-500 mt-0.5">{t.desc}</div>
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* ── Board appearance ──────────────────────────────────────────────── */}
