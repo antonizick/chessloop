@@ -31,6 +31,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { Chess } from "chess.js";
 import type { Api } from "chessground/api";
 import type { Key } from "chessground/types";
@@ -123,6 +124,13 @@ export function PracticeBoard() {
   const isUnrated = location.pathname === "/practice/unrated";
 
   const { data: user = useAuthStore.getState().user } = useCurrentUser();
+
+  const { data: dueCount } = useQuery({
+    queryKey: ["due-count"],
+    queryFn: () => practiceApi.dueCount(),
+    staleTime: 60_000,
+    refetchOnMount: true,
+  });
 
   const soundsOn = user?.sounds_on ?? true;
   const boardTheme = user?.board_theme ?? "brown";
@@ -280,6 +288,12 @@ export function PracticeBoard() {
   // ── Start session ──────────────────────────────────────────────────────────
 
   async function startSession({ mode: uiMode, startPosition }: PracticeOptions) {
+    // Prevent starting leech_drill if no leeches are available
+    if (uiMode === "leech_drill" && (dueCount?.leeches ?? 0) === 0) {
+      setError("No leeches yet! Miss a position 4 times to promote it to leech status, then come back.");
+      return;
+    }
+
     setMode(uiMode);
     setError(null);
     setRunningStats({ correct: 0, wrong: 0, positions_seen: 0 });
@@ -755,7 +769,7 @@ export function PracticeBoard() {
 
       {/* ── Mode entry (shown when phase === "entry") ── */}
       {phase === "entry" && (
-        <ModeEntry onStart={startSession} isLoading={false} error={error} isUnrated={isUnrated} />
+        <ModeEntry onStart={startSession} isLoading={false} error={error} isUnrated={isUnrated} leechCount={dueCount?.leeches ?? 0} />
       )}
 
       {/* ── Session summary (shown when phase === "done") ── */}

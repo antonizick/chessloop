@@ -1,7 +1,7 @@
 # ChessLoop — Design & Implementation Plan
 
-> Last updated: 2026-05-25
-> Status: Phase 5 complete — all phases done ✅
+> Last updated: 2026-05-27
+> Status: Phase 5 complete ✅ — ongoing refinements & improvements
 
 ---
 
@@ -793,6 +793,45 @@ chessloop/
 - `backend/services/opening_import.py` — modified `import_opening()` function to auto-load GitHub lines
 
 **Result:** Opening imports are now fully automated — when a library is created, all available opening lines from the Lichess GitHub repository are loaded immediately.
+
+### Practice Mode UI Enhancement & Leech Count Fix (2026-05-27)
+
+**Feature:** Improved practice mode entry screen with better UX for disabled states and hover tooltips
+
+**Implementation:**
+
+1. **Shared Tooltip Component** — `frontend/src/components/ui/Tooltip.tsx` (NEW)
+   - Reusable hover tooltip that displays absolutely-positioned bubble above element
+   - Styled with dark ink palette and CSS triangle caret pointing downward
+   - Supports disabled state (greyed out with reduced opacity)
+   - Allows tooltips to show even on disabled elements for contextual explanations
+
+2. **Mode Entry Improvements** — `frontend/src/components/practice/ModeEntry.tsx`
+   - Added `leechCount` prop from parent to enable conditional disabling
+   - Wrapped all session mode cards in `<Tooltip>` components with detailed descriptions
+   - Wrapped all "where to start" segment buttons in `<Tooltip>` components
+   - Added `disabled` prop to mode cards when `leechCount === 0` for Leech Drill
+   - Greyed out disabled cards with `opacity-50 cursor-not-allowed` styling
+   - Disabled Leech Drill card shows tooltip: "You don't have any leeches yet. A 'leech' is a position you've missed 4+ times. When you reach 4 misses on any position, it will be marked as a leech and you can come back to drill it here."
+
+3. **Practice Board Integration** — `frontend/src/pages/PracticeBoard.tsx`
+   - Added `useQuery` hook to fetch due-count data (with `refetchOnMount: true`)
+   - Passes `leechCount={dueCount?.leeches ?? 0}` prop to `<ModeEntry>`
+   - Added validation in `startSession()` to prevent starting leech_drill mode with zero leeches
+   - Shows user-friendly error message if attempt is made
+
+4. **Backend Leech Count Fix** — `backend/routers/practice.py` (lines 298-324)
+   - **Root issue:** `/due-count` endpoint was counting leeches from ALL libraries, not respecting active-library filter
+   - **Fix:** Updated query to only count `PracticePosition` records from active libraries via chain: `PracticePosition` → `Line.library_id` → filter by `Library.is_active == True`
+   - **Impact:** Now correctly reflects leech count visible to user in their active practice set
+
+**Files modified:**
+- `frontend/src/components/ui/Tooltip.tsx` — NEW shared component
+- `frontend/src/components/practice/ModeEntry.tsx` — added leechCount prop, tooltip wrappers, disabled state logic
+- `frontend/src/pages/PracticeBoard.tsx` — added due-count query, validation, leechCount prop pass-through
+- `backend/routers/practice.py` — fixed active-library filtering in due-count endpoint
+
+**Result:** Users now see clear visual feedback (greyed-out with explanatory tooltip) when Leech Drill is unavailable, reducing confusion. All practice modes and start-position options have hover tooltips for discoverability. Backend now correctly counts only leeches from active libraries.
 
 ---
 

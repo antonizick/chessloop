@@ -301,8 +301,21 @@ def due_count(
     db: Session = Depends(get_session),
 ):
     now = datetime.utcnow()
+    # Only count positions from active libraries
     all_pos = db.exec(
-        select(PracticePosition).where(PracticePosition.user_id == user.id)
+        select(PracticePosition).where(
+            PracticePosition.user_id == user.id,
+            PracticePosition.line_id.in_(
+                select(Line.id).where(
+                    Line.library_id.in_(
+                        select(Library.id).where(
+                            Library.owner_user_id == user.id,
+                            Library.is_active == True,  # noqa: E712
+                        )
+                    )
+                )
+            ),
+        )
     ).all()
     return DueCountResponse(
         count=sum(1 for p in all_pos if p.due_at <= now),
