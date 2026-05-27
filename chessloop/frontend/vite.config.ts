@@ -16,7 +16,7 @@ export default defineConfig({
       // Allow HMR connections from both localhost and Tailscale
       // Vite auto-detects the host from the browser request
       host: undefined,
-      protocol: 'ws',
+      protocol: 'auto',
     },
     proxy: {
       "/api": {

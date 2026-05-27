@@ -29,7 +29,6 @@
  *   done           → session summary shown, board invisible
  */
 
-import { flushSync } from "react-dom";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { Chess } from "chess.js";
@@ -726,13 +725,8 @@ export function PracticeBoard() {
     const originalOrientation = orientation;
     const flippedOrientation = orientation === "white" ? "black" : "white";
 
-    // Use flushSync to batch state updates and minimize flickering
-    flushSync(() => {
-      setOrientation(flippedOrientation);
-    });
-
-    // Immediately flip back
-    flushSync(() => {
+    setOrientation(flippedOrientation);
+    Promise.resolve().then(() => {
       setOrientation(originalOrientation);
     });
   }, [isActive, phase]);
