@@ -1,7 +1,7 @@
 # ChessLoop — Design & Implementation Plan
 
 > Last updated: 2026-05-27
-> Status: Phase 5 complete ✅ — UI/UX refinements complete, accuracy trending added
+> Status: Phase 5+ in progress — Theme system with dark/light modes added
 
 ---
 
@@ -903,3 +903,182 @@ This enables the development environment to work seamlessly over VPN, allowing N
 - Access ChessLoop through Tailscale from anywhere
 - Use full development server with HMR across different network interfaces
 - Work with localhost and production-like HTTPS configurations simultaneously
+
+---
+
+## 15. Dark/Light Theme System (2026-05-27)
+
+### Overview
+Implemented a user-selectable theme system with two modes (dark and light) that persist to each user's account and sync across all devices and sessions. The dark theme is the default for new accounts.
+
+### Design Goals
+- **Default to dark:** New accounts start with dark theme (matches existing design)
+- **Persistent:** Theme preference stored in database, applies across all logins
+- **Pervasive:** Affects all UI elements (fonts, backgrounds, buttons, cards, borders)
+- **Quick toggle:** Theme toggle icon (🌙/☀️) in topbar for friction-free switching
+- **Maintainable:** CSS custom properties system for easy future color adjustments
+
+### Architecture
+
+**Database Layer:**
+- User model already had `theme: str = Field(default="dark")` field
+- No schema migration needed; field always existed
+
+**Backend (API):**
+- `PreferencesRequest` schema updated to include optional `theme` field
+- `auth.py` validates theme ∈ {dark, light}, rejects invalid values with clear error
+- `PATCH /auth/preferences` endpoint now handles theme updates alongside piece_set, board_theme, sounds_on
+- Theme change returns full user object with updated theme
+
+**Frontend (Styling):**
+- `index.css` defines CSS custom properties:
+  - `:root` (dark theme defaults): `--color-ink-900` through `--color-ink-100`, `--color-gold-*`
+  - `html.light-theme` (light overrides): invert ink colors, adjust gold palette for light backgrounds
+- `tailwind.config.ts` switched from hardcoded hex colors to `rgb(var(--color-ink-900))` pattern
+- All color utilities now dynamically resolve at runtime
+
+**Frontend (UI):**
+- `App.tsx` exports `applyTheme(themeName)` function that toggles `light-theme` class on `<html>`
+- RequireAuth hook watches `user.theme` and applies theme on login
+- Theme class applied immediately on preference update
+
+**Settings Page:**
+- New "App theme" section above "Board appearance"
+- Two buttons: Dark (ink background, gold accents) and Light (cream background, darker accents)
+- Clicking a theme button updates local state, live-previews the theme
+- "Save preferences" button sends theme to API
+- Success message confirms save
+
+**Topbar Enhancement:**
+- Theme toggle button added between username and logout
+- Icon displays 🌙 (moon) when dark, ☀️ (sun) when light
+- Clicking toggles theme immediately and persists to database
+- Button disabled during API call to prevent double-clicks
+- Tooltip on hover shows which theme will be activated
+
+### Implementation Details
+
+**Color Palette (CSS Variables):**
+
+**Dark Theme (default):**
+```
+--color-ink-900: 10 10 11    (near black)
+--color-ink-800: 18 18 21    (dark charcoal)
+--color-ink-700: 26 26 31    (charcoal)
+--color-ink-600: 38 38 48    (dark grey)
+--color-ink-500: 58 58 71    (grey)
+--color-ink-400: 90 90 107   (medium grey)
+--color-ink-300: 139 139 156 (light grey)
+--color-ink-200: 196 196 208 (lighter grey)
+--color-ink-100: 232 232 238 (off-white)
+
+--color-gold-900: 58 44 8    (dark gold)
+--color-gold-700: 122 91 20  (medium gold)
+--color-gold-500: 199 154 45 (gold)
+--color-gold-400: 212 175 68 (bright gold)
+--color-gold-300: 229 196 102 (light gold)
+--color-gold-200: 240 217 154 (very light gold)
+```
+
+**Light Theme:**
+```
+--color-ink-900: 245 245 247 (off-white background)
+--color-ink-800: 255 255 255 (white)
+--color-ink-700: 242 242 247 (very light grey)
+--color-ink-600: 230 230 240 (light grey)
+--color-ink-500: 200 200 215 (medium grey)
+--color-ink-400: 120 120 140 (darker grey)
+--color-ink-300: 100 100 120 (dark grey)
+--color-ink-200: 60 60 80    (darker grey)
+--color-ink-100: 20 20 30    (near black text)
+
+--color-gold-900: 255 250 220 (light gold bg)
+--color-gold-700: 220 180 80  (medium-dark gold)
+--color-gold-500: 199 154 45  (standard gold)
+--color-gold-400: 180 140 30  (darker gold)
+--color-gold-300: 160 120 20  (dark gold)
+--color-gold-200: 140 100 10  (very dark gold)
+```
+
+### Files Modified
+
+1. **backend/routers/auth.py**
+   - Added `_VALID_THEMES = {"dark", "light"}`
+   - Updated `update_preferences()` to handle theme parameter and validation
+
+2. **backend/schemas/auth.py**
+   - Added `theme: Optional[str] = None` to PreferencesRequest
+
+3. **frontend/src/index.css**
+   - Added CSS custom property definitions for both dark and light themes
+   - `:root` sets dark theme defaults
+   - `html.light-theme` overrides for light mode
+
+4. **frontend/tailwind.config.ts**
+   - Changed all hardcoded colors to use `rgb(var(--color-*))`
+   - Box shadow glow also uses CSS variables
+
+5. **frontend/src/App.tsx**
+   - Added `applyTheme()` function to toggle light-theme class
+   - RequireAuth hook calls applyTheme on user load
+   - useEffect watches user.theme and reapplies on change
+
+6. **frontend/src/api/auth.ts**
+   - Updated updatePreferences() signature to include theme parameter
+
+7. **frontend/src/pages/Settings.tsx**
+   - Added APP_THEMES constant with Dark/Light options
+   - Added theme selector UI in "App theme" card
+   - Integrated theme into savePreferences() mutation
+   - Calls applyTheme() immediately on theme change
+
+8. **frontend/src/components/layout/Topbar.tsx**
+   - Imported useMutation, useQueryClient, authApi
+   - Added applyTheme() function
+   - Created updateTheme mutation for theme changes
+   - Added theme toggle button with moon/sun icons
+   - Button disabled during API call
+
+### User Flow
+
+1. **New User:** Registers → defaults to dark theme
+2. **Switch to Light (Settings):**
+   - Navigate to Settings
+   - Click "Light" button in "App theme" section
+   - See live preview of light theme
+   - Click "Save preferences"
+   - Success confirmation appears
+   - Theme persists across refresh/logout/login
+3. **Switch to Dark (Topbar):**
+   - Click ☀️ icon in topbar (when in light mode)
+   - Theme toggles to dark immediately
+   - Preference saved automatically to database
+4. **Cross-Device:** Log in on another device → theme automatically applies
+
+### Testing & Verification
+
+**API Tests:**
+- ✅ New users default to dark theme
+- ✅ Theme update via PATCH /auth/preferences
+- ✅ Theme persists in database
+- ✅ Invalid theme rejected with validation error
+
+**Frontend Tests:**
+- ✅ CSS variables properly defined
+- ✅ Theme class applied to HTML element
+- ✅ Settings UI with theme selector
+- ✅ Topbar toggle icon (🌙/☀️) displays correctly
+- ✅ Theme persists across page refreshes
+- ✅ Theme applies on login via App.tsx
+
+### Future Enhancements
+- Auto-detect system theme preference (prefers-color-scheme) on first login
+- Per-board theme override for color-blind accessibility
+- More theme variants (sepia, high-contrast, etc.)
+- Theme transition animations (smooth color fade)
+
+### Commit
+```
+135644f feat: Add dark/light theme system with persistent user preferences
+```
+
