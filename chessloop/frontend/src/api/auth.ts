@@ -18,6 +18,6 @@ export const authApi = {
   mfaConfirm: (totp_code: string) =>
     api<void>("/auth/mfa/confirm", { method: "POST", body: JSON.stringify({ totp_code }) }),
 
-  updatePreferences: (body: { theme?: string; piece_set?: string; board_theme?: string; sounds_on?: boolean; tts_enabled?: boolean; tts_voice?: string }) =>
+  updatePreferences: (body: { theme?: string; piece_set?: string; board_theme?: string; sounds_on?: boolean; tts_enabled?: boolean; tts_voice?: string; boost_visibility?: boolean }) =>
     api<User>("/auth/preferences", { method: "PATCH", body: JSON.stringify(body) }),
 };

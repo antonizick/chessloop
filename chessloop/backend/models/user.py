@@ -18,5 +18,6 @@ class User(SQLModel, table=True):
     sounds_on: bool = True
     tts_enabled: bool = True
     tts_voice: str = Field(default="Microsoft Zira")
+    boost_visibility: bool = False
     created_at: datetime = Field(default_factory=datetime.utcnow)
     last_login: Optional[datetime] = None

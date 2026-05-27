@@ -10,6 +10,7 @@ export interface User {
   sounds_on: boolean;
   tts_enabled: boolean;
   tts_voice: string;
+  boost_visibility: boolean;
   created_at: string;
   last_login: string | null;
 }

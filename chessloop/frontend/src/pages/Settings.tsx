@@ -86,12 +86,13 @@ export function Settings() {
   // ── Preferences ────────────────────────────────────────────────────────────
 
   // Local optimistic state for instant preview
-  const [localTheme,      setLocalTheme]      = useState<string>(user?.theme       ?? "dark");
-  const [localBoardTheme, setLocalBoardTheme] = useState<string>(user?.board_theme ?? "brown");
-  const [localPieceSet,   setLocalPieceSet]   = useState<string>(user?.piece_set   ?? "cburnett");
-  const [localSoundsOn,   setLocalSoundsOn]   = useState<boolean>(user?.sounds_on  ?? true);
-  const [localTtsEnabled, setLocalTtsEnabled] = useState<boolean>(user?.tts_enabled ?? true);
-  const [localTtsVoice,   setLocalTtsVoice]   = useState<string>(user?.tts_voice   ?? "Microsoft Zira");
+  const [localTheme,         setLocalTheme]         = useState<string>(user?.theme              ?? "dark");
+  const [localBoardTheme,    setLocalBoardTheme]    = useState<string>(user?.board_theme        ?? "brown");
+  const [localPieceSet,      setLocalPieceSet]      = useState<string>(user?.piece_set          ?? "cburnett");
+  const [localSoundsOn,      setLocalSoundsOn]      = useState<boolean>(user?.sounds_on         ?? true);
+  const [localTtsEnabled,    setLocalTtsEnabled]    = useState<boolean>(user?.tts_enabled       ?? true);
+  const [localTtsVoice,      setLocalTtsVoice]      = useState<string>(user?.tts_voice          ?? "Microsoft Zira");
+  const [localBoostVisibility, setLocalBoostVisibility] = useState<boolean>(user?.boost_visibility ?? false);
   const [prefSaved, setPrefSaved] = useState(false);
   const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
 
@@ -113,12 +114,15 @@ export function Settings() {
       sounds_on: localSoundsOn,
       tts_enabled: localTtsEnabled,
       tts_voice: localTtsVoice,
+      boost_visibility: localBoostVisibility,
     });
     // Apply theme immediately to root element
     applyTheme(localTheme);
     // Update TTS service settings
     ttsService.setEnabled(localTtsEnabled);
     ttsService.setDefaultVoice(localTtsVoice);
+    // Apply boost visibility immediately
+    applyBoostVisibility(localBoostVisibility);
   }
 
   function applyTheme(themeName: string) {
@@ -128,6 +132,10 @@ export function Settings() {
     } else {
       html.classList.remove("light-theme");
     }
+  }
+
+  function applyBoostVisibility(on: boolean) {
+    document.documentElement.classList.toggle("boost-visibility", on);
   }
 
   return (
@@ -167,6 +175,28 @@ export function Settings() {
               </button>
             ))}
           </div>
+        </div>
+
+        {/* Boost Visibility */}
+        <div className="flex items-center justify-between py-1">
+          <div>
+            <div className="text-sm font-medium text-ink-100">Boost visibility</div>
+            <div className="text-xs text-ink-400 mt-0.5">Larger text, high-contrast labels on dark theme</div>
+          </div>
+          <button
+            onClick={() => setLocalBoostVisibility((v) => !v)}
+            className={`relative w-11 h-6 rounded-full transition-colors ${
+              localBoostVisibility ? "bg-gold-500" : "bg-ink-600"
+            }`}
+            role="switch"
+            aria-checked={localBoostVisibility}
+          >
+            <span
+              className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${
+                localBoostVisibility ? "translate-x-5" : "translate-x-0"
+              }`}
+            />
+          </button>
         </div>
       </div>
 

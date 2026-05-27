@@ -47,6 +47,20 @@ html.light-theme {
 }
 
 /* ═══════════════════════════════════════════════════════════
+   BOOST VISIBILITY — larger text + high contrast labels on dark
+   ═══════════════════════════════════════════════════════════ */
+
+html.boost-visibility {
+  font-size: 110%;
+}
+
+html.boost-visibility:not(.light-theme) {
+  --color-ink-300: 255 255 255;
+  --color-ink-400: 232 232 238;
+  --color-ink-500: 196 196 208;
+}
+
+/* ═══════════════════════════════════════════════════════════
    BOARD THEMES — applied via .board-theme-{name} on cg-wrap
    The brown theme comes from chessground.brown.css (default).
    All others override cg-board background-color / background-image.

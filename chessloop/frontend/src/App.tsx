@@ -12,6 +12,10 @@ function applyTheme(themeName: string | undefined) {
     html.classList.remove("light-theme");
   }
 }
+
+function applyBoostVisibility(on: boolean | undefined) {
+  document.documentElement.classList.toggle("boost-visibility", !!on);
+}
 import { Login } from "@/pages/Login";
 import { Register } from "@/pages/Register";
 import { Dashboard } from "@/pages/Dashboard";
@@ -38,6 +42,7 @@ function RequireAuth({ children }: { children: JSX.Element }) {
       api("/auth/me").then((userData) => {
         setUser(userData);
         applyTheme(userData.theme);
+        applyBoostVisibility(userData.boost_visibility);
       }).catch(() => {});
     }
   }, [token, setUser]);
@@ -45,8 +50,9 @@ function RequireAuth({ children }: { children: JSX.Element }) {
   useEffect(() => {
     if (user) {
       applyTheme(user.theme);
+      applyBoostVisibility(user.boost_visibility);
     }
-  }, [user?.theme]);
+  }, [user?.theme, user?.boost_visibility]);
 
   if (!token) return <Navigate to="/login" replace />;
   return children;

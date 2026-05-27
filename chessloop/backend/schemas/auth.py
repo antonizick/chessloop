@@ -51,6 +51,7 @@ class PreferencesRequest(BaseModel):
     sounds_on: Optional[bool] = None
     tts_enabled: Optional[bool] = None
     tts_voice: Optional[str] = None
+    boost_visibility: Optional[bool] = None
 
 
 class UserResponse(BaseModel):
@@ -65,5 +66,6 @@ class UserResponse(BaseModel):
     sounds_on: bool
     tts_enabled: bool
     tts_voice: str
+    boost_visibility: bool
     created_at: datetime
     last_login: Optional[datetime] = None

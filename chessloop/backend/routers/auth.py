@@ -170,6 +170,8 @@ def update_preferences(
         user.tts_enabled = body.tts_enabled
     if body.tts_voice is not None:
         user.tts_voice = body.tts_voice
+    if body.boost_visibility is not None:
+        user.boost_visibility = body.boost_visibility
     session.add(user)
     session.commit()
     session.refresh(user)
