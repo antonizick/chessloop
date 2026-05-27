@@ -89,7 +89,6 @@ function playTone(freq: number, durationSec: number, gainPeak: number, type: Osc
 export function playMoveSound(enabled = true): void {
   if (!enabled) return;
   try {
-    const ctx = getAudioContext();
     playNoiseBurst(0.08, 0.6, 1800, 1);
   } catch (e) {
     console.error("playMoveSound error:", e);

@@ -138,6 +138,12 @@ export function Settings() {
     document.documentElement.classList.toggle("boost-visibility", on);
   }
 
+  function toggleBoostVisibility(newValue: boolean) {
+    setLocalBoostVisibility(newValue);
+    updatePrefs.mutate({ boost_visibility: newValue });
+    applyBoostVisibility(newValue);
+  }
+
   return (
     <div className="flex flex-col gap-6 max-w-2xl">
       <h1>Settings</h1>
@@ -184,7 +190,7 @@ export function Settings() {
             <div className="text-xs text-ink-400 mt-0.5">Larger text, high-contrast labels on dark theme</div>
           </div>
           <button
-            onClick={() => setLocalBoostVisibility((v) => !v)}
+            onClick={() => toggleBoostVisibility(!localBoostVisibility)}
             className={`relative w-11 h-6 rounded-full transition-colors ${
               localBoostVisibility ? "bg-gold-500" : "bg-ink-600"
             }`}

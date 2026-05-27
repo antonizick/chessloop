@@ -6,7 +6,6 @@ interface TTSOptions {
 
 class TextToSpeechService {
   private synth: SpeechSynthesis;
-  private currentUtterance: SpeechSynthesisUtterance | null = null;
   private isEnabled = true;
   private defaultVoice = "Microsoft Zira";
   private rate = 1;
@@ -54,14 +53,12 @@ class TextToSpeechService {
     utterance.rate = options?.rate ?? this.rate;
     utterance.pitch = options?.pitch ?? this.pitch;
 
-    this.currentUtterance = utterance;
     this.synth.speak(utterance);
   }
 
   stop(): void {
     if (this.synth.speaking || this.synth.pending) {
       this.synth.cancel();
-      this.currentUtterance = null;
     }
   }
 

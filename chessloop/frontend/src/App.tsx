@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import { useAuthStore } from "@/stores/auth";
 import { api } from "@/api/client";
 import { Layout } from "@/components/layout/Layout";
+import type { User } from "@/types";
 
 function applyTheme(themeName: string | undefined) {
   const html = document.documentElement;
@@ -39,7 +40,7 @@ function RequireAuth({ children }: { children: JSX.Element }) {
 
   useEffect(() => {
     if (token && !useAuthStore.getState().user) {
-      api("/auth/me").then((userData) => {
+      api<User>("/auth/me").then((userData) => {
         setUser(userData);
         applyTheme(userData.theme);
         applyBoostVisibility(userData.boost_visibility);

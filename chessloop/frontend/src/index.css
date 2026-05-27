@@ -51,7 +51,7 @@ html.light-theme {
    ═══════════════════════════════════════════════════════════ */
 
 html.boost-visibility {
-  font-size: 110%;
+  font-size: 120%;
 }
 
 html.boost-visibility:not(.light-theme) {
