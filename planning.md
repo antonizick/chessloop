@@ -1,7 +1,7 @@
 # ChessLoop — Design & Implementation Plan
 
 > Last updated: 2026-05-27
-> Status: Phase 5+ in progress — Theme system with dark/light modes added
+> Status: Phase 5+ in progress — Practice session indicators + Learning/Teaching quick-access menu
 
 ---
 
@@ -512,6 +512,9 @@ is set before any network requests resolve, eliminating all timing races between
 - [x] Seed 16 official starter libraries (seed_libraries.py — SAN-only API, python-chess on backend)
 - [x] Docker Compose production config (docker-compose.prod.yml — 127.0.0.1 binding, health checks, SSL notes)
 - [x] README with full self-host guide (admin setup, seed script, SSL options A/B/C, backup instructions)
+- [x] Boost Visibility: larger fonts, high-contrast labels, auto-save on toggle
+- [x] Rated/Unrated practice indicators: distinct visual badges on practice screens
+- [x] Learning/Teaching quick-access menu: library selector modal for rapid access to learning and teaching screens
 
 **Phase 5 notes:**
 - Board themes: CSS classes on ChessboardWrapper container — `board-theme-{name}` overrides `cg-board` background

@@ -805,8 +805,13 @@ export function PracticeBoard() {
 
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
-          <div>
-            <h1>Practice</h1>
+          <div className="flex-1">
+            <div className="flex items-center gap-3">
+              <h1>{isUnrated ? "Unrated Practice" : "Rated Practice"}</h1>
+              <span className={`px-2 py-1 rounded text-xs font-semibold border ${isUnrated ? "bg-slate-500/20 text-slate-300 border-slate-500/30" : "bg-gold-500/20 text-gold-400 border-gold-500/30"}`}>
+                {isUnrated ? "Unrated" : "Rated"}
+              </span>
+            </div>
             <div className="flex flex-wrap items-center gap-2 text-sm text-ink-400 mt-0.5">
               {position && (
                 <>

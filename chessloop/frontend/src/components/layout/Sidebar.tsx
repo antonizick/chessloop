@@ -4,6 +4,8 @@ import { useQuery } from "@tanstack/react-query";
 import { librariesApi } from "@/api/libraries";
 import { practiceApi } from "@/api/practice";
 import { useAuthStore } from "@/stores/auth";
+import { Tooltip } from "@/components/ui/Tooltip";
+import { LibrarySelectorModal } from "@/components/layout/LibrarySelectorModal";
 
 export function Sidebar() {
   const user = useAuthStore((s) => s.user);
@@ -11,6 +13,7 @@ export function Sidebar() {
   const location = useLocation();
   const [showNav, setShowNav] = useState(true);
   const [showLibraries, setShowLibraries] = useState(true);
+  const [selectorMode, setSelectorMode] = useState<"learn" | "teach" | null>(null);
   const { data: libraries = [] } = useQuery({
     queryKey: ["libraries", token],
     queryFn: librariesApi.list,
@@ -52,7 +55,44 @@ export function Sidebar() {
         </button>
         {showNav && (
           <ul className="flex flex-col gap-1 text-sm">
-            {navItems.map((item) => (
+            {/* Home */}
+            <li>
+              <Link
+                to={navItems[0].path}
+                className={`flex items-center justify-between px-2 py-1.5 rounded transition-colors ${
+                  location.pathname === navItems[0].path || location.pathname.startsWith(navItems[0].path + "/")
+                    ? "bg-ink-700 text-gold-400"
+                    : "text-ink-200 hover:bg-ink-700"
+                }`}
+              >
+                <span>{navItems[0].label}</span>
+              </Link>
+            </li>
+
+            {/* Learning and Teaching menu items */}
+            <li>
+              <Tooltip text="Unrated browsing of opening lines to learn and internalize your opening repertoire.">
+                <button
+                  onClick={() => setSelectorMode("learn")}
+                  className="w-full text-left flex items-center px-2 py-1.5 rounded hover:bg-ink-700 text-ink-200 transition-colors"
+                >
+                  <span>📚 Learning</span>
+                </button>
+              </Tooltip>
+            </li>
+            <li>
+              <Tooltip text="Train, refine, add and edit opening lines in your opening libraries.">
+                <button
+                  onClick={() => setSelectorMode("teach")}
+                  className="w-full text-left flex items-center px-2 py-1.5 rounded hover:bg-ink-700 text-ink-200 transition-colors"
+                >
+                  <span>✏️ Teaching</span>
+                </button>
+              </Tooltip>
+            </li>
+
+            {/* Rest of nav items */}
+            {navItems.slice(1).map((item) => (
               <li key={item.path}>
                 <Link
                   to={item.path}
@@ -113,6 +153,15 @@ export function Sidebar() {
           </>
         )}
       </div>
+
+      {/* Library Selector Modal */}
+      {selectorMode && (
+        <LibrarySelectorModal
+          libraries={libraries || []}
+          onClose={() => setSelectorMode(null)}
+          mode={selectorMode}
+        />
+      )}
 
       {user?.role === "admin" && (
         <div className="mt-auto pt-4 border-t border-ink-700">
