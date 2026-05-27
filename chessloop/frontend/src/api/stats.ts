@@ -4,6 +4,9 @@ import type {
   MasteryResponse,
   LeechEntry,
   RecentSession,
+  AccuracyTrendResponse,
+  TrendGranularity,
+  TrendRange,
 } from "@/types";
 
 export const statsApi = {
@@ -11,4 +14,8 @@ export const statsApi = {
   mastery: () => api<MasteryResponse>("/stats/mastery"),
   leeches: () => api<LeechEntry[]>("/stats/leeches"),
   recentSessions: () => api<RecentSession[]>("/stats/recent-sessions"),
+  accuracyTrend: (days: TrendRange, granularity: TrendGranularity) =>
+    api<AccuracyTrendResponse>(
+      `/stats/accuracy-trend?days=${days}&granularity=${granularity}`
+    ),
 };

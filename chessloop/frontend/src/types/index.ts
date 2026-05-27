@@ -192,6 +192,31 @@ export interface RecentSession {
   positions_seen: number;
 }
 
+// ── Accuracy trend ────────────────────────────────────────────────────────────
+
+export interface TrendPoint {
+  date: string;
+  total: number;
+  correct: number;
+  accuracy: number;
+}
+
+export interface LibraryTrendSeries {
+  library_id: string;
+  library_name: string;
+  points: TrendPoint[];
+}
+
+export interface AccuracyTrendResponse {
+  series: LibraryTrendSeries[];
+  date_labels: string[];
+  granularity: "daily" | "weekly";
+  days: number;
+}
+
+export type TrendGranularity = "daily" | "weekly";
+export type TrendRange = 30 | 90 | 0;
+
 // ── Public ────────────────────────────────────────────────────────────────────
 
 export interface PublicLibraryEntry {

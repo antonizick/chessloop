@@ -47,3 +47,23 @@ class RecentSession(BaseModel):
     correct: int
     wrong: int
     positions_seen: int
+
+
+class TrendPoint(BaseModel):
+    date: str
+    total: int
+    correct: int
+    accuracy: float
+
+
+class LibraryTrendSeries(BaseModel):
+    library_id: str
+    library_name: str
+    points: list[TrendPoint]
+
+
+class AccuracyTrendResponse(BaseModel):
+    series: list[LibraryTrendSeries]
+    date_labels: list[str]
+    granularity: str
+    days: int
