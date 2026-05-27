@@ -85,25 +85,17 @@ function SegmentedControl<T extends string>({
   onChange: (v: T) => void;
 }) {
   return (
-    <div className="flex flex-col gap-1.5">
-      <div className="flex rounded-lg overflow-hidden border border-ink-700 gap-0">
-        {options.map((opt, i) => (
-          <div key={opt.id} className="flex-1">
-            <Tooltip text={opt.desc}>
-              <button
-                onClick={() => onChange(opt.id)}
-                className={[
-                  "w-full px-4 py-3 text-sm font-medium transition-all text-center",
-                  i > 0 ? "border-l border-ink-700" : "",
-                  value === opt.id
-                    ? "bg-gold-500 text-ink-900 font-semibold"
-                    : "text-ink-300 hover:text-ink-100 hover:bg-ink-700/30",
-                ].join(" ")}
-              >
-                {opt.label}
-              </button>
-            </Tooltip>
-          </div>
+    <div className="flex flex-col gap-2">
+      <div className="flex flex-wrap gap-2">
+        {options.map((opt) => (
+          <Tooltip key={opt.id} text={opt.desc} wide>
+            <button
+              onClick={() => onChange(opt.id)}
+              className={value === opt.id ? "btn-primary" : "btn-ghost"}
+            >
+              {opt.label}
+            </button>
+          </Tooltip>
         ))}
       </div>
       {options.find((o) => o.id === value) && (
@@ -186,9 +178,11 @@ export function ModeEntry({ onStart, isLoading, error, isUnrated = false, leechC
       {/* ── Starting position (hidden for leech_drill + all_active) ── */}
       {showStartPosition && (
         <div className="flex flex-col gap-2">
-          <label className="text-xs font-semibold text-ink-400 uppercase tracking-wide">
-            Where to Start in Each Line
-          </label>
+          <Tooltip text="Choose where you want to start practicing each line: from the opening moves, a random position mid-line, or a mix of both.">
+            <label className="text-xs font-semibold text-ink-400 uppercase tracking-wide cursor-help">
+              Where to Start in Each Line
+            </label>
+          </Tooltip>
           <SegmentedControl
             options={START_POSITIONS}
             value={startPosition}
