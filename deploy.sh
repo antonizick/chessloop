@@ -32,8 +32,8 @@ _read() { if [ "$_PIPED" -eq 1 ]; then read "$@" </dev/tty; else read "$@"; fi; 
 
 # ── Colors ────────────────────────────────────────────────────────────────
 if command -v tput &>/dev/null && tput colors &>/dev/null && [ "$(tput colors)" -ge 8 ]; then
-    R='\033[0;31m' G='\033[0;32m' Y='\033[1;33m'
-    C='\033[0;36m' DIM='\033[2m'  BOLD='\033[1m' RST='\033[0m'
+    R=$'\033[0;31m' G=$'\033[0;32m' Y=$'\033[1;33m'
+    C=$'\033[0;36m' DIM=$'\033[2m' BOLD=$'\033[1m' RST=$'\033[0m'
 else
     R='' G='' Y='' C='' DIM='' BOLD='' RST=''
 fi
@@ -50,14 +50,14 @@ OS=""
 OS_FAMILY=""
 
 # ── Logging helpers ───────────────────────────────────────────────────────
-info()    { echo -e "  ${C}→${RST}  $*"; }
-ok()      { echo -e "  ${G}✓${RST}  $*"; }
-warn()    { echo -e "  ${Y}⚠${RST}  $*"; }
+info()    { echo -e "  ${C}→${RST}  $*" >&2; }
+ok()      { echo -e "  ${G}✓${RST}  $*" >&2; }
+warn()    { echo -e "  ${Y}⚠${RST}  $*" >&2; }
 err()     { echo -e "  ${R}✗${RST}  $*" >&2; }
 fatal()   { err "$*"; exit 1; }
-header()  { echo -e "\n  ${C}${BOLD}$*${RST}\n  $(printf '─%.0s' {1..54})\n"; }
-sep()     { echo -e "  ${DIM}$(printf '─%.0s' {1..54})${RST}"; }
-blank()   { echo ""; }
+header()  { echo -e "\n  ${C}${BOLD}$*${RST}\n  $(printf '─%.0s' {1..54})\n" >&2; }
+sep()     { echo -e "  ${DIM}$(printf '─%.0s' {1..54})${RST}" >&2; }
+blank()   { echo "" >&2; }
 
 # ═══════════════════════════════════════════════════════════════════════════
 #  PLATFORM DETECTION
@@ -151,7 +151,7 @@ prompt_port() {
     local used_ports
     used_ports=$(list_used_ports 2>/dev/null || echo "")
     if [ -n "$used_ports" ]; then
-        echo -e "  ${DIM}  In use: $used_ports${RST}"
+        echo -e "  ${DIM}  In use: $used_ports${RST}" >&2
     fi
 
     local suggested
