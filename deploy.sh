@@ -374,8 +374,9 @@ setup_systemd() {
     local subdir="$1"
     header "Systemd autostart"
 
-    if ! command -v systemctl &>/dev/null; then
-        warn "systemd not found on this system — skipping autostart."
+    if ! command -v systemctl &>/dev/null || [ "$(cat /proc/1/comm 2>/dev/null)" != "systemd" ]; then
+        warn "systemd is not the init system on this machine — skipping autostart."
+        warn "Containers have restart=always set; they will auto-restart whenever Docker starts."
         return 0
     fi
 
@@ -434,7 +435,7 @@ print_summary() {
     echo -e "    http://$server_ip:$port"
     blank
     echo -e "  ${BOLD}First login:${RST}"
-    echo -e "    Username: ${BOLD}admin${RST}"
+    echo -e "    Email:    ${BOLD}admin@chessloop.local${RST}"
     echo -e "    Password: ${BOLD}admin${RST}"
     blank
     echo -e "  ${R}${BOLD}⚠  Change the default password immediately.${RST}"
@@ -630,7 +631,7 @@ from database import engine
 from sqlmodel import Session, select
 with Session(engine) as db:
     if not db.exec(select(User).where(User.username == 'admin')).first():
-        db.add(User(email='admin@localhost', username='admin',
+        db.add(User(email='admin@chessloop.local', username='admin',
                     password_hash=hash_password('admin'), role='admin'))
         db.commit()
 " 2>/dev/null; then
