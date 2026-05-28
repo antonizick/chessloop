@@ -623,18 +623,8 @@ do_install() {
 
     # ── Default admin account ─────────────────────────────────────────────
     header "Creating default admin account"
-    if $DOCKER_CMD compose -f docker-compose.prod.yml exec -T backend python -c "
-import models
-from models.user import User
-from auth.password import hash_password
-from database import engine
-from sqlmodel import Session, select
-with Session(engine) as db:
-    if not db.exec(select(User).where(User.username == 'admin')).first():
-        db.add(User(email='admin@example.com', username='admin',
-                    password_hash=hash_password('admin'), role='admin'))
-        db.commit()
-" 2>/dev/null; then
+    if $DOCKER_CMD compose -f docker-compose.prod.yml exec -T backend \
+            python seeds/create_admin.py; then
         ok "Admin account ready."
     else
         warn "Could not create admin account automatically — create one after login."
