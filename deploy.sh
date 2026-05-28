@@ -275,7 +275,20 @@ ensure_deps() {
                 DOCKER_CMD="sudo docker"
                 warn "Docker requires sudo for this user. Using sudo."
             else
-                fatal "Docker is installed but not accessible. Try: sudo systemctl start docker"
+                # Daemon not running — try to start it
+                info "Docker daemon not running. Attempting to start…"
+                if command -v systemctl &>/dev/null && systemctl --version &>/dev/null 2>&1 && [ "$(cat /proc/1/comm 2>/dev/null)" = "systemd" ]; then
+                    $SUDO systemctl start docker 2>/dev/null || true
+                elif command -v service &>/dev/null; then
+                    $SUDO service docker start 2>/dev/null || true
+                fi
+                # Re-check after start attempt
+                if sudo docker info &>/dev/null 2>&1; then
+                    DOCKER_CMD="sudo docker"
+                    warn "Docker requires sudo for this user. Using sudo."
+                else
+                    fatal "Docker daemon could not be started. On WSL2: sudo service docker start  |  On systemd: sudo systemctl start docker"
+                fi
             fi
         fi
     fi
