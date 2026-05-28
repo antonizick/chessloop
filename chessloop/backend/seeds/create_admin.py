@@ -20,8 +20,21 @@ USERNAME = "admin"
 PASSWORD = "admin"
 
 with Session(engine) as db:
-    if db.exec(select(User).where(User.username == USERNAME)).first():
-        print(f"Admin account already exists ({USERNAME})")
+    existing = db.exec(select(User).where(User.username == USERNAME)).first()
+    if existing:
+        changed = False
+        if existing.email != EMAIL:
+            existing.email = EMAIL
+            changed = True
+        if existing.role != "admin":
+            existing.role = "admin"
+            changed = True
+        if changed:
+            db.add(existing)
+            db.commit()
+            print(f"Admin account updated: email={EMAIL} role=admin")
+        else:
+            print(f"Admin account already correct ({EMAIL})")
     else:
         db.add(User(
             email=EMAIL,
