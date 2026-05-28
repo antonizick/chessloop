@@ -15,17 +15,6 @@
 # ═══════════════════════════════════════════════════════════════════════════
 set -euo pipefail
 
-# ── Interactive stdin fix (for curl | bash) ───────────────────────────────
-if [ ! -t 0 ]; then
-    if [ -e /dev/tty ]; then
-        exec < /dev/tty
-    else
-        echo "ERROR: This script requires an interactive terminal."
-        echo "       Run: bash deploy.sh   (not via pipe)"
-        exit 1
-    fi
-fi
-
 # ── Colors ────────────────────────────────────────────────────────────────
 if command -v tput &>/dev/null && tput colors &>/dev/null && [ "$(tput colors)" -ge 8 ]; then
     R='\033[0;31m' G='\033[0;32m' Y='\033[1;33m'
@@ -921,4 +910,16 @@ main_menu() {
 }
 
 # ── Entry point ───────────────────────────────────────────────────────────
-main_menu
+# When piped from curl, bash has already read all function definitions by this
+# point, so redirecting stdin to /dev/tty here is safe — it won't break the pipe.
+if [ ! -t 0 ]; then
+    if [ -e /dev/tty ]; then
+        main_menu < /dev/tty
+    else
+        echo "ERROR: This script requires an interactive terminal."
+        echo "       Run: bash deploy.sh   (not via pipe)"
+        exit 1
+    fi
+else
+    main_menu
+fi
