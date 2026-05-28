@@ -93,6 +93,7 @@ start_containers() {
     echo -e "  ${YELLOW}Starting${RESET} backend…"
     docker run -d \
       --name chessloop-backend \
+      --restart always \
       --network "$NETWORK" \
       -v chessloop-data:/data \
       -e "CHESSLOOP_DB_PATH=/data/chessloop.db" \
@@ -110,6 +111,7 @@ start_containers() {
     echo -e "  ${YELLOW}Starting${RESET} frontend…"
     docker run -d \
       --name chessloop-frontend \
+      --restart always \
       --network "$NETWORK" \
       chessloop-frontend:latest >/dev/null 2>&1 && echo -e "  ${GREEN}●${RESET} Frontend up" || echo -e "  ${RED}●${RESET} Frontend failed"
   fi
@@ -121,6 +123,7 @@ start_containers() {
     echo -e "  ${YELLOW}Starting${RESET} nginx…"
     docker run -d \
       --name chessloop-nginx \
+      --restart always \
       --network "$NETWORK" \
       --link chessloop-backend:backend \
       --link chessloop-frontend:frontend \

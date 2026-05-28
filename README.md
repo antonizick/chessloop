@@ -387,6 +387,33 @@ ChessLoop/
 
 ---
 
+## Troubleshooting
+
+### All API calls fail / 504 Gateway Timeout after Docker restart (WSL2)
+
+**Symptom:** The app shows a connectivity error, `manage.sh` reports all containers as running, but
+every API call returns 504.
+
+**Cause:** Docker's bridge network loses its iptables FORWARD rule when the Docker daemon restarts
+(common on WSL2 after sleep/hibernate). Containers stay listed as "Up" but can't reach each other.
+The host can ping containers directly; containers cannot ping each other.
+
+**Fix:** Stop and remove the containers, remove the network, then start fresh. The database lives in
+the `chessloop-data` Docker volume and is unaffected.
+
+```bash
+docker stop chessloop-nginx chessloop-frontend chessloop-backend
+docker rm   chessloop-nginx chessloop-frontend chessloop-backend
+docker network rm chessloop-net
+./manage.sh   # choose Start
+```
+
+**Prevention:** All containers are started with `--restart always` (baked into `manage.sh`). When the
+Docker daemon comes back up it automatically restarts the containers and re-adds the iptables rules,
+so this issue self-heals after a daemon restart.
+
+---
+
 ## Ports reference
 
 | Mode | Service | Default | Override |

@@ -1085,3 +1085,47 @@ Implemented a user-selectable theme system with two modes (dark and light) that 
 135644f feat: Add dark/light theme system with persistent user preferences
 ```
 
+---
+
+## 16. Docker Network Reliability Fix (2026-05-28)
+
+### Problem
+
+After running for ~15 hours on WSL2, all API calls began returning 504 Gateway Timeout. The app
+showed a connectivity error that resembled a database failure. `manage.sh` reported all three
+containers as running.
+
+**Root cause:** NOT a database issue. Docker's iptables FORWARD rule for the `chessloop-net` bridge
+network went missing. This rule (`-A FORWARD -i br-X -o br-X -j ACCEPT`) is added when the network
+is created and is required for containers on the same bridge to communicate. It can be lost when:
+
+- The Docker daemon restarts (WSL2 sleep/hibernate)
+- WSL2's virtual network adapter resets
+- The Docker service is cycled while containers remain "up" in the daemon state
+
+**Diagnostic fingerprint:**
+- `docker ps` shows all containers "Up" ✓
+- Host can ping containers directly ✓
+- Containers cannot ping each other — 100% packet loss ✗
+- Nginx error logs: `upstream timed out (110: Operation timed out)` to correct backend IP
+- Backend logs: no requests logged in 30+ minutes despite appearing "Up"
+
+### Fix Applied
+
+1. Stopped and removed all containers
+2. Removed the stale `chessloop-net` network
+3. Recreated network + containers — Docker re-adds the FORWARD rule on network creation
+4. Database was safe throughout — stored in `chessloop-data` Docker volume, untouched
+
+### Prevention
+
+Added `--restart always` to all three `docker run` commands in `manage.sh`:
+- When the Docker daemon restarts, it automatically restarts containers
+- Container restart triggers Docker to re-add all iptables rules, self-healing the network
+- Applied live to running containers via `docker update --restart always`
+
+### Commit
+```
+fix: add --restart always to manage.sh to survive Docker daemon restarts on WSL2
+```
+
