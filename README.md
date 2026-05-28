@@ -123,7 +123,7 @@ The deploy script creates a default admin account automatically:
 
 | Field | Value |
 |---|---|
-| Email | `admin@chessloop.local` |
+| Email | `admin@example.com` |
 | Password | `admin` |
 
 > **⚠ Change the default password immediately** — go to **Settings → Account** before sharing the URL with anyone.

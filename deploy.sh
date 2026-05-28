@@ -435,7 +435,7 @@ print_summary() {
     echo -e "    http://$server_ip:$port"
     blank
     echo -e "  ${BOLD}First login:${RST}"
-    echo -e "    Email:    ${BOLD}admin@chessloop.local${RST}"
+    echo -e "    Email:    ${BOLD}admin@example.com${RST}"
     echo -e "    Password: ${BOLD}admin${RST}"
     blank
     echo -e "  ${R}${BOLD}⚠  Change the default password immediately.${RST}"
@@ -631,7 +631,7 @@ from database import engine
 from sqlmodel import Session, select
 with Session(engine) as db:
     if not db.exec(select(User).where(User.username == 'admin')).first():
-        db.add(User(email='admin@chessloop.local', username='admin',
+        db.add(User(email='admin@example.com', username='admin',
                     password_hash=hash_password('admin'), role='admin'))
         db.commit()
 " 2>/dev/null; then
