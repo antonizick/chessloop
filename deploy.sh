@@ -879,7 +879,7 @@ main_menu() {
         # Show running state if docker available
         if command -v docker &>/dev/null; then
             local running
-            running=$(docker ps --filter 'name=chessloop' --format '{{.Names}}' 2>/dev/null | wc -l)
+            running=$(docker ps --filter 'name=chessloop' --format '{{.Names}}' 2>/dev/null | wc -l || true)
             if [ "$running" -gt 0 ]; then
                 echo -e "  ${G}●${RST} ${running} container(s) running"
             else
