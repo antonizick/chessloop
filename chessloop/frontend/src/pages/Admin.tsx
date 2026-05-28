@@ -39,6 +39,52 @@ const adminApi = {
   listBackups: () => api<BackupEntry[]>("/admin/backups"),
   createBackup: (name: string, type: string) =>
     api<BackupEntry>("/admin/backups", { method: "POST", body: JSON.stringify({ name, type }) }),
+  uploadBackup: async (file: File, name: string, type: string) => {
+    const { accessToken, refreshToken, setTokens, logout } = useAuthStore.getState();
+
+    const makeFormData = () => {
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("name", name);
+      fd.append("type", type);
+      return fd;
+    };
+
+    const headers: Record<string, string> = {};
+    if (accessToken) headers["Authorization"] = `Bearer ${accessToken}`;
+
+    let res = await fetch("/api/admin/backups/upload", {
+      method: "POST",
+      headers,
+      body: makeFormData(),
+    });
+
+    if (res.status === 401 && refreshToken) {
+      const refreshRes = await fetch("/api/auth/refresh", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refresh_token: refreshToken }),
+      });
+      if (refreshRes.ok) {
+        const data = await refreshRes.json();
+        setTokens(data.access_token, data.refresh_token);
+        res = await fetch("/api/admin/backups/upload", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${data.access_token}` },
+          body: makeFormData(),
+        });
+      } else {
+        logout();
+        throw new Error("Session expired — please log in again");
+      }
+    }
+
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(errText || `Upload failed (${res.status})`);
+    }
+    return res.json() as Promise<BackupEntry>;
+  },
   restoreBackup: (id: string) =>
     api<{ status: string; name: string; message: string }>(`/admin/backups/${id}/restore`, { method: "POST" }),
   deleteBackup: (id: string) =>
@@ -114,6 +160,12 @@ function BackupsSection() {
   const [createErr, setCreateErr] = useState<string | null>(null);
   const [downloading, setDownloading] = useState<string | null>(null);
 
+  const [showUpload, setShowUpload] = useState(false);
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadName, setUploadName] = useState("");
+  const [uploadType, setUploadType] = useState<"full" | "content" | "progress">("full");
+  const [uploadErr, setUploadErr] = useState<string | null>(null);
+
   const { data: backups = [], isLoading } = useQuery({
     queryKey: ["admin-backups"],
     queryFn: adminApi.listBackups,
@@ -139,6 +191,22 @@ function BackupsSection() {
   const deleteMut = useMutation({
     mutationFn: (id: string) => adminApi.deleteBackup(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-backups"] }),
+  });
+
+  const uploadMut = useMutation({
+    mutationFn: () => {
+      if (!uploadFile) throw new Error("No file selected");
+      return adminApi.uploadBackup(uploadFile, uploadName || uploadFile.name, uploadType);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-backups"] });
+      setShowUpload(false);
+      setUploadFile(null);
+      setUploadName("");
+      setUploadType("full");
+      setUploadErr(null);
+    },
+    onError: (e: any) => setUploadErr(e.message ?? "Upload failed"),
   });
 
   return (
@@ -181,6 +249,69 @@ function BackupsSection() {
         </button>
       </div>
       {createErr && <p className="text-red-400 text-sm">{createErr}</p>}
+
+      {/* Upload backup */}
+      <button
+        className="btn-ghost text-sm px-3 py-1.5 w-fit"
+        onClick={() => {
+          setShowUpload(!showUpload);
+          setUploadErr(null);
+        }}
+      >
+        {showUpload ? "▼ Hide upload" : "▶ Upload backup file"}
+      </button>
+      {showUpload && (
+        <div className="flex flex-col gap-3 p-3 rounded-md bg-ink-900 border border-ink-700">
+          <div className="flex flex-col gap-2">
+            <label className="label">Select backup file (.db)</label>
+            <input
+              type="file"
+              accept=".db"
+              onChange={(e) => {
+                setUploadFile(e.target.files?.[0] || null);
+                setUploadErr(null);
+              }}
+              className="input text-sm"
+            />
+            {uploadFile && (
+              <p className="text-xs text-ink-400">
+                Selected: {uploadFile.name} ({(uploadFile.size / 1024 / 1024).toFixed(1)} MB)
+              </p>
+            )}
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-1">
+              <label className="label">Display name</label>
+              <input
+                className="input"
+                value={uploadName}
+                onChange={(e) => setUploadName(e.target.value)}
+                placeholder={uploadFile?.name || "backup-name"}
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="label">Type</label>
+              <select
+                className="input"
+                value={uploadType}
+                onChange={(e) => setUploadType(e.target.value as typeof uploadType)}
+              >
+                <option value="full">Full</option>
+                <option value="content">Content only</option>
+                <option value="progress">Progress only</option>
+              </select>
+            </div>
+          </div>
+          {uploadErr && <p className="text-red-400 text-sm">{uploadErr}</p>}
+          <button
+            className="btn-primary"
+            onClick={() => uploadMut.mutate()}
+            disabled={uploadMut.isPending || !uploadFile}
+          >
+            {uploadMut.isPending ? "Uploading…" : "Upload & Register"}
+          </button>
+        </div>
+      )}
 
       {/* Backup list */}
       {isLoading ? (

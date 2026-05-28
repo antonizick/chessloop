@@ -2,8 +2,10 @@
 
 from uuid import UUID
 from typing import Optional
+from pathlib import Path
+from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status, UploadFile, File, Form
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, EmailStr
 from sqlmodel import Session, select
@@ -288,6 +290,74 @@ def create_backup(
         backup = backup_service.create_backup(session, body.name, body.type, admin.id)
     except FileNotFoundError as e:
         raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, str(e))
+    return BackupResponse(
+        id=backup.id,
+        name=backup.name,
+        type=backup.type,
+        size_bytes=backup.size_bytes,
+        created_at=backup.created_at.isoformat(),
+        created_by=backup.created_by,
+    )
+
+
+@router.post("/backups/upload", response_model=BackupResponse, status_code=status.HTTP_201_CREATED)
+def upload_backup(
+    file: UploadFile = File(...),
+    name: Optional[str] = Form(None),
+    type: Optional[str] = Form("full"),
+    session: Session = Depends(get_session),
+    admin: User = Depends(require_admin),
+):
+    """
+    Upload a previously-downloaded backup file to recover the system.
+    Validates the file is a valid SQLite database, saves it, and registers it.
+    """
+    if type not in ("full", "content", "progress"):
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "type must be full, content, or progress")
+
+    # Read file bytes
+    file_bytes = file.file.read()
+    if not file_bytes:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Empty file")
+
+    # Validate SQLite magic bytes: "SQLite format 3\x00"
+    if not file_bytes.startswith(b"SQLite format 3\x00"):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid SQLite database file")
+
+    # Generate backup filename with timestamp
+    backup_name = name or Path(file.filename or "uploaded-backup").stem
+    ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    filename = f"{type}_{ts}_{backup_name[:40].replace(' ', '_')}.db"
+
+    # Save file to backup directory
+    backup_dir = Path(backup_service.BACKUP_DIR)
+    backup_dir.mkdir(parents=True, exist_ok=True)
+    dest = backup_dir / filename
+
+    try:
+        with open(dest, "wb") as f:
+            f.write(file_bytes)
+    except IOError as e:
+        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, f"Failed to save backup: {e}")
+
+    size = dest.stat().st_size
+
+    # Create backup record
+    backup = Backup(
+        name=backup_name,
+        type=type,
+        file_path=str(dest),
+        size_bytes=size,
+        created_by=admin.id,
+        created_at=datetime.utcnow(),
+    )
+    session.add(backup)
+    session.commit()
+    session.refresh(backup)
+
+    # Prune oldest backups if over limit
+    backup_service._prune(session)
+
     return BackupResponse(
         id=backup.id,
         name=backup.name,

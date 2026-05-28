@@ -1,7 +1,7 @@
 # ChessLoop — Design & Implementation Plan
 
-> Last updated: 2026-05-27
-> Status: Phase 5+ in progress — Practice session indicators + Learning/Teaching quick-access menu
+> Last updated: 2026-05-28
+> Status: Phase 5+ complete — Backup upload & recovery feature added
 
 ---
 
@@ -1128,6 +1128,52 @@ Added `--restart always` to all three `docker run` commands in `manage.sh`:
 ```
 fix: add --restart always to manage.sh to survive Docker daemon restarts on WSL2
 ```
+
+---
+
+## 18. Backup Upload & Recovery Feature (2026-05-28)
+
+### Overview
+Added the ability for admins to upload previously-downloaded backup files and restore the system from them. This completes the disaster recovery workflow: users can download backups for safekeeping and re-upload them to recover if needed.
+
+### Implementation
+
+**Backend — `chessloop/backend/routers/admin.py`**
+- New endpoint: `POST /api/admin/backups/upload`
+  - Accepts multipart form-data: `file` (SQLite .db), `name` (optional), `type` (full/content/progress)
+  - Validates SQLite database magic bytes: `"SQLite format 3\x00"`
+  - Saves uploaded file to backup directory with timestamped filename
+  - Creates `Backup` record in database
+  - Enforces 10-backup retention limit via `_prune()`
+  - Returns 201 Created with full backup metadata
+- **Critical fix**: Placed `/backups/upload` route BEFORE parameterized `/{backup_id}` routes
+  - FastAPI matches routes in definition order
+  - Without this ordering, `/backups/upload` matched `/{backup_id}` and returned 405 Method Not Allowed
+
+**Frontend — `chessloop/frontend/src/pages/Admin.tsx`**
+- New `adminApi.uploadBackup()` method
+  - Builds FormData with file, name, type fields
+  - Uses authenticated fetch with Bearer token + automatic refresh on 401
+  - Reconstructs FormData on token refresh (FormData can't be reused)
+- New UI in `BackupsSection`:
+  - Collapsible "Upload backup file" panel below create backup
+  - File input (accept=".db"), name/type fields, "Upload & Register" button
+  - Shows file size preview
+  - Error display and loading state
+  - On success, invalidates backup list query to refresh display
+- Newly uploaded backup appears in list and can be restored with existing ⟲ Restore button
+
+### Testing & Verification
+- ✅ Endpoint routing verified (returns 403 for non-admin, not 405)
+- ✅ Multipart form-data parsing works correctly
+- ✅ SQLite validation (magic bytes check) implemented
+- ✅ Frontend UI renders and collects form data
+- ✅ API method handles auth token refresh for uploads
+- ✅ Integration with existing backup list and restore workflows
+
+### Files Modified
+- `backend/routers/admin.py` — 88-line endpoint + imports
+- `frontend/src/pages/Admin.tsx` — upload UI + API method
 
 ---
 
