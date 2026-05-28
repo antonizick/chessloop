@@ -43,7 +43,6 @@ const adminApi = {
     api<{ status: string; name: string; message: string }>(`/admin/backups/${id}/restore`, { method: "POST" }),
   deleteBackup: (id: string) =>
     api<void>(`/admin/backups/${id}`, { method: "DELETE" }),
-  downloadUrl: (id: string) => `/api/admin/backups/${id}/download`,
 };
 
 function fmt(bytes: number): string {
@@ -73,11 +72,47 @@ export function Admin() {
 
 // ── Backups ───────────────────────────────────────────────────────────────────
 
+async function downloadBackup(id: string, filename: string) {
+  const { accessToken, refreshToken, setTokens, logout } = useAuthStore.getState();
+  const headers: Record<string, string> = {};
+  if (accessToken) headers["Authorization"] = `Bearer ${accessToken}`;
+
+  let res = await fetch(`/api/admin/backups/${id}/download`, { headers });
+
+  if (res.status === 401 && refreshToken) {
+    const refreshRes = await fetch("/api/auth/refresh", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    });
+    if (refreshRes.ok) {
+      const data = await refreshRes.json();
+      setTokens(data.access_token, data.refresh_token);
+      res = await fetch(`/api/admin/backups/${id}/download`, {
+        headers: { Authorization: `Bearer ${data.access_token}` },
+      });
+    } else {
+      logout();
+      throw new Error("Session expired — please log in again");
+    }
+  }
+
+  if (!res.ok) throw new Error(`Download failed (${res.status})`);
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 function BackupsSection() {
   const qc = useQueryClient();
   const [newName, setNewName] = useState("manual-backup");
   const [newType, setNewType] = useState<"full" | "content" | "progress">("full");
   const [createErr, setCreateErr] = useState<string | null>(null);
+  const [downloading, setDownloading] = useState<string | null>(null);
 
   const { data: backups = [], isLoading } = useQuery({
     queryKey: ["admin-backups"],
@@ -185,13 +220,20 @@ function BackupsSection() {
                       >
                         {restoreMut.isPending ? "Restoring…" : "⟲ Restore"}
                       </button>
-                      <a
-                        href={adminApi.downloadUrl(b.id)}
+                      <button
                         className="btn-ghost text-xs px-2 py-1"
-                        download
+                        disabled={downloading === b.id}
+                        onClick={async () => {
+                          setDownloading(b.id);
+                          try {
+                            await downloadBackup(b.id, `${b.name}.db`);
+                          } finally {
+                            setDownloading(null);
+                          }
+                        }}
                       >
-                        ↓ Download
-                      </a>
+                        {downloading === b.id ? "Downloading…" : "↓ Download"}
+                      </button>
                       <button
                         className="btn-danger text-xs px-2 py-1"
                         onClick={() => deleteMut.mutate(b.id)}
