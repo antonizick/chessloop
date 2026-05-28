@@ -119,32 +119,16 @@ http://YOUR-SERVER-IP:PORT
 
 ### First login
 
-1. Open the URL above
-2. Click **Register** and create your account
-3. Promote yourself to admin (see below)
+The deploy script creates a default admin account automatically:
 
-### Promote to admin
+| Field | Value |
+|---|---|
+| Username | `admin` |
+| Password | `admin` |
 
-```bash
-docker compose -f /opt/chessloop/chessloop/docker-compose.prod.yml \
-  exec backend python -c "
-from database import get_db
-from sqlmodel import Session, select
-from models.user import User
+> **⚠ Change the default password immediately** — go to **Settings → Account** before sharing the URL with anyone.
 
-db = next(get_db())
-u = db.exec(select(User).where(User.username == 'YOUR_USERNAME')).first()
-if u:
-    u.role = 'admin'
-    db.add(u)
-    db.commit()
-    print('Done:', u.username)
-else:
-    print('User not found')
-"
-```
-
-Once you are admin, the **Admin panel** (⚙ icon in the sidebar) lets you manage users, create/download backups, and import openings from the Lichess database.
+The admin account has full access to the Admin panel (⚙ icon in the sidebar), where you can manage users, create/download backups, and import openings from the Lichess database.
 
 ### Service management
 
