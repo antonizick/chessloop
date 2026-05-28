@@ -35,8 +35,8 @@ services:
       - CHESSLOOP_JWT_SECRET=${JWT_SECRET:?err — set JWT_SECRET in .env}
       - CHESSLOOP_ACCESS_TTL_MIN=${ACCESS_TTL_MIN:-15}
       - CHESSLOOP_REFRESH_TTL_DAYS=${REFRESH_TTL_DAYS:-30}
-      # In production CORS origins should be your domain only:
-      - CHESSLOOP_CORS_ORIGINS=https://${DOMAIN:-localhost}
+      # CORS_ORIGINS set in .env — defaults to domain-based origin when DOMAIN is set
+      - CHESSLOOP_CORS_ORIGINS=${CORS_ORIGINS:-https://${DOMAIN:-localhost}}
     volumes:
       - chessloop-data:/data
     # Backend is NOT exposed to the host; nginx proxies /api/* to it.
@@ -63,10 +63,10 @@ services:
     container_name: chessloop-nginx
     restart: always
     ports:
-      # Bind only to the host's loopback (127.0.0.1) when a reverse proxy
-      # (Caddy / Nginx on host / Cloudflare Tunnel) handles the public HTTPS.
-      # Change to "0.0.0.0:${PUBLIC_PORT:-8090}:80" if you want direct HTTP access.
-      - "127.0.0.1:${PUBLIC_PORT:-8090}:80"
+      # BIND_ADDR: 127.0.0.1 (localhost/reverse-proxy mode, default)
+      #            0.0.0.0  (direct LAN/internet access)
+      # Set BIND_ADDR in .env, or export it before running docker compose.
+      - "${BIND_ADDR:-127.0.0.1}:${PUBLIC_PORT:-8090}:80"
     volumes:
       - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:

@@ -8,7 +8,7 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     access_ttl_min: int = 15
     refresh_ttl_days: int = 30
-    cors_origins: str = "http://localhost:5173"
+    cors_origins: str = "http://localhost:8090,http://localhost:5173"
 
     class Config:
         env_prefix = "CHESSLOOP_"
@@ -17,7 +17,10 @@ class Settings(BaseSettings):
 
     @property
     def cors_origin_list(self) -> list[str]:
-        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+        origins = self.cors_origins.strip()
+        if origins == "*":
+            return ["*"]
+        return [o.strip() for o in origins.split(",") if o.strip()]
 
 
 settings = Settings()
