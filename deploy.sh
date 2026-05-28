@@ -15,6 +15,21 @@
 # ═══════════════════════════════════════════════════════════════════════════
 set -euo pipefail
 
+# ── Interactive stdin fix (for curl | bash) ───────────────────────────────
+# Never redirect global stdin — that breaks the pipe while curl is still
+# writing. Instead, detect the pipe once and route each read to /dev/tty.
+_PIPED=0
+if [ ! -t 0 ]; then
+    if [ -e /dev/tty ]; then
+        _PIPED=1
+    else
+        echo "ERROR: This script requires an interactive terminal." >&2
+        echo "       Run: bash deploy.sh   (not via pipe)" >&2
+        exit 1
+    fi
+fi
+_read() { if [ "$_PIPED" -eq 1 ]; then read "$@" </dev/tty; else read "$@"; fi; }
+
 # ── Colors ────────────────────────────────────────────────────────────────
 if command -v tput &>/dev/null && tput colors &>/dev/null && [ "$(tput colors)" -ge 8 ]; then
     R='\033[0;31m' G='\033[0;32m' Y='\033[1;33m'
@@ -151,7 +166,7 @@ prompt_port() {
 
     blank
     local user_port
-    read -rp "  ${BOLD}$label${RST} [default: $suggested]: " user_port
+    _read -rp "  ${BOLD}$label${RST} [default: $suggested]: " user_port
     user_port="${user_port:-$suggested}"
 
     # Validate
@@ -441,7 +456,7 @@ do_install() {
     # ── Install directory ──────────────────────────────────────────────────
     blank
     local install_dir
-    read -rp "  ${BOLD}Install directory${RST} [default: $DEFAULT_INSTALL_DIR]: " install_dir
+    _read -rp "  ${BOLD}Install directory${RST} [default: $DEFAULT_INSTALL_DIR]: " install_dir
     install_dir="${install_dir:-$DEFAULT_INSTALL_DIR}"
     local subdir="$install_dir/chessloop"
 
@@ -515,7 +530,7 @@ do_install() {
     echo -e "    ${BOLD}2)${RST}  ${Y}All interfaces${RST}  ${DIM}(direct HTTP access, home/LAN)${RST}"
     blank
     local bind_choice
-    read -rp "  Choice [1/2, default 1]: " bind_choice
+    _read -rp "  Choice [1/2, default 1]: " bind_choice
     local bind_addr
     case "${bind_choice:-1}" in
         2)
@@ -541,7 +556,7 @@ do_install() {
     # ── CORS origins ──────────────────────────────────────────────────────
     blank
     local domain
-    read -rp "  ${BOLD}Domain name${RST} (e.g. chess.example.com — leave blank for localhost/IP only): " domain
+    _read -rp "  ${BOLD}Domain name${RST} (e.g. chess.example.com — leave blank for localhost/IP only): " domain
     domain="${domain:-}"
 
     local cors_origins
@@ -599,7 +614,7 @@ do_install() {
     # ── Systemd ───────────────────────────────────────────────────────────
     blank
     local sysd
-    read -rp "  Enable autostart on boot (recommended)? [Y/n]: " sysd
+    _read -rp "  Enable autostart on boot (recommended)? [Y/n]: " sysd
     if [[ "${sysd:-y}" =~ ^[Yy]$ ]]; then
         setup_systemd "$subdir"
     fi
@@ -618,7 +633,7 @@ do_update() {
     install_dir=$(find_install_dir)
     if [ -z "$install_dir" ]; then
         blank
-        read -rp "  ${BOLD}Install directory${RST} [default: $DEFAULT_INSTALL_DIR]: " install_dir
+        _read -rp "  ${BOLD}Install directory${RST} [default: $DEFAULT_INSTALL_DIR]: " install_dir
         install_dir="${install_dir:-$DEFAULT_INSTALL_DIR}"
     else
         ok "Found existing install: $install_dir"
@@ -664,7 +679,7 @@ do_update() {
         ok "Already up to date ($current_hash)."
         blank
         local force
-        read -rp "  Force rebuild anyway? [y/N]: " force
+        _read -rp "  Force rebuild anyway? [y/N]: " force
         if [[ ! "${force:-n}" =~ ^[Yy]$ ]]; then
             info "Nothing to do. Exiting."
             return 0
@@ -707,7 +722,7 @@ do_uninstall() {
     install_dir=$(find_install_dir)
     if [ -z "$install_dir" ]; then
         blank
-        read -rp "  ${BOLD}Install directory${RST} [default: $DEFAULT_INSTALL_DIR]: " install_dir
+        _read -rp "  ${BOLD}Install directory${RST} [default: $DEFAULT_INSTALL_DIR]: " install_dir
         install_dir="${install_dir:-$DEFAULT_INSTALL_DIR}"
     else
         ok "Found existing install: $install_dir"
@@ -738,7 +753,7 @@ do_uninstall() {
     echo -e "    ${BOLD}4)${RST}  Cancel"
     blank
     local level
-    read -rp "  Choice [1-4]: " level
+    _read -rp "  Choice [1-4]: " level
 
     case "${level:-4}" in
         1|2|3) : ;;
@@ -754,15 +769,15 @@ do_uninstall() {
         warn "${BOLD}FULL UNINSTALL: all data will be permanently destroyed.${RST}"
         blank
         local c1
-        read -rp "  Type ${BOLD}DELETE${RST} to confirm: " c1
+        _read -rp "  Type ${BOLD}DELETE${RST} to confirm: " c1
         [ "$c1" = "DELETE" ] || { info "Cancelled."; return 0; }
         blank
         local c2
-        read -rp "  Final check — type ${BOLD}YES${RST} to proceed: " c2
+        _read -rp "  Final check — type ${BOLD}YES${RST} to proceed: " c2
         [ "$c2" = "YES" ] || { info "Cancelled."; return 0; }
     elif [ "$level" -eq 2 ]; then
         local c1
-        read -rp "  Remove images? This cannot be undone. [y/N]: " c1
+        _read -rp "  Remove images? This cannot be undone. [y/N]: " c1
         [[ "${c1:-n}" =~ ^[Yy]$ ]] || { info "Cancelled."; return 0; }
     fi
 
@@ -889,7 +904,7 @@ main_menu() {
     blank
 
     local choice
-    read -rp "  Choice [1-4]: " choice
+    _read -rp "  Choice [1-4]: " choice
     blank
 
     case "${choice:-4}" in
@@ -910,16 +925,4 @@ main_menu() {
 }
 
 # ── Entry point ───────────────────────────────────────────────────────────
-# When piped from curl, bash has already read all function definitions by this
-# point, so redirecting stdin to /dev/tty here is safe — it won't break the pipe.
-if [ ! -t 0 ]; then
-    if [ -e /dev/tty ]; then
-        main_menu < /dev/tty
-    else
-        echo "ERROR: This script requires an interactive terminal."
-        echo "       Run: bash deploy.sh   (not via pipe)"
-        exit 1
-    fi
-else
-    main_menu
-fi
+main_menu
