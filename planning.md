@@ -1129,3 +1129,42 @@ Added `--restart always` to all three `docker run` commands in `manage.sh`:
 fix: add --restart always to manage.sh to survive Docker daemon restarts on WSL2
 ```
 
+---
+
+## 17. Backup Download Authentication Fix (2026-05-28)
+
+### Problem
+
+Backup downloads silently failed. The browser opened the Save As dialog, then immediately showed
+"File wasn't available on the site." The backup files existed on disk and the API was healthy.
+
+**Root cause:** The download button was a plain `<a href="/api/admin/backups/{id}/download" download>`
+anchor tag. Browser-native navigation to a URL never sends the `Authorization` header — only cookies
+travel automatically. ChessLoop uses JWT bearer tokens (not cookies), so every download request
+arrived at the backend unauthenticated. `require_admin` rejected it with 401, which the browser
+surfaced as the "file unavailable" error after already opening the dialog.
+
+### Fix
+
+Replaced the anchor with a `<button>` that performs a programmatic `fetch()` with the full auth
+flow (`frontend/src/pages/Admin.tsx`):
+
+1. Reads the current access token from the Zustand auth store
+2. `fetch()`es the download endpoint with `Authorization: Bearer <token>`
+3. If the response is 401 (expired token), calls `/api/auth/refresh`, updates the store, and
+   retries the download once with the new token
+4. On success, reads the response as a `Blob`, creates a temporary object URL, programmatically
+   clicks a hidden `<a download>` to trigger the browser Save As dialog, then revokes the URL
+5. Shows "Downloading…" on the button while in-flight; disables it to prevent double-clicks
+
+No backend changes were required — the endpoint already served the file correctly for authenticated
+requests.
+
+### Removed
+- `downloadUrl` helper in `adminApi` (dead code — was only used as the `href` on the removed anchor)
+
+### Commit
+```
+fix: use authenticated fetch for backup downloads instead of plain href
+```
+
