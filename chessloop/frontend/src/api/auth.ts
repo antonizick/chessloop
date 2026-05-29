@@ -13,10 +13,13 @@ export const authApi = {
 
   me: () => api<User>("/auth/me"),
 
-  mfaSetup: () => api<{ secret: string; otpauth_url: string }>("/auth/mfa/setup", { method: "POST" }),
+  mfaSetup: () => api<{ secret: string; otpauth_url: string; qr_code_b64: string }>("/auth/mfa/setup", { method: "POST" }),
 
   mfaConfirm: (totp_code: string) =>
     api<void>("/auth/mfa/confirm", { method: "POST", body: JSON.stringify({ totp_code }) }),
+
+  mfaDisable: (totp_code: string) =>
+    api<void>("/auth/mfa", { method: "DELETE", body: JSON.stringify({ totp_code }) }),
 
   updatePreferences: (body: { theme?: string; piece_set?: string; board_theme?: string; sounds_on?: boolean; tts_enabled?: boolean; tts_voice?: string; boost_visibility?: boolean }) =>
     api<User>("/auth/preferences", { method: "PATCH", body: JSON.stringify(body) }),

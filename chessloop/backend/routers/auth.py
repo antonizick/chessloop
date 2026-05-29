@@ -120,9 +120,11 @@ def mfa_setup(user: User = Depends(get_current_user), session: Session = Depends
     user.mfa_secret = secret
     session.add(user)
     session.commit()
+    otpauth_url = mfa.provisioning_uri(secret, user.email)
     return MfaSetupResponse(
         secret=secret,
-        otpauth_url=mfa.provisioning_uri(secret, user.email),
+        otpauth_url=otpauth_url,
+        qr_code_b64=mfa.qr_code_b64(otpauth_url),
     )
 
 
@@ -137,6 +139,22 @@ def mfa_confirm(
     if not mfa.verify(user.mfa_secret, body.totp_code):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid TOTP code")
     user.mfa_enabled = True
+    session.add(user)
+    session.commit()
+
+
+@router.delete("/mfa", status_code=status.HTTP_204_NO_CONTENT)
+def mfa_disable(
+    body: MfaConfirmRequest,
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    if not user.mfa_enabled:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "MFA not enabled")
+    if not mfa.verify(user.mfa_secret, body.totp_code):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid TOTP code")
+    user.mfa_enabled = False
+    user.mfa_secret = None
     session.add(user)
     session.commit()
 

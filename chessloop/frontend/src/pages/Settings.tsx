@@ -47,9 +47,13 @@ export function Settings() {
 
   // ── MFA state ─────────────────────────────────────────────────────────────
 
-  const [setupResult, setSetupResult] = useState<{ secret: string; otpauth_url: string } | null>(null);
+  const [setupResult, setSetupResult] = useState<{ secret: string; otpauth_url: string; qr_code_b64: string } | null>(null);
   const [totp, setTotp] = useState("");
   const [confirmMsg, setConfirmMsg] = useState<string | null>(null);
+  const [showDisableForm, setShowDisableForm] = useState(false);
+  const [disableTotp, setDisableTotp] = useState("");
+  const [disableMsg, setDisableMsg] = useState<string | null>(null);
+  const [showManualEntry, setShowManualEntry] = useState(false);
 
   const beginMfa = useMutation({
     mutationFn: authApi.mfaSetup,
@@ -64,6 +68,16 @@ export function Settings() {
       qc.invalidateQueries({ queryKey: ["me"] });
     },
     onError: (e: any) => setConfirmMsg(e.message ?? "Failed"),
+  });
+  const disableMfa = useMutation({
+    mutationFn: (code: string) => authApi.mfaDisable(code),
+    onSuccess: () => {
+      setShowDisableForm(false);
+      setDisableTotp("");
+      setDisableMsg(null);
+      qc.invalidateQueries({ queryKey: ["me"] });
+    },
+    onError: (e: any) => setDisableMsg(e.message ?? "Invalid code"),
   });
 
   // ── Load available voices ──────────────────────────────────────────────────
@@ -354,7 +368,54 @@ export function Settings() {
       <div className="card">
         <h2>Two-factor auth</h2>
         {me?.mfa_enabled ? (
-          <p className="text-sm text-ink-300 mt-2">TOTP MFA is active on your account.</p>
+          <div className="mt-3 flex flex-col gap-3">
+            <p className="text-sm text-ink-300">TOTP MFA is active on your account.</p>
+            {!showDisableForm ? (
+              <button
+                className="btn-secondary w-fit"
+                onClick={() => setShowDisableForm(true)}
+              >
+                Remove MFA
+              </button>
+            ) : (
+              <div className="flex flex-col gap-2 p-3 rounded border border-red-700/50 bg-red-900/20">
+                <p className="text-sm text-ink-300">
+                  Enter your authenticator code to remove MFA from your account.
+                </p>
+                <input
+                  className="input tracking-widest text-center"
+                  type="text"
+                  value={disableTotp}
+                  onChange={(e) => setDisableTotp(e.target.value)}
+                  placeholder="123456"
+                  maxLength={6}
+                  autoFocus
+                />
+                <div className="flex gap-2">
+                  <button
+                    className="btn-primary flex-1"
+                    onClick={() => disableMfa.mutate(disableTotp)}
+                    disabled={disableMfa.isPending}
+                  >
+                    {disableMfa.isPending ? "Removing…" : "Confirm removal"}
+                  </button>
+                  <button
+                    className="btn-secondary flex-1"
+                    onClick={() => {
+                      setShowDisableForm(false);
+                      setDisableTotp("");
+                      setDisableMsg(null);
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+                {disableMsg && (
+                  <p className="text-sm text-red-400">{disableMsg}</p>
+                )}
+              </div>
+            )}
+          </div>
         ) : !setupResult ? (
           <>
             <p className="text-sm text-ink-300 mt-2">
@@ -365,23 +426,44 @@ export function Settings() {
             </button>
           </>
         ) : (
-          <div className="mt-3 flex flex-col gap-2">
+          <div className="mt-3 flex flex-col gap-3">
             <p className="text-sm">
-              Scan or paste this URI into your authenticator, then enter the 6-digit code.
+              Scan this QR code with your authenticator app, then enter the 6-digit code.
             </p>
-            <code className="text-xs break-all bg-ink-900 p-2 rounded border border-ink-700">
-              {setupResult.otpauth_url}
-            </code>
-            <p className="text-xs text-ink-400">Secret: <span className="font-mono">{setupResult.secret}</span></p>
+            <div className="flex justify-center">
+              <img
+                src={`data:image/png;base64,${setupResult.qr_code_b64}`}
+                alt="Scan with your authenticator app"
+                className="w-48 h-48 rounded border border-ink-600 bg-white p-2"
+              />
+            </div>
+            {!showManualEntry ? (
+              <button
+                className="text-sm text-gold-400 hover:text-gold-300 transition-colors text-center"
+                onClick={() => setShowManualEntry(true)}
+              >
+                Can't scan? Enter manually
+              </button>
+            ) : (
+              <div className="p-2 rounded border border-ink-600 bg-ink-900/50">
+                <p className="text-xs text-ink-400 mb-1">Secret key:</p>
+                <code className="text-xs break-all font-mono text-ink-200">{setupResult.secret}</code>
+              </div>
+            )}
             <input
-              className="input tracking-widest text-center mt-2"
+              className="input tracking-widest text-center"
               value={totp}
               onChange={(e) => setTotp(e.target.value)}
               placeholder="123456"
               maxLength={6}
+              autoFocus
             />
-            <button className="btn-primary" onClick={() => confirmMfa.mutate(totp)}>
-              Confirm
+            <button
+              className="btn-primary"
+              onClick={() => confirmMfa.mutate(totp)}
+              disabled={confirmMfa.isPending}
+            >
+              {confirmMfa.isPending ? "Confirming…" : "Confirm & enable MFA"}
             </button>
             {confirmMsg && <p className="text-sm text-ink-300">{confirmMsg}</p>}
           </div>

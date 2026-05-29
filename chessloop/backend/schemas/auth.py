@@ -34,6 +34,7 @@ class MfaChallengeResponse(BaseModel):
 class MfaSetupResponse(BaseModel):
     secret: str
     otpauth_url: str
+    qr_code_b64: str
 
 
 class MfaConfirmRequest(BaseModel):

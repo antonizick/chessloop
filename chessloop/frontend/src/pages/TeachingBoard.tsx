@@ -135,30 +135,7 @@ export function TeachingBoard() {
   });
 
   const duplicateLine = useMutation({
-    mutationFn: async (lineId: string) => {
-      const lineToDuplicate = lines.find((l) => l.id === lineId);
-      if (!lineToDuplicate) throw new Error("Line not found");
-
-      // Create new line with duplicated name and same starting FEN
-      const newName = lineToDuplicate.name
-        ? `${lineToDuplicate.name} copy`
-        : "Unnamed copy";
-      const newLine = await linesApi.create(libId!, {
-        name: newName,
-        starting_fen: lineToDuplicate.starting_fen,
-      });
-
-      // Copy all moves to the new line
-      if (lineToDuplicate.moves.length > 0) {
-        const movesSans = lineToDuplicate.moves.map((m) => m.san);
-        await linesApi.importMoves(newLine.id, {
-          moves: movesSans,
-          starting_fen: lineToDuplicate.starting_fen,
-        });
-      }
-
-      return newLine;
-    },
+    mutationFn: (lineId: string) => linesApi.duplicate(lineId),
     onSuccess: (newLine) => {
       qc.invalidateQueries({ queryKey: ["lines", libId] });
       setSelectedLineId(newLine.id);

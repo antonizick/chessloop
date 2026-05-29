@@ -241,6 +241,30 @@ def update_move_note(
     return line
 
 
+@router.post("/lines/{line_id}/duplicate", response_model=LineResponse, status_code=status.HTTP_201_CREATED)
+def duplicate_line(
+    line_id: UUID,
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    src = _owned_line_or_404(session, line_id, user)
+
+    existing = session.exec(select(Line).where(Line.library_id == src.library_id)).all()
+    new_name = f"{src.name} copy" if src.name else "Unnamed copy"
+
+    copy = Line(
+        library_id=src.library_id,
+        name=new_name,
+        starting_fen=src.starting_fen,
+        moves=src.moves,
+        order_index=len(existing),
+    )
+    session.add(copy)
+    session.commit()
+    session.refresh(copy)
+    return copy
+
+
 @router.put("/lines/{line_id}/moves", response_model=LineResponse)
 def replace_moves(
     line_id: UUID,

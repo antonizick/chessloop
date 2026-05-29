@@ -23,4 +23,6 @@ export const linesApi = {
       method: "PUT",
       body: JSON.stringify(body),
     }),
+  duplicate: (id: string) =>
+    api<Line>(`/lines/${id}/duplicate`, { method: "POST" }),
 };
