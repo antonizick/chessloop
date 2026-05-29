@@ -215,9 +215,39 @@ export function TeachingBoard() {
       }
     }
 
+    // Lenient PGN parse: strip headers/comments/result markers and import moves
+    // up to the first illegal one. Handles PGNs with annotation errors.
+    try {
+      const lenientChess = new Chess();
+      const tokens = stripVariations(text)
+        .replace(/^\[.*?\]$/gm, ' ')
+        .replace(/\b(1-0|0-1|1\/2-1\/2|\*)\b/g, ' ')
+        .replace(/\d+\.\.\./g, ' ')
+        .replace(/\d+\./g, ' ')
+        .split(/\s+/)
+        .filter(Boolean);
+      for (const san of tokens) {
+        try { lenientChess.move(san); } catch { break; }
+      }
+      if (lenientChess.history().length > 0) {
+        moves = lenientChess.history();
+        importLinesMut.mutate({ moves, starting_fen }, {
+          onSuccess: () => {
+            playMoveSound(soundsOn);
+          },
+        });
+        return;
+      }
+    } catch { /* fall through */ }
+
     // Try as plain SAN list (e.g. "e4 c5 Nf3 d6")
     try {
-      const sans = text.replace(/\d+\./g, "").trim().split(/\s+/).filter(Boolean);
+      const sans = text
+        .replace(/\{[^}]*\}/g, ' ')
+        .replace(/\b(1-0|0-1|1\/2-1\/2|\*)\b/g, ' ')
+        .replace(/\d+\.\.\./g, ' ')
+        .replace(/\d+\./g, ' ')
+        .trim().split(/\s+/).filter(Boolean);
       chess.reset();
       for (const san of sans) {
         chess.move(san);
@@ -236,10 +266,11 @@ export function TeachingBoard() {
   }
 
   function stripVariations(pgn: string): string {
+    const noComments = pgn.replace(/\{[^}]*\}/g, ' ');
     let depth = 0;
     let result = "";
-    for (let i = 0; i < pgn.length; i++) {
-      const char = pgn[i];
+    for (let i = 0; i < noComments.length; i++) {
+      const char = noComments[i];
       if (char === "(") {
         depth++;
       } else if (char === ")") {
