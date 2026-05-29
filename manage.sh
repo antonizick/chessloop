@@ -25,6 +25,46 @@ container_exists() {
   docker ps -a --filter "name=$1" --format "{{.Names}}" 2>/dev/null | grep -q "^$1$"
 }
 
+get_running_image() {
+  local container="$1"
+  docker inspect "$container" --format "{{.Image}}" 2>/dev/null | sed 's/.*@sha256://' | cut -c1-12
+}
+
+get_latest_image_id() {
+  local image="$1"
+  docker inspect "$image:latest" --format "{{.ID}}" 2>/dev/null | sed 's/.*:sha256://' | cut -c1-12
+}
+
+check_image_versions() {
+  local backend_running=$(get_running_image "chessloop-backend" 2>/dev/null)
+  local backend_latest=$(get_latest_image_id "chessloop-backend" 2>/dev/null)
+  local frontend_running=$(get_running_image "chessloop-frontend" 2>/dev/null)
+  local frontend_latest=$(get_latest_image_id "chessloop-frontend" 2>/dev/null)
+
+  echo ""
+  echo -e "${DIM}Image versions:${RESET}"
+
+  if [[ -n "$backend_running" && -n "$backend_latest" ]]; then
+    if [[ "$backend_running" == "$backend_latest" ]]; then
+      echo -e "  ${GREEN}✓${RESET} Backend is up to date"
+    else
+      echo -e "  ${YELLOW}⚠${RESET} Backend image is ${RED}outdated${RESET} — run option 5 to rebuild"
+    fi
+  else
+    echo -e "  ${DIM}○${RESET} Backend image check unavailable"
+  fi
+
+  if [[ -n "$frontend_running" && -n "$frontend_latest" ]]; then
+    if [[ "$frontend_running" == "$frontend_latest" ]]; then
+      echo -e "  ${GREEN}✓${RESET} Frontend is up to date"
+    else
+      echo -e "  ${YELLOW}⚠${RESET} Frontend image is ${RED}outdated${RESET} — run option 5 to rebuild"
+    fi
+  else
+    echo -e "  ${DIM}○${RESET} Frontend image check unavailable"
+  fi
+}
+
 status_line() {
   local name="$1" container="$2"
   if container_running "$container"; then
@@ -45,6 +85,7 @@ show_status() {
   status_line "Frontend (Nginx)   " "chessloop-frontend"
   status_line "Proxy    (Nginx)   " "chessloop-nginx"
   echo -e "  ${DIM}Web UI: http://localhost:$PUBLIC_PORT${RESET}"
+  check_image_versions
   echo ""
 }
 
@@ -147,6 +188,44 @@ do_start() {
   start_containers
 }
 
+# ── Rebuild ───────────────────────────────────────────────────────────────────
+
+do_rebuild() {
+  echo ""
+  echo -e "${CYAN}${BOLD}  Rebuilding Docker images…${RESET}"
+  echo ""
+
+  # Stop services first
+  if container_running "chessloop-backend" || container_running "chessloop-frontend" || container_running "chessloop-nginx"; then
+    echo -e "  ${YELLOW}Stopping services…${RESET}"
+    do_stop
+  fi
+
+  # Rebuild backend
+  echo -e "  ${YELLOW}Building${RESET} backend…"
+  if (cd "$CHESSLOOP_DIR/backend" && docker build --no-cache -t chessloop-backend:latest . >/dev/null 2>&1); then
+    echo -e "  ${GREEN}●${RESET} Backend built and tagged as :latest"
+  else
+    echo -e "  ${RED}●${RESET} Backend build failed"
+    return 1
+  fi
+
+  # Rebuild frontend
+  echo -e "  ${YELLOW}Building${RESET} frontend…"
+  if (cd "$CHESSLOOP_DIR/frontend" && docker build --no-cache -t chessloop-frontend:latest . >/dev/null 2>&1); then
+    echo -e "  ${GREEN}●${RESET} Frontend built and tagged as :latest"
+  else
+    echo -e "  ${RED}●${RESET} Frontend build failed"
+    return 1
+  fi
+
+  echo ""
+  echo -e "  ${YELLOW}Starting services…${RESET}"
+  start_containers
+  echo -e "  ${GREEN}${BOLD}Rebuild complete!${RESET}"
+  echo ""
+}
+
 # ── Menu ──────────────────────────────────────────────────────────────────────
 
 draw_menu() {
@@ -162,48 +241,50 @@ draw_menu() {
   echo -e "    ${BOLD}2)${RESET}  Start services"
   echo -e "    ${BOLD}3)${RESET}  Stop services"
   echo -e "    ${BOLD}4)${RESET}  Restart services  (stop → start)"
-  echo -e "    ${BOLD}5)${RESET}  View backend logs  (Ctrl-C to return)"
-  echo -e "    ${BOLD}6)${RESET}  View frontend logs"
-  echo -e "    ${BOLD}7)${RESET}  View nginx logs"
-  echo -e "    ${BOLD}8)${RESET}  Exit"
+  echo -e "    ${BOLD}5)${RESET}  Rebuild & restart  (rebuild images, auto-tags :latest)"
+  echo -e "    ${BOLD}6)${RESET}  View backend logs  (Ctrl-C to return)"
+  echo -e "    ${BOLD}7)${RESET}  View frontend logs"
+  echo -e "    ${BOLD}8)${RESET}  View nginx logs"
+  echo -e "    ${BOLD}9)${RESET}  Exit"
   echo ""
 }
 
 run_menu() {
   while true; do
     draw_menu
-    read -rp "  Enter choice [1-8]: " choice
+    read -rp "  Enter choice [1-9]: " choice
     echo ""
     case "$choice" in
       1)  : ;; # just redraw
       2)  do_start; echo ""; read -rp "  Press Enter to continue…" ;;
       3)  do_stop;  echo ""; read -rp "  Press Enter to continue…" ;;
       4)  do_stop; do_start; echo ""; read -rp "  Press Enter to continue…" ;;
-      5)
+      5)  do_rebuild; read -rp "  Press Enter to continue…" ;;
+      6)
         echo -e "  ${DIM}Backend logs — press Ctrl-C to return${RESET}"
         trap 'echo ""' INT
         docker logs -f chessloop-backend 2>/dev/null || echo "  (backend not running)"
         trap - INT
         ;;
-      6)
+      7)
         echo -e "  ${DIM}Frontend logs — press Ctrl-C to return${RESET}"
         trap 'echo ""' INT
         docker logs -f chessloop-frontend 2>/dev/null || echo "  (frontend not running)"
         trap - INT
         ;;
-      7)
+      8)
         echo -e "  ${DIM}Nginx logs — press Ctrl-C to return${RESET}"
         trap 'echo ""' INT
         docker logs -f chessloop-nginx 2>/dev/null || echo "  (nginx not running)"
         trap - INT
         ;;
-      8|q|Q)
+      9|q|Q)
         echo -e "  ${DIM}Goodbye.${RESET}"
         echo ""
         exit 0
         ;;
       *)
-        echo -e "  ${RED}Invalid choice '$choice' — enter 1-8${RESET}"
+        echo -e "  ${RED}Invalid choice '$choice' — enter 1-9${RESET}"
         sleep 1
         ;;
     esac
