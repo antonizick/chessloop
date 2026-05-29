@@ -13,6 +13,7 @@ from schemas.public import (
     CommentEntry,
     CommentCreate,
 )
+from schemas.line import LineResponse
 
 router = APIRouter(prefix="/public", tags=["public"])
 
@@ -147,6 +148,18 @@ def get_public_library(
         user_has_starred=user_starred,
         comments=comments,
     )
+
+
+@router.get("/libraries/{lib_id}/lines", response_model=list[LineResponse])
+def get_public_library_lines(
+    lib_id: UUID,
+    db: Session = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
+    lib = _get_public_lib(db, lib_id)
+    return db.exec(
+        select(Line).where(Line.library_id == lib.id).order_by(Line.order_index)
+    ).all()
 
 
 @router.post("/libraries/{lib_id}/star", status_code=status.HTTP_204_NO_CONTENT)

@@ -26,6 +26,7 @@ import { LibraryDetail } from "@/pages/LibraryDetail";
 import { TeachingBoard } from "@/pages/TeachingBoard";
 import { UnratedLearning } from "@/pages/UnratedLearning";
 import { PublicTeachingBoard } from "@/pages/PublicTeachingBoard";
+import { PublicLearn } from "@/pages/PublicLearn";
 import { PracticeBoard } from "@/pages/PracticeBoard";
 import { Stats } from "@/pages/Stats";
 import { Public } from "@/pages/Public";
@@ -83,6 +84,7 @@ export default function App() {
         <Route path="/public" element={<Public />} />
         <Route path="/public/:id" element={<PublicLibraryDetail />} />
         <Route path="/public/:id/teach" element={<PublicTeachingBoard />} />
+        <Route path="/public/:id/learn" element={<PublicLearn />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/admin" element={<Admin />} />
       </Route>

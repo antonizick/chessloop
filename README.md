@@ -4,6 +4,8 @@ Self-hosted, move-based spaced-repetition chess opening trainer.
 
 Teach it your repertoire by playing moves. It drills you back, corrects mistakes, and schedules review so the positions that break you get more practice.
 
+**Features:** opening library builder · spaced-repetition drill engine · public library discovery with read-only viewer · TOTP MFA · dark/light theme · admin panel with backup/restore · Lichess Explorer integration
+
 ---
 
 ## Deploy to a new machine

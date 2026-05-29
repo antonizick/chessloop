@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { publicApi } from "@/api/public";
 import { useAuthStore } from "@/stores/auth";
@@ -20,6 +20,7 @@ const DIFF_LABEL: Record<string, string> = {
 
 function LibraryCard({ lib, isAdmin }: { lib: PublicLibraryEntry; isAdmin: boolean }) {
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const starMut = useMutation({
@@ -90,12 +91,19 @@ function LibraryCard({ lib, isAdmin }: { lib: PublicLibraryEntry; isAdmin: boole
             ★ {lib.star_count}
           </button>
           <button
+            onClick={() => navigate(`/public/${lib.id}/learn`)}
+            className="btn-ghost text-xs py-0.5"
+            title="Browse this library in read-only mode"
+          >
+            Learn / View
+          </button>
+          <button
             onClick={() => forkMut.mutate()}
             disabled={forkMut.isPending}
             className="btn-ghost text-xs py-0.5"
             title="Fork to your libraries"
           >
-            {forkMut.isSuccess ? "Forked ✓" : "Fork"}
+            {forkMut.isSuccess ? "Forked ✓" : "Fork / Add to My Library"}
           </button>
           {isAdmin && (
             <>

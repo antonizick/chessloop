@@ -1,7 +1,7 @@
 # ChessLoop — Design & Implementation Plan
 
-> Last updated: 2026-05-28
-> Status: Phase 5+ complete — Backup upload & recovery feature added
+> Last updated: 2026-05-29
+> Status: Phase 5+ complete — Public library Learn/View browsing added
 
 ---
 
@@ -1214,3 +1214,91 @@ requests.
 fix: use authenticated fetch for backup downloads instead of plain href
 ```
 
+
+---
+
+## 19. MFA Improvements, Line Duplicate Backend & Nginx Subpath Routing (2026-05-29)
+
+### MFA Improvements
+
+**Problem:** MFA setup required users to manually type a long `otpauth://` URI into their authenticator app — no QR code was displayed. Additionally, there was no way to remove MFA once enabled.
+
+**QR code generation — `chessloop/backend/auth/mfa.py`**
+- Added `qr_code_b64(otpauth_url)` — generates a PNG QR code using the `qrcode` library, encodes it as base64
+- `mfa_setup` endpoint now returns `qr_code_b64` alongside the existing `secret` and `otpauth_url` fields
+- Schema updated: `MfaSetupResponse.qr_code_b64: str` added
+
+**MFA disable — `chessloop/backend/routers/auth.py`**
+- New endpoint: `DELETE /api/auth/mfa`
+- Accepts `{ totp_code }`, verifies the current TOTP before disabling
+- Sets `mfa_enabled = False`, clears `mfa_secret` from the user record
+
+**Frontend — `chessloop/frontend/src/pages/Settings.tsx`**
+- MFA setup panel now renders the QR code as an `<img>` (base64 src)
+- "Show manual entry" toggle reveals the raw secret for users who prefer to type it
+- When MFA is active, shows a "Remove MFA" button that expands an inline confirmation form
+- Confirmation requires the current TOTP code before deletion proceeds
+
+**API — `chessloop/frontend/src/api/auth.ts`**
+- `authApi.mfaSetup()` return type updated to include `qr_code_b64`
+- New `authApi.mfaDisable(totp_code)` — `DELETE /api/auth/mfa`
+
+### Line Duplicate Backend Endpoint
+
+**Problem:** Line duplication was implemented entirely client-side in `TeachingBoard.tsx` — three separate API calls (create line, import moves, select) with no atomicity. Any failure left an empty orphan line.
+
+**Backend — `chessloop/backend/routers/lines.py`**
+- New endpoint: `POST /lines/{line_id}/duplicate`
+- Copies name (appends " copy"), `starting_fen`, and moves in a single transaction
+- Sets `order_index` to `len(existing)` so the copy lands at the end of the list
+- Returns `201 Created` with the full new `LineResponse`
+
+**Frontend — `chessloop/frontend/src/api/lines.ts`**
+- New `linesApi.duplicate(id)` — `POST /lines/{id}/duplicate`
+
+**`chessloop/frontend/src/pages/TeachingBoard.tsx`**
+- `duplicateLine` mutation simplified from a 3-step client-side sequence to `linesApi.duplicate(lineId)` — single call, fully atomic
+
+### Nginx Subpath Routing
+
+**`chessloop/nginx/default.conf`**
+- Added `location ~ ^/chess/api/` block: strips the `/chess` prefix and proxies to the backend, enabling ChessLoop to be served at a subpath (e.g. `example.com/chess/`) behind an existing reverse proxy
+- Added `/chess/docs` and `/chess/openapi.json` passthrough routes for API documentation at the subpath
+- Existing `/api/` and `/*` SPA routes unchanged
+
+---
+
+## 20. Public Library Learn/View Browsing (2026-05-29)
+
+### Problem
+
+Users browsing the public opening library list could only fork a library (copying it to their own account) or view its metadata/comments page. There was no way to browse the lines and moves of a public library in a read-only viewer without forking it first.
+
+The "Fork" button label was also unclear — it did not communicate that forking adds the library to the user's personal collection.
+
+### Changes
+
+**Backend — `chessloop/backend/routers/public.py`**
+- New endpoint: `GET /public/libraries/{lib_id}/lines`
+  - Validates the library is public via `_get_public_lib()`
+  - Returns all lines ordered by `order_index`
+  - Response model: `list[LineResponse]`
+  - Any authenticated user can call this (no ownership or admin check)
+
+**Frontend API — `chessloop/frontend/src/api/public.ts`**
+- New `publicApi.getLines(id)` — `GET /public/libraries/{id}/lines`
+- Return type: `Line[]`
+
+**New page — `chessloop/frontend/src/pages/PublicLearn.tsx`**
+- Full read-only library viewer — board is `viewOnly: true`, no edit controls anywhere
+- Fetches library metadata via `publicApi.getLibrary()`, lines via `publicApi.getLines()`
+- Features: line selector panel, move list with click-to-jump, keyboard navigation (←/→/↑/↓), move note display (read-only), conflict evaluator, board flip, PGN export/copy
+- "Read-only" badge in header makes the mode explicit
+- Back link returns to the public library detail page
+
+**Route — `chessloop/frontend/src/App.tsx`**
+- New route: `/public/:id/learn` → `<PublicLearn />`
+
+**Public library card — `chessloop/frontend/src/pages/Public.tsx`**
+- "Fork" button relabeled → **"Fork / Add to My Library"**
+- New **"Learn / View"** button added to each card — navigates to `/public/:id/learn`

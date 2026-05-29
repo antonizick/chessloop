@@ -1,5 +1,5 @@
 import { api } from "./client";
-import type { PublicLibraryEntry, PublicLibraryDetail, CommentEntry } from "@/types";
+import type { PublicLibraryEntry, PublicLibraryDetail, CommentEntry, Line } from "@/types";
 
 export interface BrowseParams {
   q?: string;
@@ -38,4 +38,7 @@ export const publicApi = {
       method: "POST",
       body: JSON.stringify({ content }),
     }),
+
+  getLines: (id: string) =>
+    api<Line[]>(`/public/libraries/${id}/lines`),
 };
