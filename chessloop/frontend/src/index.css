@@ -99,6 +99,25 @@ html.boost-visibility:not(.light-theme) {
 .board-theme-purple cg-board square.selected  { background-color: rgba(120, 60, 180, 0.45); }
 
 /* ═══════════════════════════════════════════════════════════
+   BOARD COORDINATES — black text with white outline
+   ═══════════════════════════════════════════════════════════ */
+
+.cg-wrap coords {
+  opacity: 1 !important;
+  font-weight: 900 !important;
+  font-size: 12px !important;
+  color: #000000 !important;
+  text-shadow: 0 0 1px #fff, 0 0 2px #fff, 0 0 3px #fff, 0 0 4px #fff !important;
+}
+
+.cg-wrap coords coord {
+  font-weight: 900 !important;
+  font-size: 12px !important;
+  color: #000000 !important;
+  text-shadow: 0 0 1px #fff, 0 0 2px #fff, 0 0 3px #fff, 0 0 4px #fff !important;
+}
+
+/* ═══════════════════════════════════════════════════════════
    PIECE SETS — applied via .pieces-{name} on .cg-wrap
    cburnett:  the default from chessground (no extra class needed)
    alpha:     high-contrast flat look via CSS filter
