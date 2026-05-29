@@ -91,6 +91,8 @@ start_containers() {
     echo -e "  Backend already running"
   else
     echo -e "  ${YELLOW}Starting${RESET} backend…"
+    # Remove existing stopped container if it exists
+    docker rm -f chessloop-backend >/dev/null 2>&1 || true
     docker run -d \
       --name chessloop-backend \
       --restart always \
@@ -109,6 +111,8 @@ start_containers() {
     echo -e "  Frontend already running"
   else
     echo -e "  ${YELLOW}Starting${RESET} frontend…"
+    # Remove existing stopped container if it exists
+    docker rm -f chessloop-frontend >/dev/null 2>&1 || true
     docker run -d \
       --name chessloop-frontend \
       --restart always \
@@ -121,6 +125,8 @@ start_containers() {
     echo -e "  Nginx already running"
   else
     echo -e "  ${YELLOW}Starting${RESET} nginx…"
+    # Remove existing stopped container if it exists
+    docker rm -f chessloop-nginx >/dev/null 2>&1 || true
     docker run -d \
       --name chessloop-nginx \
       --restart always \
