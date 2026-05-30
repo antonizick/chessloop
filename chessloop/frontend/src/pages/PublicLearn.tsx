@@ -10,14 +10,18 @@ import { MoveNoteEditor } from "@/components/teaching/MoveNoteEditor";
 import { useTeaching } from "@/hooks/useTeaching";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { publicApi } from "@/api/public";
+import { authApi } from "@/api/auth";
 import { useAuthStore } from "@/stores/auth";
 import { playNavigationSound } from "@/utils/sounds";
 import { ttsService } from "@/services/textToSpeech";
 import type { Line } from "@/types";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 export function PublicLearn() {
   const { id: libId } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
+  const qc = useQueryClient();
+  const setUser = useAuthStore((s) => s.setUser);
 
   const { data: user = useAuthStore.getState().user } = useCurrentUser();
 
@@ -31,6 +35,17 @@ export function PublicLearn() {
     ttsService.setEnabled(ttsEnabled);
     ttsService.setDefaultVoice(ttsVoice);
   }, [ttsEnabled, ttsVoice]);
+
+  // Mutation for toggling TTS preference
+  const updateTtsEnabled = useMutation({
+    mutationFn: (enabled: boolean) =>
+      authApi.updatePreferences({ tts_enabled: enabled }),
+    onSuccess: (updatedUser) => {
+      setUser(updatedUser);
+      qc.invalidateQueries({ queryKey: ["me"] });
+      ttsService.setEnabled(updatedUser.tts_enabled);
+    },
+  });
 
   const { data: lib } = useQuery({
     queryKey: ["public-library", libId],
@@ -199,7 +214,29 @@ export function PublicLearn() {
           />
 
           {selectedLine && teaching.viewIndex !== null && (
-            <div className="card p-4">
+            <div className="card p-4 flex flex-col gap-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-ink-300">Move Notes</h3>
+                <div className="flex items-center gap-3">
+                  <label className="text-xs text-ink-400">Read aloud</label>
+                  <button
+                    onClick={() => updateTtsEnabled.mutate(!ttsEnabled)}
+                    disabled={updateTtsEnabled.isPending}
+                    className={`relative w-10 h-6 rounded-full transition-colors ${
+                      ttsEnabled ? "bg-gold-500" : "bg-ink-600"
+                    } disabled:opacity-50`}
+                    role="switch"
+                    aria-checked={ttsEnabled}
+                    title={ttsEnabled ? "Disable reading notes aloud" : "Enable reading notes aloud"}
+                  >
+                    <span
+                      className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${
+                        ttsEnabled ? "translate-x-4" : "translate-x-0"
+                      }`}
+                    />
+                  </button>
+                </div>
+              </div>
               <MoveNoteEditor
                 lineId={selectedLine.id}
                 moveIndex={teaching.viewIndex}

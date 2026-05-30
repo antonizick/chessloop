@@ -1302,3 +1302,73 @@ The "Fork" button label was also unclear — it did not communicate that forking
 **Public library card — `chessloop/frontend/src/pages/Public.tsx`**
 - "Fork" button relabeled → **"Fork / Add to My Library"**
 - New **"Learn / View"** button added to each card — navigates to `/public/:id/learn`
+
+---
+
+## 21. Quick-Access Read-Aloud Toggle on Learning Pages (2026-05-29)
+
+### Problem
+
+Users had to navigate to Settings to toggle whether move notes are read aloud during teaching/learning. This was cumbersome when they wanted to enable/disable audio feedback while actively studying.
+
+### Solution
+
+Added a quick-access "Read aloud" toggle directly on move note cards across all teaching and learning pages. The toggle:
+- Auto-saves to the user's profile with a single click (no manual save step)
+- Uses the existing `tts_enabled` preference
+- Appears on all pages where move notes are displayed
+- Provides immediate audio feedback as the user navigates moves
+
+### Implementation
+
+**Files Modified — Added mutations and toggle UI to 4 pages:**
+
+1. **TeachingBoard.tsx** — Teaching mode for line creation
+   - Added `updateTtsEnabled` mutation with auto-save
+   - Toggle positioned in move note card header
+   - Updates TTS service immediately on success
+
+2. **UnratedLearning.tsx** — Read-only learning mode  
+   - Same toggle implementation as TeachingBoard
+   - Allows students to control audio during study
+
+3. **PublicTeachingBoard.tsx** — Admin editing mode for public libraries
+   - Same toggle for consistency across all editing interfaces
+
+4. **PublicLearn.tsx** — Public library learning mode
+   - Same toggle for public library students
+
+**Frontend Implementation Details:**
+
+- Added `authApi` import to each page for preference updates
+- Created `updateTtsEnabled` mutation using `authApi.updatePreferences({ tts_enabled: boolean })`
+- Integrated `setUser` hook from Zustand to update local state on success
+- Invalidated "me" query to keep auth state in sync
+- Toggle updates TTS service immediately: `ttsService.setEnabled(updatedUser.tts_enabled)`
+- UI: Gold toggle when enabled, grey when disabled; disabled state during API call
+
+**Backend — No changes required**
+- User model already has `tts_enabled: bool = True`
+- PreferencesRequest schema already supports `tts_enabled: Optional[bool]`
+- Update endpoint (`PATCH /auth/preferences`) already handles tts_enabled field
+
+**TypeScript & Compilation**
+- All 4 files compile without type errors
+- No new dependencies added
+- Consistent with existing Zustand + React Query patterns
+
+### User Experience
+
+**Before:** Settings → Audio section → Toggle → Save preferences (3 steps)
+
+**After:** Click toggle on move notes card (1 step, auto-saves)
+
+The toggle is positioned directly next to the move notes editor heading, making it discoverable and providing immediate visual feedback. When users navigate to moves with notes, the audio plays automatically if the toggle is enabled.
+
+### Testing
+
+- ✅ TypeScript compilation: no errors
+- ✅ Mutation endpoints: existing API already supports updates
+- ✅ UI consistency: all 4 pages use identical toggle styling
+- ✅ State sync: Zustand + React Query keep auth state in sync
+- ✅ TTS service: updates immediately reflect in next move navigation
