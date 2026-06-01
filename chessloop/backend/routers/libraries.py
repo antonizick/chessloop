@@ -535,37 +535,48 @@ def list_video_links(
     user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
 ):
-    lib = session.exec(
-        select(Library).where(Library.id == lib_id)
-    ).first()
-    if not lib:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Library not found")
-    if not lib.is_public and lib.owner_user_id != user.id:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Not authorized")
-    from sqlalchemy import text
-    from uuid import UUID
-    stmt = text(
-        "SELECT id, library_id, title, url, created_at FROM library_video_link WHERE library_id = :with_dashes OR library_id = :without_dashes ORDER BY created_at"
-    ).bindparams(
-        with_dashes=str(lib_id),
-        without_dashes=str(lib_id).replace("-", ""),
-    )
-    logger.info(f"[VIDEO-LINKS] Querying: lib_id={lib_id}, with_dashes={str(lib_id)}, without_dashes={str(lib_id).replace('-', '')}")
-    rows = session.exec(stmt).all()
-    logger.info(f"[VIDEO-LINKS] Found {len(rows)} rows")
-    for i, row in enumerate(rows):
-        logger.info(f"[VIDEO-LINKS] Row {i}: {row}")
-    result = []
-    for row in rows:
-        result.append(LibraryVideoLink(
-            id=UUID(row[0]),
-            library_id=UUID(row[1]),
-            title=row[2],
-            url=row[3],
-            created_at=row[4],
-        ))
-    logger.info(f"[VIDEO-LINKS] Returning {len(result)} video links")
-    return result
+    try:
+        print(f"DEBUG: list_video_links called with lib_id={lib_id}")
+        lib = session.exec(
+            select(Library).where(Library.id == lib_id)
+        ).first()
+        if not lib:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Library not found")
+        if not lib.is_public and lib.owner_user_id != user.id:
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "Not authorized")
+        from sqlalchemy import text
+        from uuid import UUID as UUID_Type
+
+        lib_id_str = str(lib_id)
+        lib_id_no_dash = lib_id_str.replace("-", "")
+        print(f"DEBUG: Querying with lib_id_str={lib_id_str}, lib_id_no_dash={lib_id_no_dash}")
+
+        stmt = text(
+            "SELECT id, library_id, title, url, created_at FROM library_video_link WHERE library_id = :with_dashes OR library_id = :without_dashes ORDER BY created_at"
+        ).bindparams(
+            with_dashes=lib_id_str,
+            without_dashes=lib_id_no_dash,
+        )
+        rows = session.exec(stmt).all()
+        print(f"DEBUG: Found {len(rows)} rows from database")
+
+        result = []
+        for row in rows:
+            print(f"DEBUG: Processing row: {row}")
+            result.append(LibraryVideoLink(
+                id=UUID_Type(row[0]),
+                library_id=UUID_Type(row[1]),
+                title=row[2],
+                url=row[3],
+                created_at=row[4],
+            ))
+        print(f"DEBUG: Returning {len(result)} video links")
+        return result
+    except Exception as e:
+        print(f"ERROR in list_video_links: {type(e).__name__}: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise
 
 
 @router.post("/{lib_id}/video-links", response_model=VideoLinkResponse, status_code=status.HTTP_201_CREATED)
