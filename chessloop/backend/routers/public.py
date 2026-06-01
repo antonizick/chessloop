@@ -71,9 +71,14 @@ def browse_public(
         seen_ids.add(lib.id)
 
         owner = db.get(User, lib.owner_user_id)
-        video_link_rows = db.exec(
-            select(LibraryVideoLink).where(LibraryVideoLink.library_id == lib.id)
-        ).all()
+        from sqlalchemy import text
+        vl_stmt = text(
+            "SELECT * FROM library_video_link WHERE library_id = :with_dashes OR library_id = :without_dashes ORDER BY created_at"
+        ).bindparams(
+            with_dashes=str(lib.id),
+            without_dashes=str(lib.id).replace("-", ""),
+        )
+        video_link_rows = db.exec(vl_stmt).all()
         result.append(PublicLibraryEntry(
             id=lib.id,
             name=lib.name,
@@ -142,9 +147,14 @@ def get_public_library(
             created_at=sig.created_at,
         ))
 
-    video_link_rows = db.exec(
-        select(LibraryVideoLink).where(LibraryVideoLink.library_id == lib.id)
-    ).all()
+    from sqlalchemy import text
+    vl_stmt = text(
+        "SELECT * FROM library_video_link WHERE library_id = :with_dashes OR library_id = :without_dashes ORDER BY created_at"
+    ).bindparams(
+        with_dashes=str(lib.id),
+        without_dashes=str(lib.id).replace("-", ""),
+    )
+    video_link_rows = db.exec(vl_stmt).all()
     video_links = [
         VideoLinkResponse(id=vl.id, library_id=vl.library_id, title=vl.title, url=vl.url, created_at=vl.created_at)
         for vl in video_link_rows

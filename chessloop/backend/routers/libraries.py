@@ -170,12 +170,15 @@ def delete_library(
             session.delete(line)
         session.flush()  # Execute all line deletes before deleting library
 
-        # Delete video links for this library
-        video_links = session.exec(
-            select(LibraryVideoLink).where(LibraryVideoLink.library_id == lib.id)
-        ).all()
-        for vl in video_links:
-            session.delete(vl)
+        # Delete video links for this library (handle UUID format variations)
+        from sqlalchemy import text
+        vl_stmt = text(
+            "DELETE FROM library_video_link WHERE library_id = :with_dashes OR library_id = :without_dashes"
+        ).bindparams(
+            with_dashes=str(lib.id),
+            without_dashes=str(lib.id).replace("-", ""),
+        )
+        session.exec(vl_stmt)
         session.flush()  # Execute all video link deletes before deleting library
 
         # Orphan any libraries that forked from this one (set forked_from_id to NULL)
@@ -282,13 +285,19 @@ def fork(
             order_index=src_line.order_index,
         ))
 
-    for src_link in session.exec(
-        select(LibraryVideoLink).where(LibraryVideoLink.library_id == source.id)
-    ).all():
+    from sqlalchemy import text
+    src_links_stmt = text(
+        "SELECT * FROM library_video_link WHERE library_id = :with_dashes OR library_id = :without_dashes"
+    ).bindparams(
+        with_dashes=str(source.id),
+        without_dashes=str(source.id).replace("-", ""),
+    )
+    src_links = session.exec(src_links_stmt).all()
+    for src_link_row in src_links:
         session.add(LibraryVideoLink(
             library_id=forked.id,
-            title=src_link.title,
-            url=src_link.url,
+            title=src_link_row.title,
+            url=src_link_row.url,
         ))
 
     session.commit()
@@ -533,9 +542,15 @@ def list_video_links(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Library not found")
     if not lib.is_public and lib.owner_user_id != user.id:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Not authorized")
-    return session.exec(
-        select(LibraryVideoLink).where(LibraryVideoLink.library_id == lib_id)
-    ).all()
+    from sqlalchemy import text
+    stmt = text(
+        "SELECT * FROM library_video_link WHERE library_id = :with_dashes OR library_id = :without_dashes ORDER BY created_at"
+    ).bindparams(
+        with_dashes=str(lib_id),
+        without_dashes=str(lib_id).replace("-", ""),
+    )
+    result = session.exec(stmt).all()
+    return [LibraryVideoLink(**dict(row._mapping)) for row in result]
 
 
 @router.post("/{lib_id}/video-links", response_model=VideoLinkResponse, status_code=status.HTTP_201_CREATED)
@@ -546,9 +561,14 @@ def add_video_link(
     session: Session = Depends(get_session),
 ):
     _owned_or_404(session, lib_id, user)
-    count = len(session.exec(
-        select(LibraryVideoLink).where(LibraryVideoLink.library_id == lib_id)
-    ).all())
+    from sqlalchemy import text
+    count_stmt = text(
+        "SELECT COUNT(*) FROM library_video_link WHERE library_id = :with_dashes OR library_id = :without_dashes"
+    ).bindparams(
+        with_dashes=str(lib_id),
+        without_dashes=str(lib_id).replace("-", ""),
+    )
+    count = session.exec(count_stmt).first()[0]
     if count >= 10:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Maximum of 10 video links per library")
     link = LibraryVideoLink(library_id=lib_id, title=body.title, url=body.url)
@@ -566,20 +586,26 @@ def delete_video_link(
     session: Session = Depends(get_session),
 ):
     _owned_or_404(session, lib_id, user)
-    # Verify link exists and belongs to this library
-    all_links = session.exec(
-        select(LibraryVideoLink).where(LibraryVideoLink.library_id == lib_id)
-    ).all()
-    if not any(str(l.id) == str(link_id) for l in all_links):
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Video link not found")
-    # SQLite stores UUIDs inconsistently (with or without dashes depending on
-    # when/how the row was inserted), so match both formats.
     from sqlalchemy import text
-    stmt = text(
-        "DELETE FROM library_video_link WHERE id = :with_dashes OR id = :without_dashes"
+    # Verify link exists and belongs to this library (handle UUID format variations)
+    check_stmt = text(
+        "SELECT COUNT(*) FROM library_video_link WHERE (id = :link_with_dashes OR id = :link_without_dashes) AND (library_id = :lib_with_dashes OR library_id = :lib_without_dashes)"
     ).bindparams(
-        with_dashes=str(link_id),
-        without_dashes=str(link_id).replace("-", ""),
+        link_with_dashes=str(link_id),
+        link_without_dashes=str(link_id).replace("-", ""),
+        lib_with_dashes=str(lib_id),
+        lib_without_dashes=str(lib_id).replace("-", ""),
+    )
+    if session.exec(check_stmt).first()[0] == 0:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Video link not found")
+    # Delete with both UUID formats to handle SQLite inconsistency
+    stmt = text(
+        "DELETE FROM library_video_link WHERE (id = :link_with_dashes OR id = :link_without_dashes) AND (library_id = :lib_with_dashes OR library_id = :lib_without_dashes)"
+    ).bindparams(
+        link_with_dashes=str(link_id),
+        link_without_dashes=str(link_id).replace("-", ""),
+        lib_with_dashes=str(lib_id),
+        lib_without_dashes=str(lib_id).replace("-", ""),
     )
     session.exec(stmt)
     session.commit()
