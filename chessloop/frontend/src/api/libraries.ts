@@ -1,6 +1,6 @@
 import { api } from "./client";
 import { useAuthStore } from "@/stores/auth";
-import type { Library } from "@/types";
+import type { Library, VideoLink } from "@/types";
 
 export interface LibraryCreate {
   name: string;
@@ -73,4 +73,16 @@ export const librariesApi = {
     const url = `/libraries/${id}/conflicts${queryString ? `?${queryString}` : ""}`;
     return api<EvaluateConflictsResult>(url, { method: "GET" });
   },
+
+  listVideoLinks: (libId: string) =>
+    api<VideoLink[]>(`/libraries/${libId}/video-links`),
+
+  addVideoLink: (libId: string, body: { title: string; url: string }) =>
+    api<VideoLink>(`/libraries/${libId}/video-links`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+
+  deleteVideoLink: (libId: string, linkId: string) =>
+    api<void>(`/libraries/${libId}/video-links/${linkId}`, { method: "DELETE" }),
 };

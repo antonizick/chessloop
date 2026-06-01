@@ -243,9 +243,18 @@ export interface CommentEntry {
   created_at: string;
 }
 
+export interface VideoLink {
+  id: string;
+  library_id: string;
+  title: string;
+  url: string;
+  created_at: string;
+}
+
 export interface PublicLibraryDetail extends PublicLibraryEntry {
   user_has_starred: boolean;
   comments: CommentEntry[];
+  video_links: VideoLink[];
 }
 
 // ── Auth ──────────────────────────────────────────────────────────────────────

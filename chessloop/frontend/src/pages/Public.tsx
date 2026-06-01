@@ -2,9 +2,35 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { publicApi } from "@/api/public";
+import { librariesApi } from "@/api/libraries";
 import { useAuthStore } from "@/stores/auth";
 import { AdminOpeningsPanel } from "@/components/admin/AdminOpeningsPanel";
 import type { PublicLibraryEntry } from "@/types";
+
+function VideoLinkPills({ libraryId }: { libraryId: string }) {
+  const { data: links = [] } = useQuery({
+    queryKey: ["video-links", libraryId],
+    queryFn: () => librariesApi.listVideoLinks(libraryId),
+  });
+  if (links.length === 0) return null;
+  return (
+    <div className="flex flex-col gap-1 pt-2 border-t border-ink-700">
+      {links.map((link) => (
+        <a
+          key={link.id}
+          href={link.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          className="flex items-center gap-2 px-3 py-1.5 rounded bg-ink-800 border border-ink-700 hover:border-gold-500/50 text-xs text-ink-200 hover:text-gold-300 transition-colors"
+        >
+          <span className="text-gold-500 shrink-0">▶</span>
+          <span className="truncate">{link.title}</span>
+        </a>
+      ))}
+    </div>
+  );
+}
 
 const COLOR_LABEL: Record<string, string> = {
   white: "White",
@@ -78,6 +104,8 @@ function LibraryCard({ lib, isAdmin }: { lib: PublicLibraryEntry; isAdmin: boole
       {lib.description && (
         <p className="text-sm text-ink-300 line-clamp-2">{lib.description}</p>
       )}
+
+      <VideoLinkPills libraryId={lib.id} />
 
       <div className="flex items-center justify-between text-xs text-ink-400 pt-1 border-t border-ink-700">
         <span>{lib.line_count} line{lib.line_count !== 1 ? "s" : ""}</span>

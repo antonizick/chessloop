@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Optional
 from uuid import UUID
 from pydantic import BaseModel, Field
+from schemas.library_video_link import VideoLinkResponse
 
 
 class PublicLibraryEntry(BaseModel):
@@ -39,6 +40,7 @@ class PublicLibraryDetail(BaseModel):
     forked_from_id: Optional[UUID] = None
     user_has_starred: bool
     comments: list[CommentEntry]
+    video_links: list[VideoLinkResponse] = []
 
 
 class CommentCreate(BaseModel):

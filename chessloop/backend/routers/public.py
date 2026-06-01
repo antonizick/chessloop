@@ -6,6 +6,7 @@ from sqlmodel import Session, select
 from database import get_session
 from models import User, Library, Line
 from models.public_signal import PublicSignal
+from models.library_video_link import LibraryVideoLink
 from auth.dependencies import get_current_user
 from schemas.public import (
     PublicLibraryEntry,
@@ -13,6 +14,7 @@ from schemas.public import (
     CommentEntry,
     CommentCreate,
 )
+from schemas.library_video_link import VideoLinkResponse
 from schemas.line import LineResponse
 
 router = APIRouter(prefix="/public", tags=["public"])
@@ -133,6 +135,14 @@ def get_public_library(
             created_at=sig.created_at,
         ))
 
+    video_link_rows = db.exec(
+        select(LibraryVideoLink).where(LibraryVideoLink.library_id == lib.id)
+    ).all()
+    video_links = [
+        VideoLinkResponse(id=vl.id, library_id=vl.library_id, title=vl.title, url=vl.url, created_at=vl.created_at)
+        for vl in video_link_rows
+    ]
+
     return PublicLibraryDetail(
         id=lib.id,
         name=lib.name,
@@ -147,6 +157,7 @@ def get_public_library(
         forked_from_id=lib.forked_from_id,
         user_has_starred=user_starred,
         comments=comments,
+        video_links=video_links,
     )
 
 

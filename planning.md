@@ -1,7 +1,7 @@
 # ChessLoop — Design & Implementation Plan
 
-> Last updated: 2026-05-29
-> Status: Phase 5+ complete — Public library Learn/View browsing added
+> Last updated: 2026-05-31
+> Status: Phase 5+ complete — Video training links added to opening libraries
 
 ---
 
@@ -1372,3 +1372,72 @@ The toggle is positioned directly next to the move notes editor heading, making 
 - ✅ UI consistency: all 4 pages use identical toggle styling
 - ✅ State sync: Zustand + React Query keep auth state in sync
 - ✅ TTS service: updates immediately reflect in next move navigation
+
+---
+
+## 22. Video Training Links for Opening Libraries (2026-05-31)
+
+### Problem
+
+Opening libraries had no way to associate external training resources (YouTube videos, courses, articles) with the library content. Users had to manually look up supplementary material.
+
+### Solution
+
+Added a video training links system allowing library owners to attach external links to their libraries. Links appear as clickable `▶ Title` buttons on:
+- **My Opening Libraries** tile cards
+- **Individual library detail pages** (with full CRUD management)
+- **Public Opening Libraries** tile cards (read-only)
+- **Public library detail pages** (read-only, embedded in API response)
+
+### Data Model
+
+**New table: `library_video_link`**
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | UUID | Primary key |
+| `library_id` | UUID | FK → `library.id`, indexed |
+| `title` | str | Display name (max 128 chars) |
+| `url` | str | External URL (http/https validated) |
+| `created_at` | datetime | Auto-set on creation |
+
+Auto-created by `init_db()` on next backend startup — no migration required.
+
+### API Endpoints
+
+All under `/api/libraries/{lib_id}/`:
+
+| Method | Path | Auth | Notes |
+|--------|------|------|-------|
+| `GET` | `video-links` | Owner or public library | Returns `list[VideoLinkResponse]` |
+| `POST` | `video-links` | Owner only | Max 10 links; returns 201 |
+| `DELETE` | `video-links/{link_id}` | Owner only | Returns 204 |
+
+Public library detail endpoint (`GET /api/public/libraries/{id}`) also embeds `video_links` in the response to avoid a second fetch.
+
+### Implementation
+
+**New Files:**
+- `chessloop/backend/models/library_video_link.py` — SQLModel table
+- `chessloop/backend/schemas/library_video_link.py` — `VideoLinkCreate`, `VideoLinkResponse`
+- `chessloop/frontend/src/components/ui/VideoLinksSection.tsx` — reusable component with `canEdit` prop
+
+**Modified Files:**
+- `backend/models/__init__.py` — register `LibraryVideoLink`
+- `backend/schemas/public.py` — add `video_links: list[VideoLinkResponse] = []` to `PublicLibraryDetail`
+- `backend/routers/libraries.py` — 3 new endpoints appended
+- `backend/routers/public.py` — populate `video_links` in `get_public_library`
+- `frontend/src/types/index.ts` — add `VideoLink` interface; add `video_links` to `PublicLibraryDetail`
+- `frontend/src/api/libraries.ts` — add `listVideoLinks`, `addVideoLink`, `deleteVideoLink`
+- `frontend/src/pages/LibraryDetail.tsx` — add `<VideoLinksSection canEdit={true}>`
+- `frontend/src/pages/PublicLibraryDetail.tsx` — render embedded `video_links` inline
+- `frontend/src/pages/Libraries.tsx` — add `VideoLinkPills` sub-component on each tile
+- `frontend/src/pages/Public.tsx` — add `VideoLinkPills` sub-component on each tile
+
+### UX
+
+**Managing links (owners):** Library detail page → scroll below action buttons → "Video Links" card → click `+ Add link` → enter title + URL → Save. Each link shows `✕` to delete.
+
+**Viewing links (all users):** Full-width `▶ Title` button rows on any page that shows the library. Clicking opens the URL in a new tab.
+
+**Constraints:** Max 10 links per library, URL must be http/https.

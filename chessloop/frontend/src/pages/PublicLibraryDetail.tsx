@@ -117,6 +117,24 @@ export function PublicLibraryDetail() {
           Published {new Date(lib.published_at).toLocaleDateString()}
           {lib.forked_from_id && " · forked"}
         </div>
+
+        {lib.video_links.length > 0 && (
+          <div className="flex flex-col gap-1 pt-1 border-t border-ink-700">
+            <p className="text-xs font-medium text-ink-400">Video Links</p>
+            {lib.video_links.map((link) => (
+              <a
+                key={link.id}
+                href={link.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 px-3 py-2 rounded bg-ink-800 border border-ink-700 hover:border-gold-500/50 hover:bg-ink-750 text-sm text-ink-200 hover:text-gold-300 transition-colors"
+              >
+                <span className="text-gold-500 shrink-0">▶</span>
+                <span className="truncate">{link.title}</span>
+              </a>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Comments */}

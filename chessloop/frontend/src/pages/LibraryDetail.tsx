@@ -3,6 +3,7 @@ import { Link, useParams, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { librariesApi, type LichessImportResult } from "@/api/libraries";
 import { linesApi } from "@/api/lines";
+import { VideoLinksSection } from "@/components/ui/VideoLinksSection";
 
 export function LibraryDetail() {
   const { id } = useParams<{ id: string }>();
@@ -313,6 +314,11 @@ export function LibraryDetail() {
           )}
         </div>
       )}
+
+      {/* Video links */}
+      <div className="card">
+        <VideoLinksSection libraryId={id!} canEdit={true} />
+      </div>
 
       {/* Lines list */}
       <div className="card">

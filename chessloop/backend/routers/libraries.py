@@ -10,6 +10,7 @@ import chess
 
 from database import get_session
 from models import User, Library, Line, PracticePosition, ReviewLog
+from models.library_video_link import LibraryVideoLink
 from auth.dependencies import get_current_user
 from schemas.library import (
     LibraryCreate,
@@ -19,6 +20,7 @@ from schemas.library import (
     ConflictResponse,
     EvaluateConflictsResult,
 )
+from schemas.library_video_link import VideoLinkCreate, VideoLinkResponse
 from services import opening_import
 
 router = APIRouter(prefix="/libraries", tags=["libraries"])
@@ -458,3 +460,56 @@ def evaluate_conflicts(
         conflicts_found=len(conflicts),
         conflicts=conflicts
     )
+
+
+# ── Video Links ───────────────────────────────────────────────────────────────
+
+@router.get("/{lib_id}/video-links", response_model=list[VideoLinkResponse])
+def list_video_links(
+    lib_id: UUID,
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    lib = session.get(Library, lib_id)
+    if not lib:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Library not found")
+    if not lib.is_public and lib.owner_user_id != user.id:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Not authorized")
+    return session.exec(
+        select(LibraryVideoLink).where(LibraryVideoLink.library_id == lib_id)
+    ).all()
+
+
+@router.post("/{lib_id}/video-links", response_model=VideoLinkResponse, status_code=status.HTTP_201_CREATED)
+def add_video_link(
+    lib_id: UUID,
+    body: VideoLinkCreate,
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    _owned_or_404(session, lib_id, user)
+    count = len(session.exec(
+        select(LibraryVideoLink).where(LibraryVideoLink.library_id == lib_id)
+    ).all())
+    if count >= 10:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Maximum of 10 video links per library")
+    link = LibraryVideoLink(library_id=lib_id, title=body.title, url=body.url)
+    session.add(link)
+    session.commit()
+    session.refresh(link)
+    return link
+
+
+@router.delete("/{lib_id}/video-links/{link_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_video_link(
+    lib_id: UUID,
+    link_id: UUID,
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    _owned_or_404(session, lib_id, user)
+    link = session.get(LibraryVideoLink, link_id)
+    if not link or link.library_id != lib_id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Video link not found")
+    session.delete(link)
+    session.commit()
