@@ -549,7 +549,14 @@ def list_video_links(
 
         lib_id_str = str(lib_id)
         lib_id_no_dash = lib_id_str.replace("-", "")
-        print(f"DEBUG: Querying with lib_id_str={lib_id_str}, lib_id_no_dash={lib_id_no_dash}")
+        print(f"DEBUG: lib_id={lib_id}, lib_id_str={lib_id_str}, lib_id_no_dash={lib_id_no_dash}")
+
+        # Test with raw SQL directly (no ORM)
+        from sqlalchemy import text as sql_text
+        test_sql = f"SELECT COUNT(*) FROM library_video_link WHERE library_id = '{lib_id_no_dash}'"
+        print(f"DEBUG: Test SQL: {test_sql}")
+        test_result = session.exec(sql_text(test_sql)).first()
+        print(f"DEBUG: Test SQL count: {test_result[0]}")
 
         # Query without dashes only (database stores without dashes)
         stmt = text(
