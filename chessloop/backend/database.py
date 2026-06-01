@@ -15,6 +15,17 @@ def _set_sqlite_pragmas(dbapi_connection, _):
     cursor.execute("PRAGMA journal_mode=WAL;")
     cursor.execute("PRAGMA foreign_keys=ON;")
     cursor.execute("PRAGMA synchronous=NORMAL;")
+    # Checkpoint every 100 WAL frames so pooled connections don't miss recent commits
+    cursor.execute("PRAGMA wal_autocheckpoint=100;")
+    cursor.close()
+
+
+@event.listens_for(engine, "checkout")
+def _wal_checkpoint_on_checkout(dbapi_connection, _connection_record, _connection_proxy):
+    # Run a passive checkpoint on each connection checkout so each request
+    # sees the latest committed WAL data, not a stale snapshot.
+    cursor = dbapi_connection.cursor()
+    cursor.execute("PRAGMA wal_checkpoint(PASSIVE);")
     cursor.close()
 
 

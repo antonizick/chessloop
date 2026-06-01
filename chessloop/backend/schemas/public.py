@@ -17,6 +17,7 @@ class PublicLibraryEntry(BaseModel):
     star_count: int
     line_count: int
     forked_from_id: Optional[UUID] = None
+    video_links: list[VideoLinkResponse] = []
 
 
 class CommentEntry(BaseModel):

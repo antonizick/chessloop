@@ -71,6 +71,9 @@ def browse_public(
         seen_ids.add(lib.id)
 
         owner = db.get(User, lib.owner_user_id)
+        video_link_rows = db.exec(
+            select(LibraryVideoLink).where(LibraryVideoLink.library_id == lib.id)
+        ).all()
         result.append(PublicLibraryEntry(
             id=lib.id,
             name=lib.name,
@@ -83,6 +86,10 @@ def browse_public(
             star_count=_star_count(db, lib.id),
             line_count=_line_count(db, lib.id),
             forked_from_id=lib.forked_from_id,
+            video_links=[
+                VideoLinkResponse(id=vl.id, library_id=vl.library_id, title=vl.title, url=vl.url, created_at=vl.created_at)
+                for vl in video_link_rows
+            ],
         ))
 
     # Sort by the specified criteria

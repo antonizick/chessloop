@@ -234,6 +234,7 @@ export interface PublicLibraryEntry {
   star_count: number;
   line_count: number;
   forked_from_id: string | null;
+  video_links: VideoLink[];
 }
 
 export interface CommentEntry {

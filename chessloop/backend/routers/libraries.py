@@ -237,6 +237,16 @@ def fork(
             moves=src_line.moves,
             order_index=src_line.order_index,
         ))
+
+    for src_link in session.exec(
+        select(LibraryVideoLink).where(LibraryVideoLink.library_id == source.id)
+    ).all():
+        session.add(LibraryVideoLink(
+            library_id=forked.id,
+            title=src_link.title,
+            url=src_link.url,
+        ))
+
     session.commit()
     return forked
 
@@ -518,8 +528,14 @@ def delete_video_link(
     ).all()
     if not any(str(l.id) == str(link_id) for l in all_links):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Video link not found")
-    # Use raw SQL delete to avoid SQLAlchemy session tracking issues
+    # SQLite stores UUIDs inconsistently (with or without dashes depending on
+    # when/how the row was inserted), so match both formats.
     from sqlalchemy import text
-    stmt = text("DELETE FROM library_video_link WHERE id = :link_id").bindparams(link_id=str(link_id))
+    stmt = text(
+        "DELETE FROM library_video_link WHERE id = :with_dashes OR id = :without_dashes"
+    ).bindparams(
+        with_dashes=str(link_id),
+        without_dashes=str(link_id).replace("-", ""),
+    )
     session.exec(stmt)
     session.commit()
