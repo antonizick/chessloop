@@ -550,7 +550,11 @@ def list_video_links(
         with_dashes=str(lib_id),
         without_dashes=str(lib_id).replace("-", ""),
     )
+    logger.info(f"[VIDEO-LINKS] Querying: lib_id={lib_id}, with_dashes={str(lib_id)}, without_dashes={str(lib_id).replace('-', '')}")
     rows = session.exec(stmt).all()
+    logger.info(f"[VIDEO-LINKS] Found {len(rows)} rows")
+    for i, row in enumerate(rows):
+        logger.info(f"[VIDEO-LINKS] Row {i}: {row}")
     result = []
     for row in rows:
         result.append(LibraryVideoLink(
@@ -560,6 +564,7 @@ def list_video_links(
             url=row[3],
             created_at=row[4],
         ))
+    logger.info(f"[VIDEO-LINKS] Returning {len(result)} video links")
     return result
 
 
