@@ -553,9 +553,9 @@ def list_video_links(
 
         # Query without dashes only (database stores without dashes)
         stmt = text(
-            "SELECT id, library_id, title, url, created_at FROM library_video_link WHERE library_id = ? ORDER BY created_at"
-        )
-        rows = session.exec(stmt, [lib_id_no_dash]).all()
+            "SELECT id, library_id, title, url, created_at FROM library_video_link WHERE library_id = :lib_id ORDER BY created_at"
+        ).bindparams(lib_id=lib_id_no_dash)
+        rows = session.exec(stmt).all()
         print(f"DEBUG: Found {len(rows)} rows from database")
         for i, row in enumerate(rows):
             print(f"DEBUG: Row {i}: id={row[0]}, title={row[2]}")
