@@ -551,20 +551,14 @@ def list_video_links(
         lib_id_no_dash = lib_id_str.replace("-", "")
         print(f"DEBUG: Querying with lib_id_str={lib_id_str}, lib_id_no_dash={lib_id_no_dash}")
 
-        # Test the query directly with raw SQL
-        raw_query = f"SELECT COUNT(*) FROM library_video_link WHERE library_id = '{lib_id_str}' OR library_id = '{lib_id_no_dash}'"
-        print(f"DEBUG: Raw SQL query: {raw_query}")
-        test_result = session.exec(text(raw_query)).first()
-        print(f"DEBUG: Raw query count: {test_result[0]}")
-
+        # Query without dashes only (database stores without dashes)
         stmt = text(
-            "SELECT id, library_id, title, url, created_at FROM library_video_link WHERE library_id = :with_dashes OR library_id = :without_dashes ORDER BY created_at"
-        ).bindparams(
-            with_dashes=lib_id_str,
-            without_dashes=lib_id_no_dash,
+            "SELECT id, library_id, title, url, created_at FROM library_video_link WHERE library_id = ? ORDER BY created_at"
         )
-        rows = session.exec(stmt).all()
+        rows = session.exec(stmt, [lib_id_no_dash]).all()
         print(f"DEBUG: Found {len(rows)} rows from database")
+        for i, row in enumerate(rows):
+            print(f"DEBUG: Row {i}: id={row[0]}, title={row[2]}")
 
         result = []
         for row in rows:
