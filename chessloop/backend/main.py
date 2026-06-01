@@ -41,4 +41,5 @@ app.include_router(admin.router, prefix="/api")
 
 @app.get("/api/health")
 def health():
+    print("DEBUG: health endpoint called - code is being loaded correctly")
     return {"status": "ok"}
