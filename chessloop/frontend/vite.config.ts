@@ -11,7 +11,12 @@ export default defineConfig({
     port: 8090,
     strictPort: true,
     host: "0.0.0.0",
-    allowedHosts: "all",  // Allow connections from any host
+    allowedHosts: [
+      "localhost",
+      "127.0.0.1",
+      "bld2.taild1bb43.ts.net",
+      ".ts.net",  // Allow all Tailscale addresses
+    ],
     hmr: {
       // Auto-detect host and protocol from browser request
       host: undefined,
