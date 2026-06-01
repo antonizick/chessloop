@@ -1,6 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 import json
+import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
@@ -8,9 +9,12 @@ from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 import chess
 
+logger = logging.getLogger(__name__)
+
 from database import get_session
 from models import User, Library, Line, PracticePosition, ReviewLog
 from models.library_video_link import LibraryVideoLink
+from models.line import MoveNote
 from auth.dependencies import get_current_user
 from schemas.library import (
     LibraryCreate,
@@ -126,39 +130,79 @@ def delete_library(
 ):
     lib = _owned_or_404(session, lib_id, user)
 
-    # Get all lines in this library
-    lines = session.exec(select(Line).where(Line.library_id == lib.id)).all()
-    line_ids = [line.id for line in lines]
+    try:
+        # Get all lines in this library
+        lines = session.exec(select(Line).where(Line.library_id == lib.id)).all()
+        line_ids = [line.id for line in lines]
 
-    if line_ids:
-        # Get all practice positions for these lines
-        practice_positions = session.exec(
-            select(PracticePosition).where(PracticePosition.line_id.in_(line_ids))
-        ).all()
-        pp_ids = [pp.id for pp in practice_positions]
-
-        # Delete review logs that reference these practice positions
-        if pp_ids:
-            review_logs = session.exec(
-                select(ReviewLog).where(ReviewLog.practice_pos_id.in_(pp_ids))
+        if line_ids:
+            # Get all practice positions for these lines
+            practice_positions = session.exec(
+                select(PracticePosition).where(PracticePosition.line_id.in_(line_ids))
             ).all()
-            for rl in review_logs:
-                session.delete(rl)
-            session.flush()  # Execute all review log deletes before continuing
+            pp_ids = [pp.id for pp in practice_positions]
 
-        # Delete practice positions
-        for pp in practice_positions:
-            session.delete(pp)
-        session.flush()  # Execute all practice position deletes before deleting lines
+            # Delete review logs that reference these practice positions
+            if pp_ids:
+                review_logs = session.exec(
+                    select(ReviewLog).where(ReviewLog.practice_pos_id.in_(pp_ids))
+                ).all()
+                for rl in review_logs:
+                    session.delete(rl)
+                session.flush()  # Execute all review log deletes before continuing
 
-    # Delete lines
-    for line in lines:
-        session.delete(line)
-    session.flush()  # Execute all line deletes before deleting library
+            # Delete practice positions
+            for pp in practice_positions:
+                session.delete(pp)
+            session.flush()  # Execute all practice position deletes before deleting lines
 
-    # Delete library
-    session.delete(lib)
-    session.commit()
+        # Delete movenotes for these lines
+        if line_ids:
+            movenotes = session.exec(
+                select(MoveNote).where(MoveNote.line_id.in_(line_ids))
+            ).all()
+            for mn in movenotes:
+                session.delete(mn)
+            session.flush()
+
+        # Delete lines
+        for line in lines:
+            session.delete(line)
+        session.flush()  # Execute all line deletes before deleting library
+
+        # Delete video links for this library
+        video_links = session.exec(
+            select(LibraryVideoLink).where(LibraryVideoLink.library_id == lib.id)
+        ).all()
+        for vl in video_links:
+            session.delete(vl)
+        session.flush()  # Execute all video link deletes before deleting library
+
+        # Orphan any libraries that forked from this one (set forked_from_id to NULL)
+        forked_libs = session.exec(
+            select(Library).where(Library.forked_from_id == lib.id)
+        ).all()
+        for forked in forked_libs:
+            forked.forked_from_id = None
+        session.flush()
+
+        # Delete library
+        session.delete(lib)
+        session.commit()
+    except IntegrityError as e:
+        session.rollback()
+        logger.error(f"IntegrityError deleting library {lib_id}: {str(e.orig)}")
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            f"Cannot delete library: {str(e.orig)}"
+        )
+    except Exception as e:
+        session.rollback()
+        logger.error(f"Error deleting library {lib_id}: {type(e).__name__}: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status.HTTP_500_INTERNAL_SERVER_ERROR,
+            f"Error deleting library: {str(e)}"
+        )
 
 
 @router.patch("/{lib_id}/active", response_model=LibraryResponse)
