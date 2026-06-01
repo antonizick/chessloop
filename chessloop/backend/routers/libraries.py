@@ -287,7 +287,7 @@ def fork(
 
     from sqlalchemy import text
     src_links_stmt = text(
-        "SELECT * FROM library_video_link WHERE library_id = :with_dashes OR library_id = :without_dashes"
+        "SELECT id, title, url FROM library_video_link WHERE library_id = :with_dashes OR library_id = :without_dashes"
     ).bindparams(
         with_dashes=str(source.id),
         without_dashes=str(source.id).replace("-", ""),
@@ -296,8 +296,8 @@ def fork(
     for src_link_row in src_links:
         session.add(LibraryVideoLink(
             library_id=forked.id,
-            title=src_link_row.title,
-            url=src_link_row.url,
+            title=src_link_row[1],
+            url=src_link_row[2],
         ))
 
     session.commit()
@@ -543,14 +543,24 @@ def list_video_links(
     if not lib.is_public and lib.owner_user_id != user.id:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Not authorized")
     from sqlalchemy import text
+    from uuid import UUID
     stmt = text(
-        "SELECT * FROM library_video_link WHERE library_id = :with_dashes OR library_id = :without_dashes ORDER BY created_at"
+        "SELECT id, library_id, title, url, created_at FROM library_video_link WHERE library_id = :with_dashes OR library_id = :without_dashes ORDER BY created_at"
     ).bindparams(
         with_dashes=str(lib_id),
         without_dashes=str(lib_id).replace("-", ""),
     )
-    result = session.exec(stmt).all()
-    return [LibraryVideoLink(**dict(row._mapping)) for row in result]
+    rows = session.exec(stmt).all()
+    result = []
+    for row in rows:
+        result.append(LibraryVideoLink(
+            id=UUID(row[0]),
+            library_id=UUID(row[1]),
+            title=row[2],
+            url=row[3],
+            created_at=row[4],
+        ))
+    return result
 
 
 @router.post("/{lib_id}/video-links", response_model=VideoLinkResponse, status_code=status.HTTP_201_CREATED)

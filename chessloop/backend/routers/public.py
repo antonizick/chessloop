@@ -72,13 +72,18 @@ def browse_public(
 
         owner = db.get(User, lib.owner_user_id)
         from sqlalchemy import text
+        from uuid import UUID
         vl_stmt = text(
-            "SELECT * FROM library_video_link WHERE library_id = :with_dashes OR library_id = :without_dashes ORDER BY created_at"
+            "SELECT id, library_id, title, url, created_at FROM library_video_link WHERE library_id = :with_dashes OR library_id = :without_dashes ORDER BY created_at"
         ).bindparams(
             with_dashes=str(lib.id),
             without_dashes=str(lib.id).replace("-", ""),
         )
         video_link_rows = db.exec(vl_stmt).all()
+        video_links = [
+            VideoLinkResponse(id=UUID(vl[0]), library_id=UUID(vl[1]), title=vl[2], url=vl[3], created_at=vl[4])
+            for vl in video_link_rows
+        ]
         result.append(PublicLibraryEntry(
             id=lib.id,
             name=lib.name,
@@ -91,10 +96,7 @@ def browse_public(
             star_count=_star_count(db, lib.id),
             line_count=_line_count(db, lib.id),
             forked_from_id=lib.forked_from_id,
-            video_links=[
-                VideoLinkResponse(id=vl.id, library_id=vl.library_id, title=vl.title, url=vl.url, created_at=vl.created_at)
-                for vl in video_link_rows
-            ],
+            video_links=video_links,
         ))
 
     # Sort by the specified criteria
@@ -148,15 +150,16 @@ def get_public_library(
         ))
 
     from sqlalchemy import text
+    from uuid import UUID
     vl_stmt = text(
-        "SELECT * FROM library_video_link WHERE library_id = :with_dashes OR library_id = :without_dashes ORDER BY created_at"
+        "SELECT id, library_id, title, url, created_at FROM library_video_link WHERE library_id = :with_dashes OR library_id = :without_dashes ORDER BY created_at"
     ).bindparams(
         with_dashes=str(lib.id),
         without_dashes=str(lib.id).replace("-", ""),
     )
     video_link_rows = db.exec(vl_stmt).all()
     video_links = [
-        VideoLinkResponse(id=vl.id, library_id=vl.library_id, title=vl.title, url=vl.url, created_at=vl.created_at)
+        VideoLinkResponse(id=UUID(vl[0]), library_id=UUID(vl[1]), title=vl[2], url=vl[3], created_at=vl[4])
         for vl in video_link_rows
     ]
 
