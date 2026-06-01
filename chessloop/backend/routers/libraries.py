@@ -27,7 +27,9 @@ router = APIRouter(prefix="/libraries", tags=["libraries"])
 
 
 def _owned_or_404(session: Session, lib_id: UUID, user: User) -> Library:
-    lib = session.get(Library, lib_id)
+    lib = session.exec(
+        select(Library).where(Library.id == lib_id)
+    ).first()
     if not lib:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Library not found")
     if lib.owner_user_id != user.id:
@@ -470,7 +472,9 @@ def list_video_links(
     user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
 ):
-    lib = session.get(Library, lib_id)
+    lib = session.exec(
+        select(Library).where(Library.id == lib_id)
+    ).first()
     if not lib:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Library not found")
     if not lib.is_public and lib.owner_user_id != user.id:
@@ -508,8 +512,14 @@ def delete_video_link(
     session: Session = Depends(get_session),
 ):
     _owned_or_404(session, lib_id, user)
-    link = session.get(LibraryVideoLink, link_id)
-    if not link or link.library_id != lib_id:
+    # Verify link exists and belongs to this library
+    all_links = session.exec(
+        select(LibraryVideoLink).where(LibraryVideoLink.library_id == lib_id)
+    ).all()
+    if not any(str(l.id) == str(link_id) for l in all_links):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Video link not found")
-    session.delete(link)
+    # Use raw SQL delete to avoid SQLAlchemy session tracking issues
+    from sqlalchemy import text
+    stmt = text("DELETE FROM library_video_link WHERE id = :link_id").bindparams(link_id=str(link_id))
+    session.exec(stmt)
     session.commit()
