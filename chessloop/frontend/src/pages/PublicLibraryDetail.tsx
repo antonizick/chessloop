@@ -24,7 +24,7 @@ export function PublicLibraryDetail() {
   });
 
   const forkMut = useMutation({
-    mutationFn: () => api<{ id: string }>(`/libraries/${id}/fork`, { method: "POST" }),
+    mutationFn: () => api<{ id: string }>(`/public/libraries/${id}/fork`, { method: "POST" }),
     onSuccess: (forked) => {
       qc.invalidateQueries({ queryKey: ["libraries"] });
       navigate(`/libraries/${forked.id}`);

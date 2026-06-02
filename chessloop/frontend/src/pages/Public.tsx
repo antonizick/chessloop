@@ -32,7 +32,7 @@ function LibraryCard({ lib, isAdmin }: { lib: PublicLibraryEntry; isAdmin: boole
     mutationFn: async () => {
       // Fork via the libraries router
       const { api } = await import("@/api/client");
-      return api(`/libraries/${lib.id}/fork`, { method: "POST" });
+      return api(`/public/libraries/${lib.id}/fork`, { method: "POST" });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["libraries"] });

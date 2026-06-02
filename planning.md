@@ -1,7 +1,7 @@
 # ChessLoop — Design & Implementation Plan
 
-> Last updated: 2026-06-01
-> Status: Phase 5+ complete — Collapsable sidebar added; video training links added; database reliability improved
+> Last updated: 2026-06-02
+> Status: Phase 5+ complete — Public library system hardened: independent PublishedLibrary snapshots, delete/fork/lines all working
 
 ---
 

@@ -6,6 +6,8 @@ from .backup import Backup
 from .public_signal import PublicSignal
 from .library_video_link import LibraryVideoLink
 from .activity_log import ActivityLog
+from .published_library import PublishedLibrary, PublishedLine
+from .published_library_video_link import PublishedLibraryVideoLink
 
 __all__ = [
     "User",
@@ -19,4 +21,7 @@ __all__ = [
     "PublicSignal",
     "LibraryVideoLink",
     "ActivityLog",
+    "PublishedLibrary",
+    "PublishedLine",
+    "PublishedLibraryVideoLink",
 ]

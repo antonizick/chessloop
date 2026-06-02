@@ -14,6 +14,8 @@ logger = logging.getLogger(__name__)
 from database import get_session
 from models import User, Library, Line, PracticePosition, ReviewLog
 from models.library_video_link import LibraryVideoLink
+from models.published_library import PublishedLibrary, PublishedLine
+from models.published_library_video_link import PublishedLibraryVideoLink
 from models.line import MoveNote
 from auth.dependencies import get_current_user
 from services.activity_log import log_activity
@@ -134,6 +136,17 @@ def delete_library(
     lib_name = lib.name
 
     try:
+        # Orphan any PublishedLibrary snapshots so they remain as independent public copies
+        from models.published_library import PublishedLibrary as PubLib
+        published_snapshots = session.exec(
+            select(PubLib).where(PubLib.original_library_id == lib.id)
+        ).all()
+        for snap in published_snapshots:
+            snap.original_library_id = None
+            session.add(snap)
+        if published_snapshots:
+            session.flush()
+
         # Get all lines in this library
         lines = session.exec(select(Line).where(Line.library_id == lib.id)).all()
         line_ids = [line.id for line in lines]
@@ -246,6 +259,54 @@ def publish(
     if not (is_owner or is_admin or is_nick):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Only owner, admins, or nick can publish libraries")
 
+    # Create a separate PublishedLibrary snapshot
+    published_lib = PublishedLibrary(
+        original_library_id=lib.id,
+        name=lib.name,
+        color=lib.color,
+        description=lib.description,
+        eco_code=lib.eco_code,
+        difficulty=lib.difficulty,
+        published_by_user_id=user.id,
+    )
+    session.add(published_lib)
+    session.flush()  # Ensure published_lib.id is set
+
+    # Copy all lines
+    lines = session.exec(select(Line).where(Line.library_id == lib.id)).all()
+    for line in lines:
+        published_line = PublishedLine(
+            published_library_id=published_lib.id,
+            original_line_id=line.id,
+            name=line.name,
+            starting_fen=line.starting_fen,
+            moves=line.moves,
+            order_index=line.order_index,
+        )
+        session.add(published_line)
+    session.flush()
+
+    # Copy all video links
+    from sqlalchemy import text
+    vl_stmt = text(
+        "SELECT id, title, url FROM library_video_link WHERE library_id = :with_dashes OR library_id = :without_dashes"
+    ).bindparams(
+        with_dashes=str(lib.id),
+        without_dashes=str(lib.id).replace("-", ""),
+    )
+    video_links = session.exec(vl_stmt).all()
+    for vl in video_links:
+        from uuid import UUID as _UUID
+        pub_vl = PublishedLibraryVideoLink(
+            published_library_id=published_lib.id,
+            original_video_link_id=_UUID(vl[0]) if vl[0] else None,
+            title=vl[1],
+            url=vl[2],
+        )
+        session.add(pub_vl)
+    session.flush()
+
+    # Mark original library as published (keep for backward compatibility)
     lib.is_public = True
     lib.published_at = datetime.utcnow()
     lib.updated_at = lib.published_at
