@@ -56,7 +56,7 @@ function LibraryCard({ lib, isAdmin }: { lib: PublicLibraryEntry; isAdmin: boole
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <Link
-            to={`/public/${lib.id}`}
+            to={`/public/${lib.id}/learn`}
             className="font-semibold text-ink-100 hover:text-gold-400 truncate block"
           >
             {lib.name}
