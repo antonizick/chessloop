@@ -1,7 +1,7 @@
 # ChessLoop — Design & Implementation Plan
 
-> Last updated: 2026-05-31
-> Status: Phase 5+ complete — Video training links added to opening libraries
+> Last updated: 2026-06-01
+> Status: Phase 5+ complete — Video training links added; database reliability improved
 
 ---
 
