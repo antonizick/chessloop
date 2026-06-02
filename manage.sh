@@ -138,7 +138,7 @@ start_containers() {
       --name chessloop-backend \
       --restart always \
       --network "$NETWORK" \
-      -v chessloop-data:/data \
+      -v "$CHESSLOOP_DIR/data:/data" \
       -e "CHESSLOOP_DB_PATH=/data/chessloop.db" \
       -e "CHESSLOOP_JWT_SECRET=${JWT_SECRET:-***REMOVED-COMPROMISED-JWT-SECRET***}" \
       -e "CHESSLOOP_ACCESS_TTL_MIN=15" \
