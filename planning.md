@@ -1,7 +1,7 @@
 # ChessLoop — Design & Implementation Plan
 
 > Last updated: 2026-06-01
-> Status: Phase 5+ complete — Video training links added; database reliability improved
+> Status: Phase 5+ complete — Collapsable sidebar added; video training links added; database reliability improved
 
 ---
 
@@ -1441,3 +1441,119 @@ Public library detail endpoint (`GET /api/public/libraries/{id}`) also embeds `v
 **Viewing links (all users):** Full-width `▶ Title` button rows on any page that shows the library. Clicking opens the URL in a new tab.
 
 **Constraints:** Max 10 links per library, URL must be http/https.
+
+---
+
+## 23. Collapsable Sidebar with Icon-Only View (2026-06-01)
+
+### Problem
+
+The left sidebar occupied 240px (w-60) of horizontal space permanently, even when users only needed quick navigation. On medium-sized screens or when users preferred a more compact interface, the space could feel excessive.
+
+### Solution
+
+Added a toggle button to collapse the sidebar into an icon-only view (64px / w-16) with tooltips on hover. Users can expand/collapse at any time without losing functionality.
+
+**Feature:**
+- **Expanded (default):** Full text menu with all labels, badges, and library list
+- **Collapsed:** Icon-only buttons (64px width) with emoji icons and hover tooltips
+- **Smooth animation:** Transition-all with 300ms duration on width change
+- **Smart hiding:** My Libraries section hides when collapsed; all other functionality intact
+
+### Implementation
+
+**Modified Files:**
+- `frontend/src/components/layout/Sidebar.tsx` — complete refactor
+
+**Key Changes:**
+
+1. **Added ICON_MAP constant** — emoji icons for each menu item
+   ```typescript
+   const ICON_MAP: Record<string, string> = {
+     home: "🏠",
+     libraries: "📚",
+     "unrated-practice": "🎯",
+     "rated-practice": "⭐",
+     stats: "📊",
+     public: "🌐",
+     learning: "📚",
+     teaching: "✏️",
+   };
+   ```
+
+2. **Added collapse state** — `const [isCollapsed, setIsCollapsed] = useState(false)`
+
+3. **Dynamic width** — `const sidebarWidth = isCollapsed ? "w-16" : "w-60"`
+
+4. **Smooth transitions** — `transition-all duration-300` on aside element
+
+5. **Toggle button** — Arrow button (← →) at top of sidebar with tooltip
+   - Shows "Collapse menu" tooltip when expanded
+   - Shows "Expand menu" tooltip when collapsed
+
+6. **Conditional rendering** — Two layouts:
+   - **Expanded:** Original layout with text labels, badges, "Menu" header, "My Libraries" section
+   - **Collapsed:** Icon-only buttons (h-10 centered icons) with tooltips for all items
+
+7. **Badge positioning** — Badges repositioned to top-right corner when collapsed (relative positioning)
+
+8. **Admin panel** — Collapses/expands with same icon pattern
+
+### Data Model
+
+No database changes — purely UI state management via React hooks.
+
+### UX
+
+**Toggling:** Click the arrow button (←/→) at the top of the sidebar to toggle states.
+
+**Expanded view (default):**
+- Full menu with labels (Home, My Opening Libraries, Unrated Practice, etc.)
+- My Libraries list with library names and chess piece icons (♔ ♚ ⚭)
+- Badges showing practice count ("25" on Rated Practice button)
+- "Menu" and "My Libraries" headers
+- Admin panel link at bottom (if user is admin)
+
+**Collapsed view:**
+- 64px-wide sidebar showing only icons
+- All icons centered with 40px height buttons
+- Hover reveals tooltips with full label names
+- Practice count badges (e.g., "25") positioned at top-right corner of icon
+- My Libraries section completely hidden
+- Admin icon (⚙) at bottom with tooltip
+
+**Responsive:** Feature respects existing `hidden md:flex` breakpoint — sidebar still hidden on mobile.
+
+### Technical Details
+
+**Component hierarchy:**
+```
+<Sidebar>
+  ├── Toggle button with tooltip
+  ├── Main Navigation section
+  │   ├── Menu header (hidden when collapsed)
+  │   └── Navigation items (conditional rendering)
+  │       ├── Home (icon or text)
+  │       ├── Learning (button with tooltip)
+  │       ├── Teaching (button with tooltip)
+  │       └── Other nav items (maps with icon/text variants)
+  ├── My Libraries section (hidden when collapsed)
+  └── Admin link (icon or text)
+```
+
+**Styling:**
+- Icons use `text-lg` size
+- Collapsed buttons: `flex items-center justify-center h-10 rounded`
+- All transitions use Tailwind's `transition-colors` for hover effects
+- Colors maintain consistency: `text-ink-200`, `bg-ink-700`, `text-gold-400` on active
+
+### Testing
+
+✅ TypeScript compilation: no errors
+✅ Feature code in deployed bundle
+✅ Toggle button responsive to clicks
+✅ Smooth CSS transitions applied
+✅ All menu items functional in both states
+✅ Tooltips display on hover in collapsed view
+✅ Active page highlighting works in both states
+✅ Badges display correctly when collapsed
