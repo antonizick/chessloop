@@ -839,6 +839,75 @@ def delete_opening(
     )
 
 
+# ── Logs ──────────────────────────────────────────────────────────────────────
+
+
+class ActivityLogEntry(BaseModel):
+    id: str
+    user_id: str | None
+    username: str
+    action: str
+    target: str | None
+    detail: str | None
+    timestamp: str
+
+
+@router.get("/logs/activity", response_model=list[ActivityLogEntry])
+def get_activity_logs(
+    limit: int = Query(default=200, le=1000),
+    session: Session = Depends(get_session),
+    _: User = Depends(require_admin),
+):
+    from models.activity_log import ActivityLog
+    from sqlalchemy import desc
+    logs = session.exec(
+        select(ActivityLog).order_by(desc(ActivityLog.timestamp)).limit(limit)
+    ).all()
+    return [
+        ActivityLogEntry(
+            id=str(log.id),
+            user_id=str(log.user_id) if log.user_id else None,
+            username=log.username,
+            action=log.action,
+            target=log.target,
+            detail=log.detail,
+            timestamp=log.timestamp.isoformat(),
+        )
+        for log in logs
+    ]
+
+
+def _read_log_tail(path: Path, lines: int) -> list[str]:
+    if not path.exists():
+        return []
+    try:
+        with path.open("r", errors="replace") as f:
+            all_lines = f.readlines()
+        return [l.rstrip() for l in all_lines[-lines:]]
+    except Exception as e:
+        return [f"[error reading log: {e}]"]
+
+
+@router.get("/logs/backend")
+def get_backend_logs(
+    lines: int = Query(default=300, le=2000),
+    _: User = Depends(require_admin),
+):
+    from config import settings
+    log_path = Path(settings.db_path).parent / "logs" / "backend.log"
+    return {"lines": _read_log_tail(log_path, lines)}
+
+
+@router.get("/logs/frontend")
+def get_frontend_logs(
+    lines: int = Query(default=300, le=2000),
+    _: User = Depends(require_admin),
+):
+    from config import settings
+    log_path = Path(settings.db_path).parent / "logs" / "frontend.log"
+    return {"lines": _read_log_tail(log_path, lines)}
+
+
 @router.post("/openings/delete-all-public", status_code=status.HTTP_200_OK)
 def delete_all_public_openings(
     confirm: str = Query(default=""),

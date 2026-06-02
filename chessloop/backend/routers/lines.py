@@ -9,6 +9,7 @@ from database import get_session
 from models import User, Library, Line
 from models.line import STARTING_FEN
 from auth.dependencies import get_current_user
+from services.activity_log import log_activity
 from schemas.line import (
     LineCreate,
     LineUpdate,
@@ -101,6 +102,8 @@ def create_line(
     session.add(line)
     session.commit()
     session.refresh(line)
+    lib = session.get(Library, lib_id)
+    log_activity(session, user.id, user.username, "create_line", target=line.name, detail=lib.name if lib else None)
     return line
 
 
@@ -137,6 +140,8 @@ def delete_line(
     session: Session = Depends(get_session),
 ):
     line = _owned_line_or_404(session, line_id, user)
+    line_name = line.name
+    lib = session.get(Library, line.library_id)
     from models.practice import PracticePosition
     from models.line import MoveNote
 
@@ -153,6 +158,7 @@ def delete_line(
     # Delete the line
     session.delete(line)
     session.commit()
+    log_activity(session, user.id, user.username, "delete_line", target=line_name, detail=lib.name if lib else None)
 
 
 def _canonical_fen(fen: str) -> str:

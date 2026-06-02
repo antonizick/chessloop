@@ -5,6 +5,7 @@ from .practice import PracticePosition, ReviewLog, PracticeSession
 from .backup import Backup
 from .public_signal import PublicSignal
 from .library_video_link import LibraryVideoLink
+from .activity_log import ActivityLog
 
 __all__ = [
     "User",
@@ -17,4 +18,5 @@ __all__ = [
     "Backup",
     "PublicSignal",
     "LibraryVideoLink",
+    "ActivityLog",
 ]

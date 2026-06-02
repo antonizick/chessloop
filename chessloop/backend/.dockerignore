@@ -1,0 +1,12 @@
+*.db
+*.db-shm
+*.db-wal
+*.db-journal
+*.db.backup*
+*.db.broken
+*.db.corrupted
+__pycache__
+.pytest_cache
+*.pyc
+.env
+backups/

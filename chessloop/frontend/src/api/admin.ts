@@ -52,6 +52,20 @@ export interface LichessImportResponse {
   errors: string[];
 }
 
+export interface ActivityLogEntry {
+  id: string;
+  user_id: string | null;
+  username: string;
+  action: string;
+  target: string | null;
+  detail: string | null;
+  timestamp: string;
+}
+
+export interface LogLines {
+  lines: string[];
+}
+
 export const adminApi = {
   searchOpenings: (q: string) =>
     api<OpeningSearchResult[]>(`/admin/openings/search?q=${encodeURIComponent(q)}`),
@@ -81,4 +95,13 @@ export const adminApi = {
       method: "POST",
       body: JSON.stringify({ library_id }),
     }),
+
+  getActivityLogs: (limit = 200) =>
+    api<ActivityLogEntry[]>(`/admin/logs/activity?limit=${limit}`),
+
+  getBackendLogs: (lines = 300) =>
+    api<LogLines>(`/admin/logs/backend?lines=${lines}`),
+
+  getFrontendLogs: (lines = 300) =>
+    api<LogLines>(`/admin/logs/frontend?lines=${lines}`),
 };

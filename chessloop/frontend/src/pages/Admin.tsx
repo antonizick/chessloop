@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/api/client";
+import { adminApi } from "@/api/admin";
 import { useAuthStore } from "@/stores/auth";
 import { Navigate } from "react-router-dom";
 
@@ -25,7 +26,7 @@ interface BackupEntry {
   created_at: string;
 }
 
-const adminApi = {
+const backupApi = {
   listUsers: () => api<AdminUser[]>("/admin/users"),
   createUser: (body: { email: string; username: string; password: string; role: string }) =>
     api<AdminUser>("/admin/users", { method: "POST", body: JSON.stringify(body) }),
@@ -33,8 +34,6 @@ const adminApi = {
     api<AdminUser>(`/admin/users/${userId}`, { method: "PATCH", body: JSON.stringify(body) }),
   deleteUser: (userId: string) =>
     api<void>(`/admin/users/${userId}`, { method: "DELETE" }),
-  setUserRole: (userId: string, role: string) =>
-    api<AdminUser>(`/admin/users/${userId}`, { method: "PATCH", body: JSON.stringify({ role }) }),
 
   listBackups: () => api<BackupEntry[]>("/admin/backups"),
   createBackup: (name: string, type: string) =>
@@ -101,17 +100,267 @@ function fmtDate(iso: string): string {
   return new Date(iso).toLocaleString();
 }
 
+// ── Tabs ──────────────────────────────────────────────────────────────────────
+
+type Tab = "users" | "backups" | "backend-logs" | "frontend-logs" | "activity";
+
+const TABS: { id: Tab; label: string }[] = [
+  { id: "users", label: "Users" },
+  { id: "backups", label: "Backups" },
+  { id: "backend-logs", label: "Backend Logs" },
+  { id: "frontend-logs", label: "Frontend Logs" },
+  { id: "activity", label: "Activity" },
+];
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function Admin() {
   const user = useAuthStore((s) => s.user);
+  const [activeTab, setActiveTab] = useState<Tab>("users");
+
   if (user?.role !== "admin") return <Navigate to="/" replace />;
 
   return (
-    <div className="flex flex-col gap-6 max-w-4xl">
+    <div className="flex flex-col gap-6 max-w-5xl">
       <h1>Admin panel</h1>
-      <BackupsSection />
-      <UsersSection />
+
+      {/* Tab bar */}
+      <div className="flex gap-1 border-b border-ink-700 flex-wrap">
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            onClick={() => setActiveTab(t.id)}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px ${
+              activeTab === t.id
+                ? "border-gold-400 text-gold-400"
+                : "border-transparent text-ink-400 hover:text-ink-100"
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab content */}
+      {activeTab === "users" && <UsersSection />}
+      {activeTab === "backups" && <BackupsSection />}
+      {activeTab === "backend-logs" && <LogSection title="Backend Logs" fetchLines={(n) => adminApi.getBackendLogs(n).then(r => r.lines)} queryKey="backend-logs" />}
+      {activeTab === "frontend-logs" && <LogSection title="Frontend Logs" fetchLines={(n) => adminApi.getFrontendLogs(n).then(r => r.lines)} queryKey="frontend-logs" />}
+      {activeTab === "activity" && <ActivitySection />}
+    </div>
+  );
+}
+
+// ── Log viewer ────────────────────────────────────────────────────────────────
+
+function LogSection({
+  title,
+  fetchLines,
+  queryKey,
+}: {
+  title: string;
+  fetchLines: (n: number) => Promise<string[]>;
+  queryKey: string;
+}) {
+  const [lineCount, setLineCount] = useState(300);
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  const { data: lines = [], isLoading, refetch, isFetching } = useQuery({
+    queryKey: [queryKey, lineCount],
+    queryFn: () => fetchLines(lineCount),
+    refetchInterval: 30_000,
+  });
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [lines]);
+
+  return (
+    <div className="card flex flex-col gap-3">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <h2>{title}</h2>
+        <div className="flex items-center gap-2">
+          <select
+            className="input text-xs py-1"
+            value={lineCount}
+            onChange={(e) => setLineCount(Number(e.target.value))}
+          >
+            <option value={100}>Last 100 lines</option>
+            <option value={300}>Last 300 lines</option>
+            <option value={500}>Last 500 lines</option>
+            <option value={1000}>Last 1000 lines</option>
+          </select>
+          <button
+            className="btn-ghost text-xs px-3 py-1.5"
+            onClick={() => refetch()}
+            disabled={isFetching}
+          >
+            {isFetching ? "Refreshing…" : "↺ Refresh"}
+          </button>
+        </div>
+      </div>
+
+      {isLoading ? (
+        <p className="text-ink-500 text-sm">Loading…</p>
+      ) : lines.length === 0 ? (
+        <p className="text-ink-500 text-sm">No log entries found. Logs appear here once the server writes them.</p>
+      ) : (
+        <div className="bg-ink-950 rounded-md border border-ink-700 p-3 overflow-auto max-h-[600px] font-mono text-xs leading-relaxed">
+          {lines.map((line, i) => (
+            <div
+              key={i}
+              className={`whitespace-pre-wrap break-all ${
+                line.includes("ERROR") || line.includes("[ERROR]")
+                  ? "text-red-400"
+                  : line.includes("WARNING") || line.includes("WARN")
+                  ? "text-yellow-400"
+                  : line.includes("INFO")
+                  ? "text-ink-300"
+                  : "text-ink-400"
+              }`}
+            >
+              {line}
+            </div>
+          ))}
+          <div ref={bottomRef} />
+        </div>
+      )}
+      <p className="text-xs text-ink-500">Auto-refreshes every 30 seconds.</p>
+    </div>
+  );
+}
+
+// ── Activity log ──────────────────────────────────────────────────────────────
+
+const ACTION_LABELS: Record<string, { label: string; color: string }> = {
+  login:           { label: "Login",            color: "text-blue-400" },
+  register:        { label: "Register",         color: "text-green-400" },
+  create_library:  { label: "Create library",   color: "text-gold-400" },
+  delete_library:  { label: "Delete library",   color: "text-red-400" },
+  fork_library:    { label: "Fork library",     color: "text-purple-400" },
+  publish_library: { label: "Publish library",  color: "text-emerald-400" },
+  create_line:     { label: "Create line",      color: "text-teal-400" },
+  delete_line:     { label: "Delete line",      color: "text-orange-400" },
+};
+
+function ActivitySection() {
+  const [limit, setLimit] = useState(200);
+  const [filterUser, setFilterUser] = useState("");
+  const [filterAction, setFilterAction] = useState("");
+
+  const { data: logs = [], isLoading, refetch, isFetching } = useQuery({
+    queryKey: ["activity-logs", limit],
+    queryFn: () => adminApi.getActivityLogs(limit),
+    refetchInterval: 30_000,
+  });
+
+  const filtered = logs.filter((e) => {
+    if (filterUser && !e.username.toLowerCase().includes(filterUser.toLowerCase())) return false;
+    if (filterAction && e.action !== filterAction) return false;
+    return true;
+  });
+
+  return (
+    <div className="card flex flex-col gap-4">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <h2>User activity</h2>
+        <div className="flex items-center gap-2">
+          <select
+            className="input text-xs py-1"
+            value={limit}
+            onChange={(e) => setLimit(Number(e.target.value))}
+          >
+            <option value={100}>Last 100</option>
+            <option value={200}>Last 200</option>
+            <option value={500}>Last 500</option>
+            <option value={1000}>Last 1000</option>
+          </select>
+          <button
+            className="btn-ghost text-xs px-3 py-1.5"
+            onClick={() => refetch()}
+            disabled={isFetching}
+          >
+            {isFetching ? "Refreshing…" : "↺ Refresh"}
+          </button>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-wrap gap-3">
+        <input
+          className="input text-xs py-1 w-40"
+          placeholder="Filter by user…"
+          value={filterUser}
+          onChange={(e) => setFilterUser(e.target.value)}
+        />
+        <select
+          className="input text-xs py-1"
+          value={filterAction}
+          onChange={(e) => setFilterAction(e.target.value)}
+        >
+          <option value="">All actions</option>
+          {Object.entries(ACTION_LABELS).map(([key, { label }]) => (
+            <option key={key} value={key}>{label}</option>
+          ))}
+        </select>
+        {(filterUser || filterAction) && (
+          <button
+            className="btn-ghost text-xs px-2 py-1"
+            onClick={() => { setFilterUser(""); setFilterAction(""); }}
+          >
+            Clear
+          </button>
+        )}
+      </div>
+
+      {isLoading ? (
+        <p className="text-ink-500 text-sm">Loading…</p>
+      ) : filtered.length === 0 ? (
+        <p className="text-ink-500 text-sm">{logs.length === 0 ? "No activity recorded yet." : "No entries match the filter."}</p>
+      ) : (
+        <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
+          <table className="w-full text-sm">
+            <thead className="sticky top-0 bg-ink-800">
+              <tr className="text-left text-ink-400 border-b border-ink-700">
+                <th className="pb-2 pr-4 font-medium text-xs">Time</th>
+                <th className="pb-2 pr-4 font-medium text-xs">User</th>
+                <th className="pb-2 pr-4 font-medium text-xs">Action</th>
+                <th className="pb-2 pr-4 font-medium text-xs">Target</th>
+                <th className="pb-2 font-medium text-xs">Detail</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-ink-800">
+              {filtered.map((entry) => {
+                const meta = ACTION_LABELS[entry.action];
+                return (
+                  <tr key={entry.id} className="hover:bg-ink-700/30 transition-colors">
+                    <td className="py-1.5 pr-4 text-ink-500 text-xs whitespace-nowrap font-mono">
+                      {new Date(entry.timestamp).toLocaleString()}
+                    </td>
+                    <td className="py-1.5 pr-4 text-ink-200 text-xs font-medium">
+                      {entry.username}
+                    </td>
+                    <td className="py-1.5 pr-4 text-xs">
+                      <span className={`font-medium ${meta?.color ?? "text-ink-300"}`}>
+                        {meta?.label ?? entry.action}
+                      </span>
+                    </td>
+                    <td className="py-1.5 pr-4 text-ink-300 text-xs max-w-[200px] truncate">
+                      {entry.target ?? "—"}
+                    </td>
+                    <td className="py-1.5 text-ink-500 text-xs max-w-[200px] truncate">
+                      {entry.detail ?? "—"}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+      <p className="text-xs text-ink-500">
+        Showing {filtered.length} of {logs.length} entries. Auto-refreshes every 30 seconds.
+      </p>
     </div>
   );
 }
@@ -168,11 +417,11 @@ function BackupsSection() {
 
   const { data: backups = [], isLoading } = useQuery({
     queryKey: ["admin-backups"],
-    queryFn: adminApi.listBackups,
+    queryFn: backupApi.listBackups,
   });
 
   const createMut = useMutation({
-    mutationFn: () => adminApi.createBackup(newName, newType),
+    mutationFn: () => backupApi.createBackup(newName, newType),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin-backups"] });
       setCreateErr(null);
@@ -181,7 +430,7 @@ function BackupsSection() {
   });
 
   const restoreMut = useMutation({
-    mutationFn: (id: string) => adminApi.restoreBackup(id),
+    mutationFn: (id: string) => backupApi.restoreBackup(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin-backups"] });
       setTimeout(() => window.location.reload(), 1500);
@@ -189,14 +438,14 @@ function BackupsSection() {
   });
 
   const deleteMut = useMutation({
-    mutationFn: (id: string) => adminApi.deleteBackup(id),
+    mutationFn: (id: string) => backupApi.deleteBackup(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-backups"] }),
   });
 
   const uploadMut = useMutation({
     mutationFn: () => {
       if (!uploadFile) throw new Error("No file selected");
-      return adminApi.uploadBackup(uploadFile, uploadName || uploadFile.name, uploadType);
+      return backupApi.uploadBackup(uploadFile, uploadName || uploadFile.name, uploadType);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin-backups"] });
@@ -392,7 +641,7 @@ function UsersSection() {
 
   const { data: users = [], isLoading } = useQuery({
     queryKey: ["admin-users"],
-    queryFn: adminApi.listUsers,
+    queryFn: backupApi.listUsers,
   });
 
   // Create user form state
@@ -410,7 +659,7 @@ function UsersSection() {
 
   // Mutations
   const createMut = useMutation({
-    mutationFn: () => adminApi.createUser(createForm),
+    mutationFn: () => backupApi.createUser(createForm),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin-users"] });
       setShowCreate(false);
@@ -423,7 +672,7 @@ function UsersSection() {
   const updateMut = useMutation({
     mutationFn: () => {
       if (!editingUser) throw new Error("No user selected");
-      return adminApi.updateUser(editingUser.id, editForm);
+      return backupApi.updateUser(editingUser.id, editForm);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin-users"] });
@@ -433,7 +682,7 @@ function UsersSection() {
   });
 
   const deleteMut = useMutation({
-    mutationFn: (userId: string) => adminApi.deleteUser(userId),
+    mutationFn: (userId: string) => backupApi.deleteUser(userId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin-users"] });
       setConfirmDeleteId(null);

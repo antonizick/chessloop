@@ -6,6 +6,7 @@ from sqlmodel import Session, select
 from database import get_session
 from models import User
 from auth.password import hash_password, verify_password
+from services.activity_log import log_activity
 from auth import jwt as jwt_utils
 from auth import mfa
 from auth.dependencies import get_current_user
@@ -40,6 +41,7 @@ def register(body: RegisterRequest, session: Session = Depends(get_session)):
     session.add(user)
     session.commit()
     session.refresh(user)
+    log_activity(session, user.id, user.username, "register")
     return user
 
 
@@ -55,6 +57,7 @@ def login(body: LoginRequest, session: Session = Depends(get_session)):
     user.last_login = datetime.utcnow()
     session.add(user)
     session.commit()
+    log_activity(session, user.id, user.username, "login")
     return TokenResponse(
         access_token=jwt_utils.create_access_token(user.id),
         refresh_token=jwt_utils.create_refresh_token(user.id),
@@ -79,6 +82,7 @@ def login_mfa(body: MfaLoginRequest, session: Session = Depends(get_session)):
     user.last_login = datetime.utcnow()
     session.add(user)
     session.commit()
+    log_activity(session, user.id, user.username, "login", detail="via MFA")
     return TokenResponse(
         access_token=jwt_utils.create_access_token(user.id),
         refresh_token=jwt_utils.create_refresh_token(user.id),

@@ -7,6 +7,9 @@ venv/
 *.db
 *.db-wal
 *.db-shm
+*.db-journal
+data/
+backend/logs/
 
 node_modules/
 dist/

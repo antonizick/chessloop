@@ -16,6 +16,7 @@ from models import User, Library, Line, PracticePosition, ReviewLog
 from models.library_video_link import LibraryVideoLink
 from models.line import MoveNote
 from auth.dependencies import get_current_user
+from services.activity_log import log_activity
 from schemas.library import (
     LibraryCreate,
     LibraryUpdate,
@@ -67,6 +68,7 @@ def create_library(
     session.add(lib)
     session.commit()
     session.refresh(lib)
+    log_activity(session, user.id, user.username, "create_library", target=lib.name)
     return lib
 
 
@@ -129,6 +131,7 @@ def delete_library(
     session: Session = Depends(get_session),
 ):
     lib = _owned_or_404(session, lib_id, user)
+    lib_name = lib.name
 
     try:
         # Get all lines in this library
@@ -192,6 +195,7 @@ def delete_library(
         # Delete library
         session.delete(lib)
         session.commit()
+        log_activity(session, user.id, user.username, "delete_library", target=lib_name)
     except IntegrityError as e:
         session.rollback()
         logger.error(f"IntegrityError deleting library {lib_id}: {str(e.orig)}")
@@ -248,6 +252,7 @@ def publish(
     session.add(lib)
     session.commit()
     session.refresh(lib)
+    log_activity(session, user.id, user.username, "publish_library", target=lib.name)
     return lib
 
 
@@ -301,6 +306,7 @@ def fork(
         ))
 
     session.commit()
+    log_activity(session, user.id, user.username, "fork_library", target=source.name, detail=f"→ {forked.name}")
     return forked
 
 
