@@ -89,7 +89,8 @@ def db_execute(sql: str, params: list) -> None:
     code = (
         f"import sqlite3,json\n"
         f"conn=sqlite3.connect({json.dumps(DB_PATH)})\n"
-        f"conn.cursor().execute({json.dumps(sql)},{json.dumps(params)})\n"
+        f"cursor=conn.cursor()\n"
+        f"cursor.execute({json.dumps(sql)},{json.dumps(params)})\n"
         f"conn.commit()"
     )
     _docker_python(code)
