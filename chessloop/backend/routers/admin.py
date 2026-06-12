@@ -9,11 +9,16 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status, UploadFile
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, EmailStr
 from sqlmodel import Session, select
+from sqlalchemy import delete as sql_delete
 
 from database import get_session
 from models import Backup, Library
 from models.user import User
 from models.practice import PracticePosition, ReviewLog, PracticeSession
+from models.line import Line, MoveNote
+from models.public_signal import PublicSignal
+from models.published_library import PublishedLibrary
+from models.library_video_link import LibraryVideoLink
 from auth.dependencies import get_current_user
 from auth.password import hash_password
 from services import backup_service
@@ -194,32 +199,61 @@ def delete_user(
     if target.id == admin.id:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Cannot delete your own account")
 
-    # Cascade delete: review logs, practice positions, sessions, lines, libraries, signals, backups
-    from models.line import Line
-    from models.public_signal import PublicSignal
+    # Cascade delete — order matters: children before parents, FKs respected throughout
 
-    # Delete review logs
+    # Reassign published libraries to seedbot — preserves public content for other learners
+    published_libs = session.exec(
+        select(PublishedLibrary).where(PublishedLibrary.published_by_user_id == user_id)
+    ).all()
+    for pub_lib in published_libs:
+        pub_lib.published_by_user_id = SEEDBOT_USER_ID
+        session.add(pub_lib)
+    session.flush()
+
+    # Delete move notes authored by this user across all libraries (FK: movenote.author_id -> user.id)
+    move_notes = session.exec(select(MoveNote).where(MoveNote.author_id == user_id)).all()
+    for note in move_notes:
+        session.delete(note)
+    session.flush()
+
+    # Delete this user's review logs and practice positions
     review_logs = session.exec(select(ReviewLog).where(ReviewLog.user_id == user_id)).all()
     for log in review_logs:
         session.delete(log)
+    session.flush()
 
-    # Delete practice positions
     practice_positions = session.exec(select(PracticePosition).where(PracticePosition.user_id == user_id)).all()
     for pos in practice_positions:
         session.delete(pos)
+    session.flush()
 
     # Delete practice sessions
     practice_sessions = session.exec(select(PracticeSession).where(PracticeSession.user_id == user_id)).all()
     for sess in practice_sessions:
         session.delete(sess)
+    session.flush()
 
-    # Delete lines and libraries owned by this user
+    # Delete libraries owned by this user using bulk WHERE-clause deletes.
+    # ORM session.delete(obj) deletes by PK, which silently mismatches when UUIDs are stored
+    # with dashes in some tables and without in others. Bulk deletes by FK column avoid this.
     libraries = session.exec(select(Library).where(Library.owner_user_id == user_id)).all()
-    for lib in libraries:
-        lines = session.exec(select(Line).where(Line.library_id == lib.id)).all()
-        for line in lines:
-            session.delete(line)
-        session.delete(lib)
+    with session.no_autoflush:
+        for lib in libraries:
+            line_ids = [r.id for r in session.exec(select(Line).where(Line.library_id == lib.id)).all()]
+            if line_ids:
+                pos_ids = [r.id for r in session.exec(select(PracticePosition).where(PracticePosition.line_id.in_(line_ids))).all()]
+                if pos_ids:
+                    session.execute(sql_delete(ReviewLog).where(ReviewLog.practice_pos_id.in_(pos_ids)))
+                    session.execute(sql_delete(PracticePosition).where(PracticePosition.line_id.in_(line_ids)))
+                session.execute(sql_delete(MoveNote).where(MoveNote.line_id.in_(line_ids)))
+                session.execute(sql_delete(Line).where(Line.library_id == lib.id))
+            session.execute(sql_delete(LibraryVideoLink).where(LibraryVideoLink.library_id == lib.id))
+            forked = session.exec(select(Library).where(Library.forked_from_id == lib.id)).all()
+            for child in forked:
+                child.forked_from_id = None
+                session.add(child)
+            session.flush()
+            session.execute(sql_delete(Library).where(Library.id == lib.id))
 
     # Delete public signals (stars, comments)
     public_signals = session.exec(select(PublicSignal).where(PublicSignal.user_id == user_id)).all()
