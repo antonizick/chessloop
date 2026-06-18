@@ -5,8 +5,10 @@ from sqlmodel import Session, select
 
 from database import get_session
 from models import User
+from models.published_library import PublishedLibrary
 from auth.password import hash_password, verify_password
 from services.activity_log import log_activity
+from services.library_service import clone_library_for_user
 from auth import jwt as jwt_utils
 from auth import mfa
 from auth.dependencies import get_current_user
@@ -41,6 +43,20 @@ def register(body: RegisterRequest, session: Session = Depends(get_session)):
     session.add(user)
     session.commit()
     session.refresh(user)
+
+    # Clone 'Ruy López — Closed' to the new user's library
+    try:
+        published_lib = session.exec(
+            select(PublishedLibrary).where(PublishedLibrary.name == "Ruy López — Closed")
+        ).first()
+        if published_lib and published_lib.original_library_id:
+            clone_library_for_user(published_lib.original_library_id, user.id, session)
+            session.commit()
+    except Exception as e:
+        # Log but don't fail registration if cloning fails
+        import logging
+        logging.getLogger(__name__).warning(f"Failed to clone default opening for user {user.id}: {e}")
+
     log_activity(session, user.id, user.username, "register")
     return user
 
