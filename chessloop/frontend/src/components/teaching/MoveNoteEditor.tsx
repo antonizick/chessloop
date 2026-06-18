@@ -11,6 +11,8 @@ interface Props {
   onSaved?: (updatedLine: Line) => void;
   onNoteSaved?: (moveIndex: number, noteText: string) => void;
   readOnly?: boolean;
+  /** Override the persistence call (e.g. for My Games instead of opening lines). */
+  saveNote?: (moveIndex: number, text: string) => Promise<unknown>;
 }
 
 export function MoveNoteEditor({
@@ -21,6 +23,7 @@ export function MoveNoteEditor({
   onSaved,
   onNoteSaved,
   readOnly = false,
+  saveNote,
 }: Props) {
   const qc = useQueryClient();
   const [noteText, setNoteText] = useState("");
@@ -44,15 +47,18 @@ export function MoveNoteEditor({
   const updateNote = useMutation({
     mutationFn: async (text: string) => {
       if (moveIndex === null) return;
+      if (saveNote) return saveNote(moveIndex, text);
       return linesApi.updateMoveNote(lineId, moveIndex, text);
     },
     onSuccess: (data, savedText) => {
-      if (data && moveIndex !== null) {
-        qc.setQueryData(["line", lineId], data);
-        if (libraryId) {
-          qc.invalidateQueries({ queryKey: ["lines", libraryId] });
+      if (moveIndex !== null) {
+        if (data && !saveNote) {
+          qc.setQueryData(["line", lineId], data);
+          if (libraryId) {
+            qc.invalidateQueries({ queryKey: ["lines", libraryId] });
+          }
+          onSaved?.(data as Line);
         }
-        onSaved?.(data);
         onNoteSaved?.(moveIndex, savedText);
       }
     },

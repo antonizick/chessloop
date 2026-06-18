@@ -1,6 +1,7 @@
 from .user import User
 from .library import Library
 from .line import Line, MoveNote
+from .game import Game
 from .practice import PracticePosition, ReviewLog, PracticeSession
 from .backup import Backup
 from .public_signal import PublicSignal
@@ -14,6 +15,7 @@ __all__ = [
     "Library",
     "Line",
     "MoveNote",
+    "Game",
     "PracticePosition",
     "ReviewLog",
     "PracticeSession",

@@ -49,6 +49,28 @@ export interface Line {
   updated_at: string;
 }
 
+// ── My Games ───────────────────────────────────────────────────────────────
+
+export type GameColor = "white" | "black";
+export type GameResult = "win" | "loss" | "draw";
+
+export interface Game {
+  id: string;
+  owner_user_id: string;
+  name: string;
+  played_date: string | null;
+  played_color: GameColor;
+  opponent_level: number | null;
+  result: GameResult;
+  what_happened: string | null;
+  lesson_learned: string | null;
+  repeat_offense: boolean;
+  starting_fen: string;
+  moves: LineMove[];
+  created_at: string;
+  updated_at: string;
+}
+
 // ── Practice ─────────────────────────────────────────────────────────────────
 
 export type PracticeMode = "weakest" | "leech_drill" | "selected";

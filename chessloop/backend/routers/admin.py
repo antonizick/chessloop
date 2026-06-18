@@ -16,6 +16,7 @@ from models import Backup, Library
 from models.user import User
 from models.practice import PracticePosition, ReviewLog, PracticeSession
 from models.line import Line, MoveNote
+from models.game import Game
 from models.public_signal import PublicSignal
 from models.published_library import PublishedLibrary
 from models.library_video_link import LibraryVideoLink
@@ -254,6 +255,10 @@ def delete_user(
                 session.add(child)
             session.flush()
             session.execute(sql_delete(Library).where(Library.id == lib.id))
+
+    # Delete games owned by this user (FK: game.owner_user_id -> user.id)
+    session.execute(sql_delete(Game).where(Game.owner_user_id == user_id))
+    session.flush()
 
     # Delete public signals (stars, comments)
     public_signals = session.exec(select(PublicSignal).where(PublicSignal.user_id == user_id)).all()

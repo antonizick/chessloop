@@ -6,7 +6,9 @@ interface Props {
   isAtEnd: boolean;
   onJump: (index: number) => void;
   onJumpToEnd: () => void;
-  onDeleteFrom: (index: number) => void;
+  onDeleteFrom?: (index: number) => void;
+  /** Hide the per-move delete affordance (e.g. read-only game review). */
+  readOnly?: boolean;
 }
 
 export function generatePgn(moves: RecordedMove[], lineName?: string): string {
@@ -46,6 +48,7 @@ export function MoveList({
   onJump,
   onJumpToEnd,
   onDeleteFrom,
+  readOnly = false,
 }: Props) {
 
   if (moves.length === 0) {
@@ -85,6 +88,7 @@ export function MoveList({
             active={viewIndex === wi}
             onJump={onJump}
             onDeleteFrom={onDeleteFrom}
+            readOnly={readOnly}
           />
           {black !== undefined && bi !== undefined && (
             <MoveChip
@@ -93,6 +97,7 @@ export function MoveList({
               active={viewIndex === bi}
               onJump={onJump}
               onDeleteFrom={onDeleteFrom}
+              readOnly={readOnly}
             />
           )}
         </div>
@@ -115,10 +120,11 @@ interface ChipProps {
   index: number;
   active: boolean;
   onJump: (i: number) => void;
-  onDeleteFrom: (i: number) => void;
+  onDeleteFrom?: (i: number) => void;
+  readOnly?: boolean;
 }
 
-function MoveChip({ move, index, active, onJump, onDeleteFrom }: ChipProps) {
+function MoveChip({ move, index, active, onJump, onDeleteFrom, readOnly = false }: ChipProps) {
   return (
     <div
       role="button"
@@ -137,20 +143,22 @@ function MoveChip({ move, index, active, onJump, onDeleteFrom }: ChipProps) {
           title={move.note}
         />
       )}
-      <button
-        className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-300
-                   text-xs leading-none ml-1 transition-opacity"
-        onClick={(e) => {
-          e.stopPropagation();
-          if (confirm(`Delete "${move.san}" and all moves after it?`)) {
-            onDeleteFrom(index);
-          }
-        }}
-        title="Delete from here"
-        aria-label={`Delete ${move.san} and after`}
-      >
-        ×
-      </button>
+      {!readOnly && onDeleteFrom && (
+        <button
+          className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-300
+                     text-xs leading-none ml-1 transition-opacity"
+          onClick={(e) => {
+            e.stopPropagation();
+            if (confirm(`Delete "${move.san}" and all moves after it?`)) {
+              onDeleteFrom(index);
+            }
+          }}
+          title="Delete from here"
+          aria-label={`Delete ${move.san} and after`}
+        >
+          ×
+        </button>
+      )}
     </div>
   );
 }

@@ -29,6 +29,7 @@ import { PublicTeachingBoard } from "@/pages/PublicTeachingBoard";
 import { PublicLearn } from "@/pages/PublicLearn";
 import { PracticeBoard } from "@/pages/PracticeBoard";
 import { Stats } from "@/pages/Stats";
+import { MyGames } from "@/pages/MyGames";
 import { Public } from "@/pages/Public";
 import { PublicLibraryDetail } from "@/pages/PublicLibraryDetail";
 import { Settings } from "@/pages/Settings";
@@ -81,6 +82,7 @@ export default function App() {
         <Route path="/practice" element={<PracticeBoard />} />
         <Route path="/practice/unrated" element={<PracticeBoard />} />
         <Route path="/stats" element={<Stats />} />
+        <Route path="/games" element={<MyGames />} />
         <Route path="/public" element={<Public />} />
         <Route path="/public/:id" element={<PublicLibraryDetail />} />
         <Route path="/public/:id/teach" element={<PublicTeachingBoard />} />

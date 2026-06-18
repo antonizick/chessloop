@@ -13,6 +13,7 @@ const ICON_MAP: Record<string, string> = {
   "unrated-practice": "🎯",
   "rated-practice": "⭐",
   stats: "📊",
+  games: "♟️",
   public: "🌐",
   learning: "📚",
   teaching: "✏️",
@@ -51,6 +52,7 @@ export function Sidebar() {
     { label: "Unrated Practice", path: "/practice/unrated", badge: null, icon: ICON_MAP["unrated-practice"] },
     { label: "Rated Practice", path: "/practice", badge: dueTotal > 0 ? dueTotal : null, icon: ICON_MAP["rated-practice"] },
     { label: "My Stats", path: "/stats", icon: ICON_MAP.stats },
+    { label: "My Games", path: "/games", icon: ICON_MAP.games },
     { label: "Public Opening Libraries", path: "/public", icon: ICON_MAP.public },
   ];
 
