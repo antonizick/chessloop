@@ -47,13 +47,50 @@ export function Sidebar() {
   const dueTotal = dueCount?.count ?? 0;
 
   const navItems = [
-    { label: "Home", path: "/", icon: ICON_MAP.home },
-    { label: "My Opening Libraries", path: "/libraries", icon: ICON_MAP.libraries },
-    { label: "Unrated Practice", path: "/practice/unrated", badge: null, icon: ICON_MAP["unrated-practice"] },
-    { label: "Rated Practice", path: "/practice", badge: dueTotal > 0 ? dueTotal : null, icon: ICON_MAP["rated-practice"] },
-    { label: "My Stats", path: "/stats", icon: ICON_MAP.stats },
-    { label: "My Games", path: "/games", icon: ICON_MAP.games },
-    { label: "Public Opening Libraries", path: "/public", icon: ICON_MAP.public },
+    {
+      label: "Home",
+      path: "/",
+      icon: ICON_MAP.home,
+      tooltip: "View your training dashboard with overview statistics and recent activity.",
+    },
+    {
+      label: "My Opening Libraries",
+      path: "/libraries",
+      icon: ICON_MAP.libraries,
+      tooltip: null, // User's opening libraries - no tooltip per request
+    },
+    {
+      label: "Unrated Practice",
+      path: "/practice/unrated",
+      badge: null,
+      icon: ICON_MAP["unrated-practice"],
+      tooltip: "Practice opening lines without rating impact. Perfect for casual review and experimentation.",
+    },
+    {
+      label: "Rated Practice",
+      path: "/practice",
+      badge: dueTotal > 0 ? dueTotal : null,
+      icon: ICON_MAP["rated-practice"],
+      tooltip: "Spaced repetition practice with rating tracking. Build and maintain your opening mastery over time.",
+    },
+    {
+      label: "My Stats",
+      path: "/stats",
+      icon: ICON_MAP.stats,
+      tooltip: "Track your performance metrics and progress across all opening libraries.",
+    },
+    {
+      label: "My Games",
+      path: "/games",
+      icon: ICON_MAP.games,
+      tooltip: "Upload, review and analyze games you've played to improve your understanding.",
+    },
+    {
+      label: "Public Opening Libraries",
+      path: "/public",
+      icon: ICON_MAP.public,
+      tooltip: "Discover and learn from opening libraries shared by the community.",
+    },
   ];
 
   const sidebarWidth = isCollapsed ? "w-16" : "w-60";
@@ -89,7 +126,7 @@ export function Sidebar() {
             {/* Home */}
             <li>
               {isCollapsed ? (
-                <Tooltip text={navItems[0].label}>
+                <Tooltip text={navItems[0].tooltip || navItems[0].label}>
                   <Link
                     to={navItems[0].path}
                     className={`flex items-center justify-center h-10 rounded transition-colors ${
@@ -102,16 +139,18 @@ export function Sidebar() {
                   </Link>
                 </Tooltip>
               ) : (
-                <Link
-                  to={navItems[0].path}
-                  className={`flex items-center justify-between px-2 py-1.5 rounded transition-colors ${
-                    location.pathname === navItems[0].path || location.pathname.startsWith(navItems[0].path + "/")
-                      ? "bg-ink-700 text-gold-400"
-                      : "text-ink-200 hover:bg-ink-700"
-                  }`}
-                >
-                  <span>{navItems[0].label}</span>
-                </Link>
+                <Tooltip text={navItems[0].tooltip || navItems[0].label}>
+                  <Link
+                    to={navItems[0].path}
+                    className={`flex items-center justify-between px-2 py-1.5 rounded transition-colors ${
+                      location.pathname === navItems[0].path || location.pathname.startsWith(navItems[0].path + "/")
+                        ? "bg-ink-700 text-gold-400"
+                        : "text-ink-200 hover:bg-ink-700"
+                    }`}
+                  >
+                    <span>{navItems[0].label}</span>
+                  </Link>
+                </Tooltip>
               )}
             </li>
 
@@ -163,7 +202,7 @@ export function Sidebar() {
             {navItems.slice(1).map((item) => (
               <li key={item.path}>
                 {isCollapsed ? (
-                  <Tooltip text={item.label + (item.badge ? ` (${item.badge})` : "")}>
+                  <Tooltip text={item.tooltip || item.label + (item.badge ? ` (${item.badge})` : "")}>
                     <Link
                       to={item.path}
                       state={
@@ -186,26 +225,28 @@ export function Sidebar() {
                     </Link>
                   </Tooltip>
                 ) : (
-                  <Link
-                    to={item.path}
-                    state={
-                      item.path === "/practice/unrated" || item.path === "/practice"
-                        ? { restart: true }
-                        : undefined
-                    }
-                    className={`flex items-center justify-between px-2 py-1.5 rounded transition-colors ${
-                      location.pathname === item.path || location.pathname.startsWith(item.path + "/")
-                        ? "bg-ink-700 text-gold-400"
-                        : "text-ink-200 hover:bg-ink-700"
-                    }`}
-                  >
-                    <span>{item.label}</span>
-                    {item.badge && (
-                      <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold bg-gold-500 text-ink-900 leading-none">
-                        {item.badge > 99 ? "99+" : item.badge}
-                      </span>
-                    )}
-                  </Link>
+                  <Tooltip text={item.tooltip || item.label} disabled={!item.tooltip}>
+                    <Link
+                      to={item.path}
+                      state={
+                        item.path === "/practice/unrated" || item.path === "/practice"
+                          ? { restart: true }
+                          : undefined
+                      }
+                      className={`flex items-center justify-between px-2 py-1.5 rounded transition-colors ${
+                        location.pathname === item.path || location.pathname.startsWith(item.path + "/")
+                          ? "bg-ink-700 text-gold-400"
+                          : "text-ink-200 hover:bg-ink-700"
+                      }`}
+                    >
+                      <span>{item.label}</span>
+                      {item.badge && (
+                        <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold bg-gold-500 text-ink-900 leading-none">
+                          {item.badge > 99 ? "99+" : item.badge}
+                        </span>
+                      )}
+                    </Link>
+                  </Tooltip>
                 )}
               </li>
             ))}
@@ -261,7 +302,7 @@ export function Sidebar() {
       {user?.role === "admin" && (
         <div className="mt-auto pt-4 border-t border-ink-700">
           {isCollapsed ? (
-            <Tooltip text="Admin panel">
+            <Tooltip text="Access administrative tools to manage openings, users, and system settings.">
               <Link
                 to="/admin"
                 className="flex items-center justify-center h-10 rounded text-ink-400 hover:bg-ink-700 hover:text-gold-400 transition-colors"
@@ -270,12 +311,14 @@ export function Sidebar() {
               </Link>
             </Tooltip>
           ) : (
-            <Link
-              to="/admin"
-              className="block px-2 py-1.5 rounded text-xs text-ink-400 hover:bg-ink-700 hover:text-gold-400 transition-colors"
-            >
-              ⚙ Admin panel
-            </Link>
+            <Tooltip text="Access administrative tools to manage openings, users, and system settings.">
+              <Link
+                to="/admin"
+                className="block px-2 py-1.5 rounded text-xs text-ink-400 hover:bg-ink-700 hover:text-gold-400 transition-colors"
+              >
+                ⚙ Admin panel
+              </Link>
+            </Tooltip>
           )}
         </div>
       )}

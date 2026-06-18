@@ -17,7 +17,7 @@ export function Tooltip({ text, children, disabled, wide }: TooltipProps) {
       const rect = triggerRef.current.getBoundingClientRect();
       setPosition({
         top: rect.top - 8,
-        left: rect.left + rect.width / 2 + 100,
+        left: rect.right + 12,
       });
     }
     setIsVisible(true);
@@ -40,7 +40,7 @@ export function Tooltip({ text, children, disabled, wide }: TooltipProps) {
             boxShadow: "0 4px 6px rgba(0, 0, 0, 0.3)",
             top: `${position.top}px`,
             left: `${position.left}px`,
-            transform: "translate(-50%, -100%)",
+            transform: "translateY(-100%)",
           }}
         >
           {text}
@@ -51,9 +51,8 @@ export function Tooltip({ text, children, disabled, wide }: TooltipProps) {
               borderLeft: "4px solid transparent",
               borderRight: "4px solid transparent",
               borderTop: "4px solid rgb(30, 30, 40)",
-              left: "50%",
+              left: "12px",
               bottom: "-4px",
-              transform: "translateX(-50%)",
             }}
           />
         </div>
