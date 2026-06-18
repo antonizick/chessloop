@@ -1,18 +1,13 @@
 #!/usr/bin/env python3
 """
-Annotate all lines in a ChessLoop opening library with educational move notes.
+Annotate ChessLoop opening libraries with AI-generated educational move notes.
 
-Reads lines from the live Docker DB, calls Claude API to generate notes for
-each move, then writes them back. Safe to re-run: always overwrites notes.
+Reads lines from the live Docker DB, calls Claude to generate notes for each
+move, then writes them back. Safe to re-run: always overwrites notes.
 
 Usage:
-  python3 scripts/annotate_library.py "Black Lion Defense"
-  python3 scripts/annotate_library.py --library-id f7e0b3b9f3f442d698c2a823f6e84fe5
-  python3 scripts/annotate_library.py "Black Lion Defense" --container my-backend
-  python3 scripts/annotate_library.py --list
+  python3 scripts/annotate_library.py
 """
-
-import argparse
 import json
 import os
 import subprocess
@@ -238,15 +233,30 @@ def write_notes(line_id: str, moves: list[dict], notes: list[str]) -> None:
 
 # ── Interactive selection ──────────────────────────────────────────────────────
 
-def pick_libraries_interactive(libs: list[dict]) -> list[dict]:
-    import questionary
+_QSTYLE = None
 
+
+def _qs():
+    import questionary
+    global _QSTYLE
+    if _QSTYLE is None:
+        _QSTYLE = questionary.Style([
+            ("question",    "bold"),
+            ("pointer",     "fg:#FFD700 bold"),
+            ("highlighted", "fg:#FFD700"),
+            ("selected",    "fg:#00AA00 bold"),
+            ("separator",   "fg:#555555"),
+        ])
+    return questionary, _QSTYLE
+
+
+def pick_libraries_interactive(libs: list[dict]) -> list[dict]:
+    questionary, style = _qs()
     color_icon = {"white": "♔", "black": "♚", "both": "♔♚"}
 
     choices = [
         questionary.Choice(
-            title=f"{color_icon.get(lib['color'], '?')}  {lib['name']}  "
-                  f"[{lib['owner']}]",
+            title=f"{color_icon.get(lib['color'], '?')}  {lib['name']}  [{lib['owner']}]",
             value=lib,
         )
         for lib in libs
@@ -255,13 +265,7 @@ def pick_libraries_interactive(libs: list[dict]) -> list[dict]:
     selected = questionary.checkbox(
         "Select libraries to annotate  (↑/↓ move · space select · enter confirm)",
         choices=choices,
-        style=questionary.Style([
-            ("question",     "bold"),
-            ("pointer",      "fg:#FFD700 bold"),
-            ("highlighted",  "fg:#FFD700"),
-            ("selected",     "fg:#00AA00 bold"),
-            ("separator",    "fg:#555555"),
-        ]),
+        style=style,
     ).ask()
 
     if not selected:
@@ -271,7 +275,88 @@ def pick_libraries_interactive(libs: list[dict]) -> list[dict]:
     return selected
 
 
-# ── Run one library ────────────────────────────────────────────────────────────
+def pick_library_single(libs: list[dict]) -> dict:
+    questionary, style = _qs()
+    color_icon = {"white": "♔", "black": "♚", "both": "♔♚"}
+
+    choices = [
+        questionary.Choice(
+            title=f"{color_icon.get(lib['color'], '?')}  {lib['name']}  [{lib['owner']}]",
+            value=lib,
+        )
+        for lib in libs
+    ]
+
+    selected = questionary.select(
+        "Select a library  (↑/↓ move · enter confirm)",
+        choices=choices,
+        style=style,
+    ).ask()
+
+    if not selected:
+        print("Nothing selected — exiting.")
+        sys.exit(0)
+
+    return selected
+
+
+def pick_lines_interactive(lib: dict) -> list[dict]:
+    questionary, style = _qs()
+    lines = get_lines(lib["id"])
+
+    if not lines:
+        print(f"No lines in '{lib['name']}' — exiting.")
+        sys.exit(0)
+
+    choices = [
+        questionary.Choice(
+            title=f"[{line['order_index'] + 1}]  {line['name'] or 'Line ' + str(line['order_index'] + 1)}"
+                  f"  ({len(line['moves'])} moves)",
+            value=line,
+        )
+        for line in lines
+    ]
+
+    selected = questionary.checkbox(
+        f"Select lines from '{lib['name']}'  (↑/↓ move · space select · enter confirm)",
+        choices=choices,
+        style=style,
+    ).ask()
+
+    if not selected:
+        print("Nothing selected — exiting.")
+        sys.exit(0)
+
+    return selected
+
+
+# ── Run helpers ────────────────────────────────────────────────────────────────
+
+def _annotate_line_entry(client: anthropic.Anthropic, lib: dict, line: dict) -> int:
+    """Annotate a single line, write to DB, return move count (0 on skip/error)."""
+    move_count = len(line["moves"])
+    if move_count == 0:
+        print(f"    [{line['order_index'] + 1}] {line['name']} — empty, skipped")
+        return 0
+
+    label = line["name"] or f"Line {line['order_index'] + 1}"
+    print(f"    [{line['order_index'] + 1}] {label} ({move_count} moves) … ", end="", flush=True)
+
+    try:
+        notes = annotate_line(
+            client,
+            library_name=lib["name"],
+            color=lib["color"],
+            line_name=label,
+            moves=line["moves"],
+        )
+        write_notes(line["id"], line["moves"], notes)
+        print("done")
+        return move_count
+    except Exception as e:
+        print(f"\n      ✕ skipped — {e}")
+        return 0
+
 
 def run_library(client: anthropic.Anthropic, lib: dict) -> None:
     lines = get_lines(lib["id"])
@@ -279,50 +364,18 @@ def run_library(client: anthropic.Anthropic, lib: dict) -> None:
         print(f"  No lines in '{lib['name']}' — skipping.")
         return
 
-    total_moves = 0
-    for line in lines:
-        move_count = len(line["moves"])
-        if move_count == 0:
-            print(f"    [{line['order_index'] + 1}] {line['name']} — empty, skipped")
-            continue
-
-        label = line["name"] or f"Line {line['order_index'] + 1}"
-        print(f"    [{line['order_index'] + 1}] {label} ({move_count} moves) … ", end="", flush=True)
-
-        try:
-            notes = annotate_line(
-                client,
-                library_name=lib["name"],
-                color=lib["color"],
-                line_name=label,
-                moves=line["moves"],
-            )
-            write_notes(line["id"], line["moves"], notes)
-            total_moves += move_count
-            print("done")
-        except Exception as e:
-            print(f"\n      ✕ skipped — {e}")
-
+    total_moves = sum(_annotate_line_entry(client, lib, line) for line in lines)
     print(f"  → {total_moves} moves annotated across {len(lines)} lines.")
+
+
+def run_selected_lines(client: anthropic.Anthropic, lib: dict, lines: list[dict]) -> None:
+    total_moves = sum(_annotate_line_entry(client, lib, line) for line in lines)
+    print(f"  → {total_moves} moves annotated across {len(lines)} line(s).")
 
 
 # ── Entry point ────────────────────────────────────────────────────────────────
 
 def main():
-    global CONTAINER
-
-    parser = argparse.ArgumentParser(
-        description="Annotate ChessLoop opening libraries with educational move notes.",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="Run with no arguments for interactive library picker.",
-    )
-    parser.add_argument("library", nargs="?", help="Library name (partial match) or ID — skips the picker")
-    parser.add_argument("--library-id", help="Exact library UUID — skips the picker")
-    parser.add_argument("--container", default=CONTAINER, help=f"Docker container (default: {CONTAINER})")
-    args = parser.parse_args()
-
-    CONTAINER = args.container
-
     api_key = _load_env_key()
     if not api_key:
         print(
@@ -333,19 +386,37 @@ def main():
         sys.exit(1)
 
     client = anthropic.Anthropic(api_key=api_key)
+    questionary, style = _qs()
 
-    # ── Resolve which libraries to annotate ───────────────────────────────────
-    if args.library_id or args.library:
-        selected = [find_library(args.library_id or args.library)]
-    else:
-        all_libs = list_libraries()
-        selected = pick_libraries_interactive(all_libs)
+    mode = questionary.select(
+        "What would you like to annotate?",
+        choices=[
+            questionary.Choice("Annotate full libraries",          value="libraries"),
+            questionary.Choice("Select specific lines to annotate", value="lines"),
+        ],
+        style=style,
+    ).ask()
 
-    # ── Annotate each selected library ────────────────────────────────────────
+    if not mode:
+        print("Cancelled.")
+        sys.exit(0)
+
+    all_libs = list_libraries()
     print()
-    for lib in selected:
+
+    if mode == "libraries":
+        selected_libs = pick_libraries_interactive(all_libs)
+        print()
+        for lib in selected_libs:
+            print(f"── {lib['name']}  ({lib['color']}, {lib['owner']}) ──")
+            run_library(client, lib)
+            print()
+    else:
+        lib = pick_library_single(all_libs)
+        selected_lines = pick_lines_interactive(lib)
+        print()
         print(f"── {lib['name']}  ({lib['color']}, {lib['owner']}) ──")
-        run_library(client, lib)
+        run_selected_lines(client, lib, selected_lines)
         print()
 
     print("All done.")
