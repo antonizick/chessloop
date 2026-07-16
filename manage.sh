@@ -7,6 +7,15 @@
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 CHESSLOOP_DIR="$SCRIPT_DIR/chessloop"
 
+# JWT signing secret must be supplied via env — no hardcoded fallback.
+# (A previous version of this script had a hardcoded default that was committed
+# to a public repo; treat that value as permanently compromised.)
+if [ -z "$JWT_SECRET" ]; then
+  echo "ERROR: \$JWT_SECRET is not set. Generate one (e.g. openssl rand -base64 32)" >&2
+  echo "and export it before running this script." >&2
+  exit 1
+fi
+
 # Docker setup
 PUBLIC_PORT=8090
 NETWORK=chessloop-net
@@ -140,7 +149,7 @@ start_containers() {
       --network "$NETWORK" \
       -v "$CHESSLOOP_DIR/data:/data" \
       -e "CHESSLOOP_DB_PATH=/data/chessloop.db" \
-      -e "CHESSLOOP_JWT_SECRET=${JWT_SECRET:-***REMOVED-COMPROMISED-JWT-SECRET***}" \
+      -e "CHESSLOOP_JWT_SECRET=${JWT_SECRET}" \
       -e "CHESSLOOP_ACCESS_TTL_MIN=15" \
       -e "CHESSLOOP_REFRESH_TTL_DAYS=30" \
       -e "CHESSLOOP_CORS_ORIGINS=${CORS_ORIGINS:-*}" \
