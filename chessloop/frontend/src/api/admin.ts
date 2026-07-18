@@ -71,6 +71,15 @@ export interface NewUserPopupContent {
   is_enabled: boolean;
 }
 
+export interface BannerContent {
+  html_content: string;
+  is_enabled: boolean;
+}
+
+export interface SystemSettingsContent {
+  enforce_email_verification: boolean;
+}
+
 export const adminApi = {
   searchOpenings: (q: string) =>
     api<OpeningSearchResult[]>(`/admin/openings/search?q=${encodeURIComponent(q)}`),
@@ -113,4 +122,12 @@ export const adminApi = {
   getNewUserPopup: () => api<NewUserPopupContent>("/admin/new-user-popup"),
   updateNewUserPopup: (body: NewUserPopupContent) =>
     api<NewUserPopupContent>("/admin/new-user-popup", { method: "PUT", body: JSON.stringify(body) }),
+
+  getBanner: () => api<BannerContent>("/admin/banner"),
+  updateBanner: (body: BannerContent) =>
+    api<BannerContent>("/admin/banner", { method: "PUT", body: JSON.stringify(body) }),
+
+  getSystemSettings: () => api<SystemSettingsContent>("/admin/system-settings"),
+  updateSystemSettings: (body: SystemSettingsContent) =>
+    api<SystemSettingsContent>("/admin/system-settings", { method: "PUT", body: JSON.stringify(body) }),
 };

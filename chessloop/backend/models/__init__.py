@@ -10,6 +10,8 @@ from .activity_log import ActivityLog
 from .published_library import PublishedLibrary, PublishedLine
 from .published_library_video_link import PublishedLibraryVideoLink
 from .new_user_announcement import NewUserAnnouncement
+from .banner_announcement import BannerAnnouncement
+from .system_settings import SystemSettings
 
 __all__ = [
     "User",
@@ -28,4 +30,6 @@ __all__ = [
     "PublishedLine",
     "PublishedLibraryVideoLink",
     "NewUserAnnouncement",
+    "BannerAnnouncement",
+    "SystemSettings",
 ]

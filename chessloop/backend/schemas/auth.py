@@ -95,6 +95,20 @@ class NewUserPopupResponse(BaseModel):
     html_content: str
 
 
+class BannerContent(BaseModel):
+    html_content: str
+    is_enabled: bool
+
+
+class BannerResponse(BaseModel):
+    html_content: str
+    version: int
+
+
+class SystemSettingsContent(BaseModel):
+    enforce_email_verification: bool
+
+
 class UserResponse(BaseModel):
     id: UUID
     email: EmailStr

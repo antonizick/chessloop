@@ -103,7 +103,7 @@ function fmtDate(iso: string): string {
 
 // ── Tabs ──────────────────────────────────────────────────────────────────────
 
-type Tab = "users" | "backups" | "backend-logs" | "frontend-logs" | "activity" | "new-user-popup";
+type Tab = "users" | "backups" | "backend-logs" | "frontend-logs" | "activity" | "new-user-popup" | "banner" | "system-settings";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "users", label: "Users" },
@@ -112,6 +112,8 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "frontend-logs", label: "Frontend Logs" },
   { id: "activity", label: "Activity" },
   { id: "new-user-popup", label: "New User Popup" },
+  { id: "banner", label: "Banner" },
+  { id: "system-settings", label: "System Settings" },
 ];
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -150,6 +152,8 @@ export function Admin() {
       {activeTab === "frontend-logs" && <LogSection title="Frontend Logs" fetchLines={(n) => adminApi.getFrontendLogs(n).then(r => r.lines)} queryKey="frontend-logs" />}
       {activeTab === "activity" && <ActivitySection />}
       {activeTab === "new-user-popup" && <NewUserPopupSection />}
+      {activeTab === "banner" && <BannerSection />}
+      {activeTab === "system-settings" && <SystemSettingsSection />}
     </div>
   );
 }
@@ -1003,6 +1007,136 @@ function NewUserPopupSection() {
       <button className="btn-primary w-fit" onClick={() => saveMut.mutate()} disabled={saveMut.isPending}>
         {saveMut.isPending ? "Saving…" : saved ? "Saved ✓" : "Save"}
       </button>
+    </div>
+  );
+}
+
+// ── Site banner ───────────────────────────────────────────────────────────────
+
+function BannerSection() {
+  const qc = useQueryClient();
+  const [htmlContent, setHtmlContent] = useState("");
+  const [isEnabled, setIsEnabled] = useState(false);
+  const [saveErr, setSaveErr] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["admin-banner"],
+    queryFn: adminApi.getBanner,
+  });
+
+  useEffect(() => {
+    if (data) {
+      setHtmlContent(data.html_content);
+      setIsEnabled(data.is_enabled);
+    }
+  }, [data]);
+
+  const saveMut = useMutation({
+    mutationFn: () => adminApi.updateBanner({ html_content: htmlContent, is_enabled: isEnabled }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-banner"] });
+      setSaveErr(null);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    },
+    onError: (e: any) => setSaveErr(e.message ?? "Failed to save"),
+  });
+
+  if (isLoading) return <div className="card">Loading…</div>;
+
+  return (
+    <div className="card flex flex-col gap-4">
+      <h2>Site banner</h2>
+      <p className="text-xs text-ink-400">
+        Shown at the top of every page for every user. Content is raw HTML, sanitized before
+        rendering. Changing the content resets every user's dismissal, so the banner reappears
+        for everyone until they dismiss it again.
+      </p>
+
+      <label className="flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          checked={isEnabled}
+          onChange={(e) => setIsEnabled(e.target.checked)}
+        />
+        Enabled
+      </label>
+
+      <div className="flex flex-col gap-1">
+        <label className="label">HTML content</label>
+        <textarea
+          className="input h-40 resize-none font-mono text-xs"
+          value={htmlContent}
+          onChange={(e) => setHtmlContent(e.target.value)}
+          placeholder="<p>Scheduled maintenance tonight at 10pm UTC.</p>"
+        />
+      </div>
+
+      <div className="flex flex-col gap-1">
+        <label className="label">Preview</label>
+        <div
+          className="p-3 rounded-md bg-ink-900 border border-ink-700 min-h-[60px] [&_p]:m-0"
+          dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(htmlContent) }}
+        />
+      </div>
+
+      {saveErr && <p className="text-red-400 text-sm">{saveErr}</p>}
+
+      <button className="btn-primary w-fit" onClick={() => saveMut.mutate()} disabled={saveMut.isPending}>
+        {saveMut.isPending ? "Saving…" : saved ? "Saved ✓" : "Save"}
+      </button>
+    </div>
+  );
+}
+
+// ── System settings ──────────────────────────────────────────────────────────
+
+function SystemSettingsSection() {
+  const qc = useQueryClient();
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["admin-system-settings"],
+    queryFn: adminApi.getSystemSettings,
+  });
+
+  const toggleMut = useMutation({
+    mutationFn: (enforce_email_verification: boolean) =>
+      adminApi.updateSystemSettings({ enforce_email_verification }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-system-settings"] }),
+  });
+
+  if (isLoading || !data) return <div className="card">Loading…</div>;
+
+  return (
+    <div className="card flex flex-col gap-4">
+      <h2>System settings</h2>
+
+      <div className="flex items-center justify-between max-w-md">
+        <div>
+          <div className="text-sm font-medium">Require email verification</div>
+          <p className="text-xs text-ink-400 mt-0.5">
+            When on, new accounts must click the emailed verification link before they can log
+            in. When off, new accounts are verified automatically at registration and skip that
+            step entirely.
+          </p>
+        </div>
+        <button
+          role="switch"
+          aria-checked={data.enforce_email_verification}
+          onClick={() => toggleMut.mutate(!data.enforce_email_verification)}
+          disabled={toggleMut.isPending}
+          className={`shrink-0 ml-4 w-11 h-6 rounded-full transition-colors relative ${
+            data.enforce_email_verification ? "bg-gold-500" : "bg-ink-600"
+          }`}
+        >
+          <span
+            className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-ink-900 transition-transform ${
+              data.enforce_email_verification ? "translate-x-5" : ""
+            }`}
+          />
+        </button>
+      </div>
     </div>
   );
 }

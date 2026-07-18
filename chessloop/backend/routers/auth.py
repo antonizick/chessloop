@@ -6,6 +6,7 @@ from sqlmodel import Session, select
 from database import get_session
 from models import User
 from models.published_library import PublishedLibrary
+from models.system_settings import SystemSettings
 from auth.password import hash_password, verify_password
 from services.activity_log import log_activity
 from services.library_service import clone_library_for_user
@@ -39,11 +40,14 @@ def register(body: RegisterRequest, session: Session = Depends(get_session)):
     ).first()
     if existing:
         raise HTTPException(status.HTTP_409_CONFLICT, "Email or username already taken")
+    settings_row = session.exec(select(SystemSettings)).first()
+    enforce_verification = settings_row.enforce_email_verification if settings_row else True
     user = User(
         email=body.email,
         username=body.username,
         password_hash=hash_password(body.password),
         show_new_user_popup=True,
+        is_verified=not enforce_verification,
     )
     session.add(user)
     session.commit()
@@ -63,8 +67,10 @@ def register(body: RegisterRequest, session: Session = Depends(get_session)):
         logging.getLogger(__name__).warning(f"Failed to clone default opening for user {user.id}: {e}")
 
     log_activity(session, user.id, user.username, "register")
-    send_verification_email(user.email, jwt_utils.create_email_verification_token(user.id))
-    return RegisterResponse(email=user.email)
+    if enforce_verification:
+        send_verification_email(user.email, jwt_utils.create_email_verification_token(user.id))
+        return RegisterResponse(email=user.email)
+    return RegisterResponse(email=user.email, message="Account created. You can log in now.")
 
 
 @router.post("/login", response_model=TokenResponse | MfaChallengeResponse)

@@ -10,7 +10,7 @@ from pydantic import BaseModel
 
 from config import settings
 from database import init_db
-from routers import auth, libraries, lines, games, practice, stats, public, admin, new_user_popup
+from routers import auth, libraries, lines, games, practice, stats, public, admin, new_user_popup, banner
 
 
 def _setup_logging() -> None:
@@ -74,6 +74,7 @@ app.include_router(stats.router, prefix="/api")
 app.include_router(public.router, prefix="/api")
 app.include_router(admin.router, prefix="/api")
 app.include_router(new_user_popup.router, prefix="/api")
+app.include_router(banner.router, prefix="/api")
 
 
 @app.get("/api/health")

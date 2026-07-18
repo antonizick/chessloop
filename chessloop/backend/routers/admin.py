@@ -15,7 +15,9 @@ from database import get_session
 from models import Backup, Library
 from models.user import User
 from models.new_user_announcement import NewUserAnnouncement
-from schemas.auth import NewUserPopupContent
+from models.banner_announcement import BannerAnnouncement
+from models.system_settings import SystemSettings
+from schemas.auth import NewUserPopupContent, BannerContent, SystemSettingsContent
 from models.practice import PracticePosition, ReviewLog, PracticeSession
 from models.line import Line, MoveNote
 from models.game import Game
@@ -917,6 +919,85 @@ def update_new_user_popup(
     session.commit()
     session.refresh(announcement)
     return NewUserPopupContent(html_content=announcement.html_content, is_enabled=announcement.is_enabled)
+
+
+# ── Site banner ───────────────────────────────────────────────────────────────
+
+
+def _get_or_create_banner(session: Session) -> BannerAnnouncement:
+    banner = session.exec(select(BannerAnnouncement)).first()
+    if not banner:
+        banner = BannerAnnouncement()
+        session.add(banner)
+        session.commit()
+        session.refresh(banner)
+    return banner
+
+
+@router.get("/banner", response_model=BannerContent)
+def get_banner_admin(
+    session: Session = Depends(get_session),
+    _: User = Depends(require_admin),
+):
+    banner = _get_or_create_banner(session)
+    return BannerContent(html_content=banner.html_content, is_enabled=banner.is_enabled)
+
+
+@router.put("/banner", response_model=BannerContent)
+def update_banner(
+    body: BannerContent,
+    admin: User = Depends(require_admin),
+    session: Session = Depends(get_session),
+):
+    banner = _get_or_create_banner(session)
+    if body.html_content != banner.html_content:
+        # Content changed — bump version so every user's dismissal goes stale and
+        # the banner reappears for everyone, without touching the user table.
+        banner.version += 1
+    banner.html_content = body.html_content
+    banner.is_enabled = body.is_enabled
+    banner.updated_at = datetime.utcnow()
+    banner.updated_by = admin.id
+    session.add(banner)
+    session.commit()
+    session.refresh(banner)
+    return BannerContent(html_content=banner.html_content, is_enabled=banner.is_enabled)
+
+
+# ── System settings ──────────────────────────────────────────────────────────
+
+
+def _get_or_create_system_settings(session: Session) -> SystemSettings:
+    settings_row = session.exec(select(SystemSettings)).first()
+    if not settings_row:
+        settings_row = SystemSettings()
+        session.add(settings_row)
+        session.commit()
+        session.refresh(settings_row)
+    return settings_row
+
+
+@router.get("/system-settings", response_model=SystemSettingsContent)
+def get_system_settings(
+    session: Session = Depends(get_session),
+    _: User = Depends(require_admin),
+):
+    settings_row = _get_or_create_system_settings(session)
+    return SystemSettingsContent(enforce_email_verification=settings_row.enforce_email_verification)
+
+
+@router.put("/system-settings", response_model=SystemSettingsContent)
+def update_system_settings(
+    body: SystemSettingsContent,
+    session: Session = Depends(get_session),
+    _: User = Depends(require_admin),
+):
+    settings_row = _get_or_create_system_settings(session)
+    settings_row.enforce_email_verification = body.enforce_email_verification
+    session.add(settings_row)
+    session.commit()
+    session.refresh(settings_row)
+    return SystemSettingsContent(enforce_email_verification=settings_row.enforce_email_verification)
 
 
 # ── Logs ──────────────────────────────────────────────────────────────────────

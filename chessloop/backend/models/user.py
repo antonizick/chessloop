@@ -21,5 +21,6 @@ class User(SQLModel, table=True):
     boost_visibility: bool = False
     is_verified: bool = False
     show_new_user_popup: bool = False
+    banner_dismissed_version: int = Field(default=0)
     created_at: datetime = Field(default_factory=datetime.utcnow)
     last_login: Optional[datetime] = None
