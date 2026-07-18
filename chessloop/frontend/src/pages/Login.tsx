@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { authApi } from "@/api/auth";
 import { useAuthStore } from "@/stores/auth";
+import { ApiError } from "@/api/client";
 
 export function Login() {
   const navigate = useNavigate();
@@ -12,6 +13,8 @@ export function Login() {
   const [mfaChallenge, setMfaChallenge] = useState<string | null>(null);
   const [totp, setTotp] = useState("");
   const [err, setErr] = useState<string | null>(null);
+  const [unverified, setUnverified] = useState(false);
+  const [resendState, setResendState] = useState<"idle" | "sending" | "sent">("idle");
   const [loading, setLoading] = useState(false);
 
   async function completeLogin(access: string, refresh: string) {
@@ -24,6 +27,8 @@ export function Login() {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setErr(null);
+    setUnverified(false);
+    setResendState("idle");
     setLoading(true);
     try {
       const res = await authApi.login({ email, password });
@@ -33,9 +38,22 @@ export function Login() {
         await completeLogin(res.access_token, res.refresh_token);
       }
     } catch (e: any) {
-      setErr(e.message ?? "Login failed");
+      if (e instanceof ApiError && e.status === 403) {
+        setUnverified(true);
+      } else {
+        setErr(e.message ?? "Login failed");
+      }
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function onResend() {
+    setResendState("sending");
+    try {
+      await authApi.resendVerification(email);
+    } finally {
+      setResendState("sent");
     }
   }
 
@@ -71,6 +89,23 @@ export function Login() {
                 onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" required />
             </div>
             {err && <p className="text-sm text-red-400">{err}</p>}
+            {unverified && (
+              <p className="text-sm text-red-400">
+                Email not verified.{" "}
+                <button
+                  type="button"
+                  className="underline disabled:opacity-60"
+                  disabled={resendState !== "idle"}
+                  onClick={onResend}
+                >
+                  {resendState === "sending"
+                    ? "Sending…"
+                    : resendState === "sent"
+                    ? "Verification email sent"
+                    : "Resend verification email"}
+                </button>
+              </p>
+            )}
             <button className="btn-primary" disabled={loading}>
               {loading ? "Signing in…" : "Sign in"}
             </button>

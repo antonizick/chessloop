@@ -3,7 +3,13 @@ import type { LoginResponse, TokenResponse, User } from "@/types";
 
 export const authApi = {
   register: (body: { email: string; username: string; password: string }) =>
-    api<User>("/auth/register", { method: "POST", body: JSON.stringify(body), auth: false }),
+    api<{ email: string; message: string }>("/auth/register", { method: "POST", body: JSON.stringify(body), auth: false }),
+
+  verifyEmail: (token: string) =>
+    api<TokenResponse>("/auth/verify-email", { method: "POST", body: JSON.stringify({ token }), auth: false }),
+
+  resendVerification: (email: string) =>
+    api<void>("/auth/resend-verification", { method: "POST", body: JSON.stringify({ email }), auth: false }),
 
   login: (body: { email: string; password: string }) =>
     api<LoginResponse>("/auth/login", { method: "POST", body: JSON.stringify(body), auth: false }),
