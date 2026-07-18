@@ -10,7 +10,7 @@ from models.system_settings import SystemSettings
 from auth.password import hash_password, verify_password
 from services.activity_log import log_activity
 from services.library_service import clone_library_for_user
-from services.email_service import send_verification_email
+from services.email_service import send_verification_email, send_password_reset_email
 from auth import jwt as jwt_utils
 from auth import mfa
 from auth.dependencies import get_current_user
@@ -28,6 +28,8 @@ from schemas.auth import (
     PreferencesRequest,
     VerifyEmailRequest,
     ResendVerificationRequest,
+    ForgotPasswordRequest,
+    ResetPasswordRequest,
 )
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -159,12 +161,14 @@ def verify_email(body: VerifyEmailRequest, session: Session = Depends(get_sessio
     if not user:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "User not found")
 
-    if not user.is_verified:
-        user.is_verified = True
-        user.last_login = datetime.utcnow()
-        session.add(user)
-        session.commit()
-        log_activity(session, user.id, user.username, "verify_email")
+    if user.is_verified:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "This verification link has already been used")
+
+    user.is_verified = True
+    user.last_login = datetime.utcnow()
+    session.add(user)
+    session.commit()
+    log_activity(session, user.id, user.username, "verify_email")
 
     return TokenResponse(
         access_token=jwt_utils.create_access_token(user.id),
@@ -179,6 +183,65 @@ def resend_verification(body: ResendVerificationRequest, session: Session = Depe
         send_verification_email(user.email, jwt_utils.create_email_verification_token(user.id))
     # Always 204 regardless of whether the account exists/is already verified —
     # lucent: avoid leaking account existence via response differences
+
+
+@router.post("/forgot-password", status_code=status.HTTP_204_NO_CONTENT)
+def forgot_password(body: ForgotPasswordRequest, session: Session = Depends(get_session)):
+    user = session.exec(select(User).where(User.email == body.email)).first()
+    if user:
+        send_password_reset_email(
+            user.email, jwt_utils.create_password_reset_token(user.id, user.password_hash)
+        )
+    # Always 204 regardless of whether the account exists —
+    # lucent: avoid leaking account existence via response differences
+
+
+def _resolve_reset_token(token: str, session: Session) -> User:
+    try:
+        payload = jwt_utils.decode_token(token)
+    except jwt_utils.JWTError:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid or expired reset link")
+    if payload.get("type") != "pwd_reset":
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Wrong token type")
+
+    user = session.get(User, UUID(payload["sub"]))
+    if not user:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "User not found")
+
+    if payload.get("pwh") != jwt_utils.password_hash_fingerprint(user.password_hash):
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "This reset link has already been used")
+
+    return user
+
+
+@router.get("/reset-password/validate", status_code=status.HTTP_204_NO_CONTENT)
+def validate_reset_token(token: str, session: Session = Depends(get_session)):
+    # Read-only check so the frontend can tell a dead link from a live one
+    # before showing the "choose a new password" form — no state is touched.
+    _resolve_reset_token(token, session)
+
+
+@router.post("/reset-password", response_model=TokenResponse)
+def reset_password(body: ResetPasswordRequest, session: Session = Depends(get_session)):
+    user = _resolve_reset_token(body.token, session)
+
+    mfa_disabled = body.disable_mfa and user.mfa_enabled
+    user.password_hash = hash_password(body.new_password)
+    user.last_login = datetime.utcnow()
+    if mfa_disabled:
+        user.mfa_enabled = False
+        user.mfa_secret = None
+    session.add(user)
+    session.commit()
+    log_activity(
+        session, user.id, user.username, "password_reset",
+        detail="mfa_disabled" if mfa_disabled else None,
+    )
+
+    return TokenResponse(
+        access_token=jwt_utils.create_access_token(user.id),
+        refresh_token=jwt_utils.create_refresh_token(user.id),
+    )
 
 
 @router.post("/mfa/setup", response_model=MfaSetupResponse)

@@ -11,6 +11,15 @@ export const authApi = {
   resendVerification: (email: string) =>
     api<void>("/auth/resend-verification", { method: "POST", body: JSON.stringify({ email }), auth: false }),
 
+  forgotPassword: (email: string) =>
+    api<void>("/auth/forgot-password", { method: "POST", body: JSON.stringify({ email }), auth: false }),
+
+  resetPassword: (body: { token: string; new_password: string; disable_mfa?: boolean }) =>
+    api<TokenResponse>("/auth/reset-password", { method: "POST", body: JSON.stringify(body), auth: false }),
+
+  validateResetToken: (token: string) =>
+    api<void>(`/auth/reset-password/validate?token=${encodeURIComponent(token)}`, { auth: false }),
+
   login: (body: { email: string; password: string }) =>
     api<LoginResponse>("/auth/login", { method: "POST", body: JSON.stringify(body), auth: false }),
 

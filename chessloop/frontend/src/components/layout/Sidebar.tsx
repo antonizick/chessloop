@@ -218,7 +218,7 @@ export function Sidebar() {
                     >
                       <span className="text-lg">{item.icon}</span>
                       {item.badge && (
-                        <span className="absolute top-0 right-0 inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold bg-gold-500 text-ink-900 leading-none transform translate-x-1 -translate-y-1">
+                        <span className="absolute top-0 right-0 inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold bg-gold-700 text-ink-700 leading-none transform translate-x-1 -translate-y-1">
                           {item.badge > 99 ? "99+" : item.badge}
                         </span>
                       )}
@@ -241,7 +241,7 @@ export function Sidebar() {
                     >
                       <span>{item.label}</span>
                       {item.badge && (
-                        <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold bg-gold-500 text-ink-900 leading-none">
+                        <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold bg-gold-700 text-ink-700 leading-none ml-3">
                           {item.badge > 99 ? "99+" : item.badge}
                         </span>
                       )}

@@ -35,3 +35,13 @@ def send_verification_email(to_email: str, token: str) -> None:
         f"Welcome to ChessLoop! Confirm your email address by visiting:\n\n{link}\n\n"
         "This link expires in 24 hours.",
     )
+
+
+def send_password_reset_email(to_email: str, token: str) -> None:
+    link = f"{settings.frontend_url}/reset-password?token={token}"
+    _send(
+        to_email,
+        "Reset your ChessLoop password",
+        f"We received a request to reset your ChessLoop password. Visit this link to choose a new one:\n\n{link}\n\n"
+        "This link expires in 1 hour. If you didn't request this, you can safely ignore this email.",
+    )

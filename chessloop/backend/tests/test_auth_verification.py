@@ -63,6 +63,17 @@ def test_verify_email_then_login_succeeds(client):
     assert "access_token" in r.json()
 
 
+def test_verify_email_token_is_single_use(client):
+    _register(client)
+    token = _token_for("new@test.com")
+
+    r = client.post("/api/auth/verify-email", json={"token": token})
+    assert r.status_code == 200
+
+    r = client.post("/api/auth/verify-email", json={"token": token})
+    assert r.status_code == 401
+
+
 def test_verify_email_rejects_bad_token(client):
     _register(client)
     r = client.post("/api/auth/verify-email", json={"token": "not-a-real-token"})

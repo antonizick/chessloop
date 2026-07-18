@@ -12,6 +12,7 @@ import { useAuthStore } from "@/stores/auth";
 import { gamesApi, type GameCreate } from "@/api/games";
 import { parsePgnToSans } from "@/utils/pgn";
 import { playNavigationSound } from "@/utils/sounds";
+import { ttsService } from "@/services/textToSpeech";
 import type { Game, GameColor, GameResult } from "@/types";
 
 const PAGE_SIZE = 10;
@@ -43,6 +44,14 @@ export function MyGames() {
   const soundsOn = user?.sounds_on ?? true;
   const boardTheme = user?.board_theme ?? "brown";
   const pieceSet = user?.piece_set ?? "cburnett";
+  const ttsEnabled = user?.tts_enabled ?? true;
+  const ttsVoice = user?.tts_voice ?? "Microsoft Zira";
+
+  // Initialize TTS service with user preferences
+  useEffect(() => {
+    ttsService.setEnabled(ttsEnabled);
+    ttsService.setDefaultVoice(ttsVoice);
+  }, [ttsEnabled, ttsVoice]);
 
   const { data: games = [] } = useQuery({ queryKey: ["games"], queryFn: gamesApi.list });
 
@@ -91,6 +100,16 @@ export function MyGames() {
       movable: { free: false, dests: new Map() },
     });
   }, [teaching.boardFen]);
+
+  // Read note aloud when navigating to a move with notes
+  useEffect(() => {
+    if (ttsEnabled && teaching.viewIndex !== null && teaching.viewIndex >= 0) {
+      const currentMove = teaching.moves[teaching.viewIndex];
+      if (currentMove?.note) {
+        ttsService.speak(currentMove.note);
+      }
+    }
+  }, [teaching.viewIndex, ttsEnabled, teaching.moves]);
 
   // ── Navigation ─────────────────────────────────────────────────────────────
   function gotoStart() {
@@ -326,8 +345,9 @@ export function MyGames() {
                         onClick={() => setSelectedGameId(g.id)}
                         title={g.name}
                       >
-                        <span className={`mr-1.5 ${selectedGameId === g.id ? "text-ink-900" : RESULT_STYLES[g.result]}`}>●</span>
+                        <span className={`mr-1.5 text-base leading-none ${selectedGameId === g.id ? "text-ink-900" : RESULT_STYLES[g.result]}`}>●</span>
                         {formatShort(g.played_date)} · {g.name}
+                        {g.opponent_level && <span className="text-ink-400"> ({g.opponent_level})</span>}
                       </button>
                       {deleteConfirmId === g.id ? (
                         <div className="flex gap-0.5">

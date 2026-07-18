@@ -75,6 +75,16 @@ class ResendVerificationRequest(BaseModel):
     email: EmailStr
 
 
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str = Field(min_length=8, max_length=128)
+    disable_mfa: bool = False
+
+
 class PreferencesRequest(BaseModel):
     theme: Optional[str] = None
     piece_set: Optional[str] = None
