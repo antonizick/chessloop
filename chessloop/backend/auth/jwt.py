@@ -30,6 +30,10 @@ def create_mfa_challenge_token(user_id: UUID) -> str:
     return _encode(str(user_id), timedelta(minutes=5), "mfa_challenge")
 
 
+def create_email_verification_token(user_id: UUID) -> str:
+    return _encode(str(user_id), timedelta(hours=24), "email_verify")
+
+
 def decode_token(token: str) -> dict:
     return jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
 
@@ -38,6 +42,7 @@ __all__ = [
     "create_access_token",
     "create_refresh_token",
     "create_mfa_challenge_token",
+    "create_email_verification_token",
     "decode_token",
     "JWTError",
 ]

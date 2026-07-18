@@ -23,10 +23,24 @@ def client():
         yield c
 
 
+def _verify(email):
+    """Directly mark a just-registered account verified (SMTP is unconfigured in tests)."""
+    from database import engine
+    from sqlmodel import Session, select
+    from models import User
+
+    with Session(engine) as s:
+        u = s.exec(select(User).where(User.email == email)).first()
+        u.is_verified = True
+        s.add(u)
+        s.commit()
+
+
 def _auth(client):
     client.post("/api/auth/register", json={
         "email": "g@b.com", "username": "gamer", "password": "passw0rd12",
     })
+    _verify("g@b.com")
     r = client.post("/api/auth/login", json={"email": "g@b.com", "password": "passw0rd12"})
     return {"Authorization": f"Bearer {r.json()['access_token']}"}
 
@@ -100,6 +114,7 @@ def test_games_are_owner_scoped(client):
 
     # A different user cannot see or fetch it
     client.post("/api/auth/register", json={"email": "h@b.com", "username": "other", "password": "passw0rd12"})
+    _verify("h@b.com")
     r = client.post("/api/auth/login", json={"email": "h@b.com", "password": "passw0rd12"})
     H2 = {"Authorization": f"Bearer {r.json()['access_token']}"}
 

@@ -8,6 +8,7 @@ import pytest
 # Ensure we use a fresh in-memory DB and don't write WAL files anywhere
 os.environ["CHESSLOOP_DB_PATH"] = ":memory:"
 os.environ["CHESSLOOP_JWT_SECRET"] = "test-secret"
+os.environ["CHESSLOOP_EMAIL_MX_CHECK"] = "false"  # no network access in tests
 
 from sqlmodel import Session, SQLModel, create_engine
 

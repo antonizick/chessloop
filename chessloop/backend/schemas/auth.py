@@ -1,13 +1,30 @@
 from datetime import datetime
 from typing import Optional
 from uuid import UUID
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
+from email_validator import validate_email, EmailNotValidError
+
+from config import settings
 
 
 class RegisterRequest(BaseModel):
     email: EmailStr
     username: str = Field(min_length=3, max_length=32)
     password: str = Field(min_length=8, max_length=128)
+
+    @field_validator("email")
+    @classmethod
+    def _check_deliverable(cls, v: str) -> str:
+        # EmailStr only checks syntax — this adds an MX lookup so registration
+        # rejects addresses at domains that can't receive mail at all.
+        # Gated by settings so tests/offline self-hosts aren't network-dependent.
+        if not settings.email_mx_check:
+            return v
+        try:
+            validate_email(v, check_deliverability=True)
+        except EmailNotValidError as e:
+            raise ValueError(str(e))
+        return v
 
 
 class LoginRequest(BaseModel):
@@ -43,6 +60,19 @@ class MfaConfirmRequest(BaseModel):
 
 class RefreshRequest(BaseModel):
     refresh_token: str
+
+
+class RegisterResponse(BaseModel):
+    email: EmailStr
+    message: str = "Check your email to verify your account."
+
+
+class VerifyEmailRequest(BaseModel):
+    token: str
+
+
+class ResendVerificationRequest(BaseModel):
+    email: EmailStr
 
 
 class PreferencesRequest(BaseModel):

@@ -40,12 +40,26 @@ ITALIAN_OPENING = [
 ]
 
 
+def _verify(email):
+    """Directly mark a just-registered account verified (SMTP is unconfigured in tests)."""
+    from database import engine
+    from sqlmodel import Session, select
+    from models import User
+
+    with Session(engine) as s:
+        u = s.exec(select(User).where(User.email == email)).first()
+        u.is_verified = True
+        s.add(u)
+        s.commit()
+
+
 def _bootstrap(client):
     """Register, login, create library with one teaching line. Returns (headers, lib, line)."""
     r = client.post("/api/auth/register", json={
         "email": "a@b.com", "username": "alice", "password": "passw0rd12",
     })
     assert r.status_code == 201, r.text
+    _verify("a@b.com")
 
     r = client.post("/api/auth/login", json={"email": "a@b.com", "password": "passw0rd12"})
     assert r.status_code == 200
@@ -219,6 +233,7 @@ def test_session_must_belong_to_user(client):
 
     # Make a second user, attempt access
     client.post("/api/auth/register", json={"email": "b@b.com", "username": "bob", "password": "passw0rd12"})
+    _verify("b@b.com")
     tok = client.post("/api/auth/login", json={"email": "b@b.com", "password": "passw0rd12"}).json()["access_token"]
     H_b = {"Authorization": f"Bearer {tok}"}
 

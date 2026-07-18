@@ -11,6 +11,18 @@ from sqlmodel import Session, select
 from models import User, Library
 
 
+def _verify(email):
+    """Directly mark a just-registered account verified (SMTP is unconfigured in tests)."""
+    from database import engine
+    from sqlmodel import Session, select
+
+    with Session(engine) as s:
+        u = s.exec(select(User).where(User.email == email)).first()
+        u.is_verified = True
+        s.add(u)
+        s.commit()
+
+
 @pytest.fixture()
 def client():
     from sqlmodel import SQLModel
@@ -94,7 +106,7 @@ def test_new_account_receives_default_opening(client):
         "password": "password123",
     })
     assert r.status_code == 201
-    new_user_id = r.json()["id"]
+    _verify("newuser@test.com")
 
     # Get the user's libraries
     r = client.post("/api/auth/login", json={
@@ -125,7 +137,8 @@ def test_registration_succeeds_without_default_opening(client):
         "password": "password123",
     })
     assert r.status_code == 201
-    assert r.json()["username"] == "user"
+    assert r.json()["email"] == "user@test.com"
+    _verify("user@test.com")
 
     # Verify the user can log in
     r = client.post("/api/auth/login", json={

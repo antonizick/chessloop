@@ -9,6 +9,15 @@ class Settings(BaseSettings):
     access_ttl_min: int = 15
     refresh_ttl_days: int = 30
     cors_origins: str = "http://localhost:8090,http://localhost:5173"
+    frontend_url: str = "http://localhost:8090"
+    email_mx_check: bool = True
+
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    smtp_from: str = "ChessLoop <no-reply@chessloop.local>"
+    smtp_use_tls: bool = True
 
     class Config:
         env_prefix = "CHESSLOOP_"

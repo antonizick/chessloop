@@ -9,11 +9,13 @@ from models.published_library import PublishedLibrary
 from auth.password import hash_password, verify_password
 from services.activity_log import log_activity
 from services.library_service import clone_library_for_user
+from services.email_service import send_verification_email
 from auth import jwt as jwt_utils
 from auth import mfa
 from auth.dependencies import get_current_user
 from schemas.auth import (
     RegisterRequest,
+    RegisterResponse,
     LoginRequest,
     MfaLoginRequest,
     RefreshRequest,
@@ -23,12 +25,14 @@ from schemas.auth import (
     MfaConfirmRequest,
     UserResponse,
     PreferencesRequest,
+    VerifyEmailRequest,
+    ResendVerificationRequest,
 )
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-@router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/register", response_model=RegisterResponse, status_code=status.HTTP_201_CREATED)
 def register(body: RegisterRequest, session: Session = Depends(get_session)):
     existing = session.exec(
         select(User).where((User.email == body.email) | (User.username == body.username))
@@ -58,7 +62,8 @@ def register(body: RegisterRequest, session: Session = Depends(get_session)):
         logging.getLogger(__name__).warning(f"Failed to clone default opening for user {user.id}: {e}")
 
     log_activity(session, user.id, user.username, "register")
-    return user
+    send_verification_email(user.email, jwt_utils.create_email_verification_token(user.id))
+    return RegisterResponse(email=user.email)
 
 
 @router.post("/login", response_model=TokenResponse | MfaChallengeResponse)
@@ -66,6 +71,8 @@ def login(body: LoginRequest, session: Session = Depends(get_session)):
     user = session.exec(select(User).where(User.email == body.email)).first()
     if not user or not verify_password(body.password, user.password_hash):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid credentials")
+    if not user.is_verified:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Email not verified")
 
     if user.mfa_enabled:
         return MfaChallengeResponse(challenge_token=jwt_utils.create_mfa_challenge_token(user.id))
@@ -130,6 +137,41 @@ def refresh_token(body: RefreshRequest, session: Session = Depends(get_session))
         access_token=jwt_utils.create_access_token(user.id),
         refresh_token=jwt_utils.create_refresh_token(user.id),
     )
+
+
+@router.post("/verify-email", response_model=TokenResponse)
+def verify_email(body: VerifyEmailRequest, session: Session = Depends(get_session)):
+    try:
+        payload = jwt_utils.decode_token(body.token)
+    except jwt_utils.JWTError:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid or expired verification link")
+    if payload.get("type") != "email_verify":
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Wrong token type")
+
+    user = session.get(User, UUID(payload["sub"]))
+    if not user:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "User not found")
+
+    if not user.is_verified:
+        user.is_verified = True
+        user.last_login = datetime.utcnow()
+        session.add(user)
+        session.commit()
+        log_activity(session, user.id, user.username, "verify_email")
+
+    return TokenResponse(
+        access_token=jwt_utils.create_access_token(user.id),
+        refresh_token=jwt_utils.create_refresh_token(user.id),
+    )
+
+
+@router.post("/resend-verification", status_code=status.HTTP_204_NO_CONTENT)
+def resend_verification(body: ResendVerificationRequest, session: Session = Depends(get_session)):
+    user = session.exec(select(User).where(User.email == body.email)).first()
+    if user and not user.is_verified:
+        send_verification_email(user.email, jwt_utils.create_email_verification_token(user.id))
+    # Always 204 regardless of whether the account exists/is already verified —
+    # lucent: avoid leaking account existence via response differences
 
 
 @router.post("/mfa/setup", response_model=MfaSetupResponse)
