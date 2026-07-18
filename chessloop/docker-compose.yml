@@ -11,6 +11,13 @@ services:
       - CHESSLOOP_ACCESS_TTL_MIN=15
       - CHESSLOOP_REFRESH_TTL_DAYS=30
       - CHESSLOOP_CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:${PUBLIC_PORT:-8090},http://localhost:5180}
+      - CHESSLOOP_FRONTEND_URL=${FRONTEND_URL:-http://localhost:${PUBLIC_PORT:-8090}}
+      - CHESSLOOP_SMTP_HOST=${SMTP_HOST:-}
+      - CHESSLOOP_SMTP_PORT=${SMTP_PORT:-587}
+      - CHESSLOOP_SMTP_USER=${SMTP_USER:-}
+      - CHESSLOOP_SMTP_PASSWORD=${SMTP_PASSWORD:-}
+      - CHESSLOOP_SMTP_FROM=${SMTP_FROM:-ChessLoop <no-reply@chessloop.local>}
+      - CHESSLOOP_SMTP_USE_TLS=${SMTP_USE_TLS:-true}
     volumes:
       - ./data:/data
     # Backend stays on the internal Docker network only — no host port binding.

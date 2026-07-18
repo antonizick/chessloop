@@ -153,6 +153,13 @@ start_containers() {
       -e "CHESSLOOP_ACCESS_TTL_MIN=15" \
       -e "CHESSLOOP_REFRESH_TTL_DAYS=30" \
       -e "CHESSLOOP_CORS_ORIGINS=${CORS_ORIGINS:-*}" \
+      -e "CHESSLOOP_FRONTEND_URL=${FRONTEND_URL:-http://localhost:$PUBLIC_PORT}" \
+      -e "CHESSLOOP_SMTP_HOST=${SMTP_HOST:-}" \
+      -e "CHESSLOOP_SMTP_PORT=${SMTP_PORT:-587}" \
+      -e "CHESSLOOP_SMTP_USER=${SMTP_USER:-}" \
+      -e "CHESSLOOP_SMTP_PASSWORD=${SMTP_PASSWORD:-}" \
+      -e "CHESSLOOP_SMTP_FROM=${SMTP_FROM:-ChessLoop <no-reply@chessloop.local>}" \
+      -e "CHESSLOOP_SMTP_USE_TLS=${SMTP_USE_TLS:-true}" \
       chessloop-backend:latest >/dev/null 2>&1 && echo -e "  ${GREEN}●${RESET} Backend up" || echo -e "  ${RED}●${RESET} Backend failed"
   fi
 
