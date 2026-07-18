@@ -1,9 +1,13 @@
+import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import DOMPurify from "dompurify";
 import { librariesApi } from "@/api/libraries";
 import { practiceApi } from "@/api/practice";
 import { statsApi } from "@/api/stats";
+import { authApi } from "@/api/auth";
 import { useAuthStore } from "@/stores/auth";
+import { Modal } from "@/components/ui/Modal";
 import type { MasteryBadge, MasteryEntry } from "@/types";
 
 // ── Badge strip ───────────────────────────────────────────────────────────────
@@ -151,6 +155,49 @@ function WeakLinesTeaser() {
   );
 }
 
+// ── New user popup ────────────────────────────────────────────────────────────
+
+function NewUserPopup() {
+  const { data: popup } = useQuery({
+    queryKey: ["new-user-popup"],
+    queryFn: authApi.getNewUserPopup,
+    staleTime: Infinity,
+  });
+
+  const [dismissed, setDismissed] = useState(false);
+  const [showNextTime, setShowNextTime] = useState(true);
+  const setUser = useAuthStore((s) => s.setUser);
+
+  const updatePrefs = useMutation({
+    mutationFn: authApi.updatePreferences,
+    onSuccess: setUser,
+  });
+
+  if (!popup || dismissed) return null;
+
+  function handleAcknowledge() {
+    if (!showNextTime) updatePrefs.mutate({ show_new_user_popup: false });
+    setDismissed(true);
+  }
+
+  return (
+    <Modal onClose={handleAcknowledge}>
+      <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(popup!.html_content) }} />
+      <div className="flex items-center justify-end gap-3 mt-4">
+        <label className="flex items-center gap-2 text-sm text-ink-400">
+          <input
+            type="checkbox"
+            checked={showNextTime}
+            onChange={(e) => setShowNextTime(e.target.checked)}
+          />
+          Show next time on my dashboard
+        </label>
+        <button className="btn-primary" onClick={handleAcknowledge}>OK</button>
+      </div>
+    </Modal>
+  );
+}
+
 // ── Main Dashboard ────────────────────────────────────────────────────────────
 
 export function Dashboard() {
@@ -186,6 +233,8 @@ export function Dashboard() {
 
   return (
     <div className="flex flex-col gap-8">
+      <NewUserPopup />
+
       {/* Header */}
       <div>
         <h1>Welcome back{user ? `, ${user.username}` : ""}.</h1>

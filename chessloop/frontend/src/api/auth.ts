@@ -27,6 +27,9 @@ export const authApi = {
   mfaDisable: (totp_code: string) =>
     api<void>("/auth/mfa", { method: "DELETE", body: JSON.stringify({ totp_code }) }),
 
-  updatePreferences: (body: { theme?: string; piece_set?: string; board_theme?: string; sounds_on?: boolean; tts_enabled?: boolean; tts_voice?: string; boost_visibility?: boolean }) =>
+  updatePreferences: (body: { theme?: string; piece_set?: string; board_theme?: string; sounds_on?: boolean; tts_enabled?: boolean; tts_voice?: string; boost_visibility?: boolean; show_new_user_popup?: boolean }) =>
     api<User>("/auth/preferences", { method: "PATCH", body: JSON.stringify(body) }),
+
+  getNewUserPopup: () =>
+    api<{ html_content: string } | null>("/new-user-popup"),
 };
