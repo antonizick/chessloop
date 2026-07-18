@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import DOMPurify from "dompurify";
 import { api } from "@/api/client";
 import { adminApi } from "@/api/admin";
 import { useAuthStore } from "@/stores/auth";
@@ -102,7 +103,7 @@ function fmtDate(iso: string): string {
 
 // ── Tabs ──────────────────────────────────────────────────────────────────────
 
-type Tab = "users" | "backups" | "backend-logs" | "frontend-logs" | "activity";
+type Tab = "users" | "backups" | "backend-logs" | "frontend-logs" | "activity" | "new-user-popup";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "users", label: "Users" },
@@ -110,6 +111,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "backend-logs", label: "Backend Logs" },
   { id: "frontend-logs", label: "Frontend Logs" },
   { id: "activity", label: "Activity" },
+  { id: "new-user-popup", label: "New User Popup" },
 ];
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -147,6 +149,7 @@ export function Admin() {
       {activeTab === "backend-logs" && <LogSection title="Backend Logs" fetchLines={(n) => adminApi.getBackendLogs(n).then(r => r.lines)} queryKey="backend-logs" />}
       {activeTab === "frontend-logs" && <LogSection title="Frontend Logs" fetchLines={(n) => adminApi.getFrontendLogs(n).then(r => r.lines)} queryKey="frontend-logs" />}
       {activeTab === "activity" && <ActivitySection />}
+      {activeTab === "new-user-popup" && <NewUserPopupSection />}
     </div>
   );
 }
@@ -922,6 +925,84 @@ function UsersSection() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ── New user popup ────────────────────────────────────────────────────────────
+
+function NewUserPopupSection() {
+  const qc = useQueryClient();
+  const [htmlContent, setHtmlContent] = useState("");
+  const [isEnabled, setIsEnabled] = useState(false);
+  const [saveErr, setSaveErr] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["admin-new-user-popup"],
+    queryFn: adminApi.getNewUserPopup,
+  });
+
+  useEffect(() => {
+    if (data) {
+      setHtmlContent(data.html_content);
+      setIsEnabled(data.is_enabled);
+    }
+  }, [data]);
+
+  const saveMut = useMutation({
+    mutationFn: () => adminApi.updateNewUserPopup({ html_content: htmlContent, is_enabled: isEnabled }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-new-user-popup"] });
+      setSaveErr(null);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    },
+    onError: (e: any) => setSaveErr(e.message ?? "Failed to save"),
+  });
+
+  if (isLoading) return <div className="card">Loading…</div>;
+
+  return (
+    <div className="card flex flex-col gap-4">
+      <h2>New user popup</h2>
+      <p className="text-xs text-ink-400">
+        Shown once on the dashboard to accounts that just registered. Content is raw HTML,
+        sanitized before rendering to users.
+      </p>
+
+      <label className="flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          checked={isEnabled}
+          onChange={(e) => setIsEnabled(e.target.checked)}
+        />
+        Enabled
+      </label>
+
+      <div className="flex flex-col gap-1">
+        <label className="label">HTML content</label>
+        <textarea
+          className="input h-40 resize-none font-mono text-xs"
+          value={htmlContent}
+          onChange={(e) => setHtmlContent(e.target.value)}
+          placeholder="<h2>Welcome!</h2><p>Thanks for joining.</p>"
+        />
+      </div>
+
+      <div className="flex flex-col gap-1">
+        <label className="label">Preview</label>
+        <div
+          className="p-3 rounded-md bg-ink-900 border border-ink-700 min-h-[80px]"
+          dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(htmlContent) }}
+        />
+      </div>
+
+      {saveErr && <p className="text-red-400 text-sm">{saveErr}</p>}
+
+      <button className="btn-primary w-fit" onClick={() => saveMut.mutate()} disabled={saveMut.isPending}>
+        {saveMut.isPending ? "Saving…" : saved ? "Saved ✓" : "Save"}
+      </button>
     </div>
   );
 }

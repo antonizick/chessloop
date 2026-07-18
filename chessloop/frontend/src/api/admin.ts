@@ -66,6 +66,11 @@ export interface LogLines {
   lines: string[];
 }
 
+export interface NewUserPopupContent {
+  html_content: string;
+  is_enabled: boolean;
+}
+
 export const adminApi = {
   searchOpenings: (q: string) =>
     api<OpeningSearchResult[]>(`/admin/openings/search?q=${encodeURIComponent(q)}`),
@@ -104,4 +109,8 @@ export const adminApi = {
 
   getFrontendLogs: (lines = 300) =>
     api<LogLines>(`/admin/logs/frontend?lines=${lines}`),
+
+  getNewUserPopup: () => api<NewUserPopupContent>("/admin/new-user-popup"),
+  updateNewUserPopup: (body: NewUserPopupContent) =>
+    api<NewUserPopupContent>("/admin/new-user-popup", { method: "PUT", body: JSON.stringify(body) }),
 };
