@@ -83,6 +83,16 @@ class PreferencesRequest(BaseModel):
     tts_enabled: Optional[bool] = None
     tts_voice: Optional[str] = None
     boost_visibility: Optional[bool] = None
+    show_new_user_popup: Optional[bool] = None
+
+
+class NewUserPopupContent(BaseModel):
+    html_content: str
+    is_enabled: bool
+
+
+class NewUserPopupResponse(BaseModel):
+    html_content: str
 
 
 class UserResponse(BaseModel):

@@ -43,6 +43,7 @@ def register(body: RegisterRequest, session: Session = Depends(get_session)):
         email=body.email,
         username=body.username,
         password_hash=hash_password(body.password),
+        show_new_user_popup=True,
     )
     session.add(user)
     session.commit()
@@ -252,6 +253,8 @@ def update_preferences(
         user.tts_voice = body.tts_voice
     if body.boost_visibility is not None:
         user.boost_visibility = body.boost_visibility
+    if body.show_new_user_popup is not None:
+        user.show_new_user_popup = body.show_new_user_popup
     session.add(user)
     session.commit()
     session.refresh(user)

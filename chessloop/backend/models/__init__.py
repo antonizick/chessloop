@@ -9,6 +9,7 @@ from .library_video_link import LibraryVideoLink
 from .activity_log import ActivityLog
 from .published_library import PublishedLibrary, PublishedLine
 from .published_library_video_link import PublishedLibraryVideoLink
+from .new_user_announcement import NewUserAnnouncement
 
 __all__ = [
     "User",
@@ -26,4 +27,5 @@ __all__ = [
     "PublishedLibrary",
     "PublishedLine",
     "PublishedLibraryVideoLink",
+    "NewUserAnnouncement",
 ]

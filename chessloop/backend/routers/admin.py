@@ -14,6 +14,8 @@ from sqlalchemy import delete as sql_delete
 from database import get_session
 from models import Backup, Library
 from models.user import User
+from models.new_user_announcement import NewUserAnnouncement
+from schemas.auth import NewUserPopupContent
 from models.practice import PracticePosition, ReviewLog, PracticeSession
 from models.line import Line, MoveNote
 from models.game import Game
@@ -876,6 +878,45 @@ def delete_opening(
         deleted=True,
         message=f"Deleted opening '{lib.name}'."
     )
+
+
+# ── New user popup ───────────────────────────────────────────────────────────
+
+
+def _get_or_create_announcement(session: Session) -> NewUserAnnouncement:
+    announcement = session.exec(select(NewUserAnnouncement)).first()
+    if not announcement:
+        announcement = NewUserAnnouncement()
+        session.add(announcement)
+        session.commit()
+        session.refresh(announcement)
+    return announcement
+
+
+@router.get("/new-user-popup", response_model=NewUserPopupContent)
+def get_new_user_popup_admin(
+    session: Session = Depends(get_session),
+    _: User = Depends(require_admin),
+):
+    announcement = _get_or_create_announcement(session)
+    return NewUserPopupContent(html_content=announcement.html_content, is_enabled=announcement.is_enabled)
+
+
+@router.put("/new-user-popup", response_model=NewUserPopupContent)
+def update_new_user_popup(
+    body: NewUserPopupContent,
+    admin: User = Depends(require_admin),
+    session: Session = Depends(get_session),
+):
+    announcement = _get_or_create_announcement(session)
+    announcement.html_content = body.html_content
+    announcement.is_enabled = body.is_enabled
+    announcement.updated_at = datetime.utcnow()
+    announcement.updated_by = admin.id
+    session.add(announcement)
+    session.commit()
+    session.refresh(announcement)
+    return NewUserPopupContent(html_content=announcement.html_content, is_enabled=announcement.is_enabled)
 
 
 # ── Logs ──────────────────────────────────────────────────────────────────────
