@@ -7,12 +7,31 @@
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 CHESSLOOP_DIR="$SCRIPT_DIR/chessloop"
 
+# start_containers() below reads JWT_SECRET, CORS_ORIGINS, FRONTEND_URL, and
+# the SMTP_* vars straight from this shell's environment when it does `docker
+# run -e ...`. chessloop/.env already holds all of them (that's what docker
+# compose's own ${VAR} substitution reads), but a plain interactive shell
+# never sees that file unless we load it here too — so fill in only the ones
+# not already exported, leaving any explicit `export` from the caller as-is.
+# Pulled field-by-field rather than `source`-ing the whole file: .env is
+# docker's plain KEY=VALUE format, not bash syntax, and lines like an
+# unquoted SMTP_FROM with "<...>" aren't valid bash if sourced directly.
+if [ -f "$CHESSLOOP_DIR/.env" ]; then
+  for _var in JWT_SECRET CORS_ORIGINS FRONTEND_URL SMTP_HOST SMTP_PORT SMTP_USER SMTP_PASSWORD SMTP_FROM SMTP_USE_TLS; do
+    if [ -z "${!_var}" ]; then
+      _val="$(grep -m1 "^${_var}=" "$CHESSLOOP_DIR/.env" | cut -d= -f2-)"
+      [ -n "$_val" ] && export "$_var=$_val"
+    fi
+  done
+  unset _var _val
+fi
+
 # JWT signing secret must be supplied via env — no hardcoded fallback.
 # (A previous version of this script had a hardcoded default that was committed
 # to a public repo; treat that value as permanently compromised.)
 if [ -z "$JWT_SECRET" ]; then
   echo "ERROR: \$JWT_SECRET is not set. Generate one (e.g. openssl rand -base64 32)" >&2
-  echo "and export it before running this script." >&2
+  echo "and export it before running this script, or set it in $CHESSLOOP_DIR/.env" >&2
   exit 1
 fi
 
