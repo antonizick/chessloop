@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { publicApi } from "@/api/public";
 import { api } from "@/api/client";
 import { useAuthStore } from "@/stores/auth";
+import { MarkdownContent } from "@/components/ui/MarkdownContent";
 
 export function PublicLibraryDetail() {
   const { id } = useParams<{ id: string }>();
@@ -108,9 +109,7 @@ export function PublicLibraryDetail() {
           </div>
         </div>
 
-        {lib.description && (
-          <p className="text-ink-300 text-sm leading-relaxed">{lib.description}</p>
-        )}
+        {lib.description && <MarkdownContent content={lib.description} />}
 
         <div className="text-xs text-ink-500">
           {lib.line_count} line{lib.line_count !== 1 ? "s" : ""} ·

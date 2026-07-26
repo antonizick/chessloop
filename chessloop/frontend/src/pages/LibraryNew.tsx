@@ -51,9 +51,9 @@ export function LibraryNew() {
           </select>
         </div>
         <div>
-          <label className="label">Description (optional)</label>
+          <label className="label">Description (optional, Markdown supported)</label>
           <textarea
-            className="input"
+            className="input font-mono"
             value={form.description ?? ""}
             onChange={(e) => setForm({ ...form, description: e.target.value })}
             rows={3}

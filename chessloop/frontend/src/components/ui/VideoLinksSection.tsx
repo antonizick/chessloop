@@ -5,9 +5,10 @@ import { librariesApi } from "@/api/libraries";
 interface VideoLinksSectionProps {
   libraryId: string;
   canEdit: boolean;
+  hideHeading?: boolean;
 }
 
-export function VideoLinksSection({ libraryId, canEdit }: VideoLinksSectionProps) {
+export function VideoLinksSection({ libraryId, canEdit, hideHeading = false }: VideoLinksSectionProps) {
   const qc = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [title, setTitle] = useState("");
@@ -46,21 +47,27 @@ export function VideoLinksSection({ libraryId, canEdit }: VideoLinksSectionProps
 
   if (!canEdit && links.length === 0) return null;
 
+  const addButton = canEdit && !showForm && (
+    <button
+      className="btn-ghost text-xs py-1 px-2"
+      onClick={() => setShowForm(true)}
+      disabled={links.length >= 10}
+      title={links.length >= 10 ? "Maximum 10 links reached" : "Add a training video link"}
+    >
+      + Add link
+    </button>
+  );
+
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-medium text-ink-300">Video Links</h3>
-        {canEdit && !showForm && (
-          <button
-            className="btn-ghost text-xs py-1 px-2"
-            onClick={() => setShowForm(true)}
-            disabled={links.length >= 10}
-            title={links.length >= 10 ? "Maximum 10 links reached" : "Add a training video link"}
-          >
-            + Add link
-          </button>
-        )}
-      </div>
+      {hideHeading ? (
+        addButton && <div className="flex justify-end">{addButton}</div>
+      ) : (
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-medium text-ink-300">Video Links</h3>
+          {addButton}
+        </div>
+      )}
 
       {links.length === 0 && canEdit && (
         <p className="text-xs text-ink-500">No video links yet.</p>

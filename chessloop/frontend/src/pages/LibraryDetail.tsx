@@ -4,6 +4,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { librariesApi, type LichessImportResult } from "@/api/libraries";
 import { linesApi } from "@/api/lines";
 import { VideoLinksSection } from "@/components/ui/VideoLinksSection";
+import { Collapsible } from "@/components/ui/Collapsible";
+import { MarkdownContent } from "@/components/ui/MarkdownContent";
 
 export function LibraryDetail() {
   const { id } = useParams<{ id: string }>();
@@ -193,12 +195,12 @@ export function LibraryDetail() {
               </div>
             </div>
             <div>
-              <label className="label text-sm">Description</label>
+              <label className="label text-sm">Description (Markdown supported)</label>
               <textarea
-                className="input text-sm"
+                className="input text-sm font-mono"
                 value={editForm.description}
                 onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
-                rows={2}
+                rows={6}
               />
             </div>
             <div className="flex gap-2 justify-end">
@@ -321,10 +323,17 @@ export function LibraryDetail() {
         </div>
       )}
 
+      {/* Description */}
+      {lib.description && (
+        <Collapsible title="Description">
+          <MarkdownContent content={lib.description} />
+        </Collapsible>
+      )}
+
       {/* Video links */}
-      <div className="card">
-        <VideoLinksSection libraryId={id!} canEdit={true} />
-      </div>
+      <Collapsible title="Video Links">
+        <VideoLinksSection libraryId={id!} canEdit={true} hideHeading />
+      </Collapsible>
 
       {/* Lines list */}
       <div className="card">
