@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import type { PracticeMode } from "@/types";
 import { Tooltip } from "@/components/ui/Tooltip";
+import { librariesApi } from "@/api/libraries";
 
 export type StartPosition = "auto" | "first" | "random" | "mixed";
 
@@ -14,6 +16,12 @@ export type UiMode = PracticeMode | "all_active";
 export interface PracticeOptions {
   mode: UiMode;
   startPosition: StartPosition;
+  // Omitted (not just empty) by callers that bypass this picker — e.g. the
+  // dashboard's "practice weakest now" shortcut — so the backend falls back
+  // to its default scope (all active libraries, no learned filter) instead
+  // of interpreting an empty array as "nothing selected".
+  libraryIds?: string[];
+  learnedOnly?: boolean;
 }
 
 interface Props {
@@ -107,11 +115,68 @@ function SegmentedControl<T extends string>({
   );
 }
 
+// ── Toggle switch ────────────────────────────────────────────────────────────
+
+function ToggleSwitch({
+  checked,
+  onChange,
+  disabled,
+  title,
+}: {
+  checked: boolean;
+  onChange: () => void;
+  disabled?: boolean;
+  title?: string;
+}) {
+  return (
+    <button
+      onClick={onChange}
+      disabled={disabled}
+      title={title}
+      className={[
+        "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 transition-colors duration-150",
+        checked ? "bg-green-500 border-green-500" : "bg-ink-600 border-ink-600",
+        disabled ? "opacity-50 cursor-not-allowed" : "",
+      ].join(" ")}
+    >
+      <span
+        className={[
+          "inline-block h-4 w-4 rounded-full bg-white shadow transform transition-transform duration-150",
+          checked ? "translate-x-4" : "translate-x-0",
+        ].join(" ")}
+      />
+    </button>
+  );
+}
+
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 export function ModeEntry({ onStart, isLoading, error, isUnrated = false, leechCount = 0 }: Props) {
   const [mode, setMode] = useState<UiMode>("weakest");
   const [startPosition, setStartPosition] = useState<StartPosition>("first");
+  const [learnedOnly, setLearnedOnly] = useState(true);
+  const [selectedLibraryIds, setSelectedLibraryIds] = useState<Set<string> | null>(null);
+
+  const { data: libraries } = useQuery({
+    queryKey: ["libraries"],
+    queryFn: () => librariesApi.list(),
+  });
+
+  // Default-check every currently-active library, once, when the list loads.
+  useEffect(() => {
+    if (libraries && selectedLibraryIds === null) {
+      setSelectedLibraryIds(new Set(libraries.filter((l) => l.is_active).map((l) => l.id)));
+    }
+  }, [libraries, selectedLibraryIds]);
+
+  function toggleLibrary(id: string) {
+    setSelectedLibraryIds((prev) => {
+      const next = new Set(prev ?? []);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
 
   // "all_active" overrides start_position to "random" — hide the selector for it
   const showStartPosition = mode !== "all_active" && mode !== "leech_drill";
@@ -191,10 +256,53 @@ export function ModeEntry({ onStart, isLoading, error, isUnrated = false, leechC
         </div>
       )}
 
+      {/* ── Libraries ── */}
+      {libraries && libraries.length > 0 && (
+        <div className="flex flex-col gap-2">
+          <label className="text-xs font-semibold text-ink-400 uppercase tracking-wide">
+            Libraries
+          </label>
+          <div className="card flex flex-col gap-1.5 max-h-48 overflow-y-auto">
+            {libraries.map((lib) => (
+              <label
+                key={lib.id}
+                className="flex items-center gap-2 text-sm text-ink-200 cursor-pointer py-0.5"
+              >
+                <input
+                  type="checkbox"
+                  className="w-4 h-4 cursor-pointer shrink-0"
+                  checked={selectedLibraryIds?.has(lib.id) ?? false}
+                  onChange={() => toggleLibrary(lib.id)}
+                />
+                <span className="truncate">{lib.name}</span>
+                {!lib.is_active && (
+                  <span className="text-xs text-ink-500 shrink-0">(inactive)</span>
+                )}
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Learned/Active lines only ── */}
+      <div className="flex items-center justify-between">
+        <Tooltip text="When on, only lines you've marked (or auto-marked) as learned are practiced. Turn off to also get quizzed on lines you haven't fully learned yet.">
+          <span className="text-sm text-ink-200 cursor-help">Learned/Active lines only</span>
+        </Tooltip>
+        <ToggleSwitch checked={learnedOnly} onChange={() => setLearnedOnly((v) => !v)} />
+      </div>
+
       <button
         className="btn-primary w-full py-3 text-base"
-        onClick={() => onStart({ mode, startPosition })}
-        disabled={isLoading}
+        onClick={() =>
+          onStart({
+            mode,
+            startPosition,
+            libraryIds: Array.from(selectedLibraryIds ?? []),
+            learnedOnly,
+          })
+        }
+        disabled={isLoading || selectedLibraryIds === null}
       >
         {isLoading ? "Starting…" : "Start Session →"}
       </button>

@@ -307,7 +307,7 @@ export function PracticeBoard() {
 
   // ── Start session ──────────────────────────────────────────────────────────
 
-  async function startSession({ mode: uiMode, startPosition }: PracticeOptions) {
+  async function startSession({ mode: uiMode, startPosition, libraryIds, learnedOnly }: PracticeOptions) {
     // Prevent starting leech_drill if no leeches are available
     if (uiMode === "leech_drill" && (dueCount?.leeches ?? 0) === 0) {
       setError("No leeches yet! Miss a position 4 times to promote it to leech status, then come back.");
@@ -324,6 +324,8 @@ export function PracticeBoard() {
       // in every active library gets equal exposure (no SRS weakness bias).
       let backendMode: PracticeMode;
       const scope: Record<string, unknown> = {};
+      if (libraryIds !== undefined) scope.library_ids = libraryIds;
+      if (learnedOnly !== undefined) scope.learned_only = learnedOnly;
 
       if (uiMode === "all_active") {
         backendMode = "weakest";

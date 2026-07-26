@@ -62,6 +62,12 @@ export function LibraryDetail() {
     },
   });
 
+  const toggleLearned = useMutation({
+    mutationFn: ({ lineId, is_learned }: { lineId: string; is_learned: boolean }) =>
+      linesApi.setLearned(lineId, is_learned),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["lines", id] }),
+  });
+
   const bulkDeleteLines = useMutation({
     mutationFn: async (lineIds: string[]) => {
       await Promise.all(lineIds.map((lineId) => linesApi.remove(lineId)));
@@ -443,6 +449,21 @@ export function LibraryDetail() {
                     <div className="text-xs text-ink-400">{line.moves.length} moves</div>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      className={[
+                        "text-xs py-1 px-2 rounded border transition-colors",
+                        line.is_learned
+                          ? "bg-green-500/20 text-green-400 border-green-500/30 hover:bg-green-500/30"
+                          : "bg-red-500/20 text-red-400 border-red-500/30 hover:bg-red-500/30",
+                      ].join(" ")}
+                      onClick={() =>
+                        toggleLearned.mutate({ lineId: line.id, is_learned: !line.is_learned })
+                      }
+                      disabled={toggleLearned.isPending}
+                      title={line.is_learned ? "Learned — click to mark unlearned" : "Not learned — click to mark learned"}
+                    >
+                      {line.is_learned ? "✓ Learned" : "✗ Not Learned"}
+                    </button>
                     <button
                       className="btn-ghost text-xs py-1 px-2"
                       onClick={() => {

@@ -13,6 +13,7 @@ from services.activity_log import log_activity
 from schemas.line import (
     LineCreate,
     LineUpdate,
+    LineLearnedToggle,
     LineMoveAppend,
     LineMoveNoteUpdate,
     LineMovesBatchImport,
@@ -133,6 +134,22 @@ def update_line(
     return line
 
 
+@router.patch("/lines/{line_id}/learned", response_model=LineResponse)
+def set_learned(
+    line_id: UUID,
+    body: LineLearnedToggle,
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    line = _owned_line_or_404(session, line_id, user)
+    line.is_learned = body.is_learned
+    line.updated_at = datetime.utcnow()
+    session.add(line)
+    session.commit()
+    session.refresh(line)
+    return line
+
+
 @router.delete("/lines/{line_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_line(
     line_id: UUID,
@@ -199,6 +216,7 @@ def append_move(
 
     moves.append(move_record)
     line.moves = json.dumps(moves)
+    line.is_learned = False
     line.updated_at = datetime.utcnow()
     session.add(line)
     session.commit()
@@ -219,6 +237,7 @@ def delete_move(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Move index out of range")
     del moves[index:]  # delete this move and everything after — keep line valid
     line.moves = json.dumps(moves)
+    line.is_learned = False
     line.updated_at = datetime.utcnow()
     session.add(line)
     session.commit()
@@ -300,6 +319,7 @@ def replace_moves(
     if body.starting_fen:
         line.starting_fen = body.starting_fen
     line.moves = json.dumps(new_moves)
+    line.is_learned = False
     line.updated_at = datetime.utcnow()
     session.add(line)
     session.commit()

@@ -72,7 +72,21 @@ def _libraries_to_seed(
                 libs[lib.id] = lib
         return list(libs.values())
 
-    # weakest / leech_drill: all active libraries owned by user
+    # weakest / leech_drill: scope to the picked libraries if the key is present
+    # (even an empty pick means "none"), else all active libraries owned by
+    # user — preserves default behavior for callers that omit library_ids
+    # entirely (e.g. the dashboard's "practice weakest now" shortcut).
+    if "library_ids" in scope:
+        ids = [UUID(x) if isinstance(x, str) else x for x in scope["library_ids"]]
+        if not ids:
+            return []
+        return db.exec(
+            select(Library).where(
+                Library.id.in_(ids),
+                Library.owner_user_id == user.id,
+            )
+        ).all()
+
     return db.exec(
         select(Library).where(
             Library.owner_user_id == user.id,
@@ -224,6 +238,14 @@ def submit_answer(
         was_correct = body.line_correct
     else:
         was_correct = submitted == expected_uci
+
+    # A mistake-free run of the whole line, starting from its true beginning,
+    # marks it learned — regardless of rated/unrated, since this reflects
+    # mastery of the line's content rather than SRS scheduling.
+    if was_correct and pos.move_index == 0 and not line.is_learned:
+        line.is_learned = True
+        line.updated_at = datetime.utcnow()
+        db.add(line)
 
     if ps.is_rated:
         if was_correct:

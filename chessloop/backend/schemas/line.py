@@ -14,6 +14,10 @@ class LineUpdate(BaseModel):
     name: Optional[str] = None
 
 
+class LineLearnedToggle(BaseModel):
+    is_learned: bool
+
+
 class LineMoveAppend(BaseModel):
     san: str
     # uci and fen_after are optional — if omitted, the backend computes them
@@ -39,6 +43,7 @@ class LineResponse(BaseModel):
     starting_fen: str
     moves: list[dict[str, Any]] = Field(default_factory=list)
     order_index: int
+    is_learned: bool
     created_at: datetime
     updated_at: datetime
 

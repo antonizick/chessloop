@@ -45,6 +45,7 @@ export interface Line {
   starting_fen: string;
   moves: LineMove[];
   order_index: number;
+  is_learned: boolean;
   created_at: string;
   updated_at: string;
 }

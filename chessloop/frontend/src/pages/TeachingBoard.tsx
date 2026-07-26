@@ -155,6 +155,12 @@ export function TeachingBoard() {
     },
   });
 
+  const toggleLearned = useMutation({
+    mutationFn: ({ lineId, is_learned }: { lineId: string; is_learned: boolean }) =>
+      linesApi.setLearned(lineId, is_learned),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["lines", libId] }),
+  });
+
   const deleteLine = useMutation({
     mutationFn: (lineId: string) => linesApi.remove(lineId),
     onSuccess: () => {
@@ -766,6 +772,22 @@ export function TeachingBoard() {
                       >
                         <span>{line.name || "Unnamed"}</span>
                         <span className="text-xs opacity-60"> ({line.moves.length})</span>
+                      </button>
+                      <button
+                        type="button"
+                        className={[
+                          "shrink-0 py-1 px-1.5 rounded text-xs border transition-colors",
+                          line.is_learned
+                            ? "bg-green-500/20 text-green-400 border-green-500/30 hover:bg-green-500/30"
+                            : "bg-red-500/20 text-red-400 border-red-500/30 hover:bg-red-500/30",
+                        ].join(" ")}
+                        onClick={() =>
+                          toggleLearned.mutate({ lineId: line.id, is_learned: !line.is_learned })
+                        }
+                        disabled={toggleLearned.isPending}
+                        title={line.is_learned ? "Learned — click to mark unlearned" : "Not learned — click to mark learned"}
+                      >
+                        {line.is_learned ? "✓" : "✗"}
                       </button>
                       {deleteConfirmId === line.id ? (
                         <div className="flex gap-0.5">

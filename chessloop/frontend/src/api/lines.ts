@@ -25,4 +25,9 @@ export const linesApi = {
     }),
   duplicate: (id: string) =>
     api<Line>(`/lines/${id}/duplicate`, { method: "POST" }),
+  setLearned: (id: string, is_learned: boolean) =>
+    api<Line>(`/lines/${id}/learned`, {
+      method: "PATCH",
+      body: JSON.stringify({ is_learned }),
+    }),
 };

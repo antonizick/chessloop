@@ -13,6 +13,7 @@ class Line(SQLModel, table=True):
     starting_fen: str = Field(default=STARTING_FEN)
     moves: str = Field(default="[]")  # JSON array of {san, uci, fen_after, note?}
     order_index: int = 0
+    is_learned: bool = False
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 

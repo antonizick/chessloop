@@ -62,6 +62,12 @@ export function UnratedLearning() {
     enabled: !!libId,
   });
 
+  const toggleLearned = useMutation({
+    mutationFn: ({ lineId, is_learned }: { lineId: string; is_learned: boolean }) =>
+      linesApi.setLearned(lineId, is_learned),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["lines", libId] }),
+  });
+
   const urlLineId = searchParams.get("lineId");
   const [selectedLineId, setSelectedLineId] = useState<string | null>(urlLineId);
   const [orientation, setOrientation] = useState<"white" | "black">("white");
@@ -383,19 +389,36 @@ export function UnratedLearning() {
           <div className="flex-1 overflow-y-auto">
             <div className="flex flex-col gap-2">
               {lines.map((line) => (
-                <button
-                  key={line.id}
-                  className={`w-full text-left rounded px-2 py-1.5 text-xs font-medium transition-colors truncate
-                    ${selectedLineId === line.id
-                      ? "bg-gold-500 text-ink-900"
-                      : "bg-ink-700 text-ink-200 hover:bg-ink-600"
-                    }`}
-                  onClick={() => setSelectedLineId(line.id)}
-                  title={line.name ? `${line.name} (${line.moves.length} moves)` : `${line.moves.length} moves`}
-                >
-                  <span>{line.name || "Unnamed"}</span>
-                  <span className="text-xs opacity-60"> ({line.moves.length})</span>
-                </button>
+                <div key={line.id} className="flex items-center gap-1">
+                  <button
+                    className={`flex-1 text-left rounded px-2 py-1.5 text-xs font-medium transition-colors truncate
+                      ${selectedLineId === line.id
+                        ? "bg-gold-500 text-ink-900"
+                        : "bg-ink-700 text-ink-200 hover:bg-ink-600"
+                      }`}
+                    onClick={() => setSelectedLineId(line.id)}
+                    title={line.name ? `${line.name} (${line.moves.length} moves)` : `${line.moves.length} moves`}
+                  >
+                    <span>{line.name || "Unnamed"}</span>
+                    <span className="text-xs opacity-60"> ({line.moves.length})</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={[
+                      "shrink-0 py-1 px-1.5 rounded text-xs border transition-colors",
+                      line.is_learned
+                        ? "bg-green-500/20 text-green-400 border-green-500/30 hover:bg-green-500/30"
+                        : "bg-red-500/20 text-red-400 border-red-500/30 hover:bg-red-500/30",
+                    ].join(" ")}
+                    onClick={() =>
+                      toggleLearned.mutate({ lineId: line.id, is_learned: !line.is_learned })
+                    }
+                    disabled={toggleLearned.isPending}
+                    title={line.is_learned ? "Learned — click to mark unlearned" : "Not learned — click to mark learned"}
+                  >
+                    {line.is_learned ? "✓" : "✗"}
+                  </button>
+                </div>
               ))}
             </div>
           </div>

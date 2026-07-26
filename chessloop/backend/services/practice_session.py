@@ -93,6 +93,17 @@ def ensure_positions_for_library(
     return created
 
 
+def _apply_learned_only(
+    db: Session, line_ids: list[UUID], scope: dict
+) -> list[UUID]:
+    """Restrict a line-id list to learned lines when scope.learned_only is truthy."""
+    if not scope.get("learned_only") or not line_ids:
+        return line_ids
+    return db.exec(
+        select(Line.id).where(Line.id.in_(line_ids), Line.is_learned == True)  # noqa: E712
+    ).all() or []
+
+
 def _resolve_scope_line_ids(
     db: Session, user_id: UUID, mode: str, scope: dict
 ) -> Optional[list[UUID]]:
@@ -105,21 +116,36 @@ def _resolve_scope_line_ids(
                 select(Line.id).where(Line.library_id.in_(library_ids))
             ).all()
             line_ids = list({*line_ids, *lib_lines})
-        return line_ids or []
+        return _apply_learned_only(db, line_ids or [], scope)
 
     if mode in ("weakest", "leech_drill"):
-        # Restrict to ACTIVE libraries owned by this user
-        active_lib_ids = db.exec(
-            select(Library.id).where(
-                Library.owner_user_id == user_id,
-                Library.is_active == True,  # noqa: E712
-            )
-        ).all()
-        if not active_lib_ids:
+        # Restrict to the picked libraries if the key is present (even an
+        # empty pick means "none"), else ACTIVE libraries owned by this user —
+        # preserves default behavior for callers that omit library_ids
+        # entirely (e.g. the dashboard's "practice weakest now" shortcut).
+        if "library_ids" in scope:
+            picked = [UUID(x) if isinstance(x, str) else x for x in scope["library_ids"]]
+            if not picked:
+                return []
+            lib_ids = db.exec(
+                select(Library.id).where(
+                    Library.id.in_(picked),
+                    Library.owner_user_id == user_id,
+                )
+            ).all()
+        else:
+            lib_ids = db.exec(
+                select(Library.id).where(
+                    Library.owner_user_id == user_id,
+                    Library.is_active == True,  # noqa: E712
+                )
+            ).all()
+        if not lib_ids:
             return []
-        return db.exec(
-            select(Line.id).where(Line.library_id.in_(active_lib_ids))
+        line_ids = db.exec(
+            select(Line.id).where(Line.library_id.in_(lib_ids))
         ).all() or []
+        return _apply_learned_only(db, line_ids, scope)
 
     return None
 
