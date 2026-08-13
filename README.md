@@ -6,6 +6,18 @@ Teach it your repertoire by playing moves. It drills you back, corrects mistakes
 
 **Features:** opening library builder · spaced-repetition drill engine · public library discovery with read-only viewer · TOTP MFA · dark/light theme · admin panel with backup/restore · Lichess Explorer integration
 
+## Screenshots
+
+![ChessLoop Tracking dashboard](screenshots/ChessLoop%20Tracking%20dashboard.png)
+
+![ChessLoop Openings database](screenshots/ChessLoop%20Openings%20database.png)
+
+![ChessLoop Learning and training arenas](screenshots/ChessLoop%20Learning%20and%20training%20arenas.png)
+
+![Chessloop Game tracking and self analysis](screenshots/Chessloop%20Game%20tracking%20and%20self%20analysis.png)
+
+![Chessloop Statistics tracking](screenshots/Chessloop%20Statistics%20tracking.png)
+
 ---
 
 ## Deploy to a new machine
