@@ -1,0 +1,49 @@
+name: Install problem
+description: Something went wrong while installing, updating, backing up, restoring or uninstalling ChessLoop
+labels: ["install"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for telling us. Install problems are the most useful reports we get.
+        **Before you paste anything, remove passwords, secrets and tokens** (anything after `JWT_SECRET`, `PASSWORD`, `TOKEN`).
+  - type: input
+    id: os
+    attributes:
+      label: Operating system and version
+      description: For example Ubuntu 24.04, Debian 12, Windows 11.
+    validations:
+      required: true
+  - type: dropdown
+    id: wsl
+    attributes:
+      label: Are you using Windows with WSL2?
+      options: ["No", "Yes"]
+    validations:
+      required: true
+  - type: dropdown
+    id: method
+    attributes:
+      label: How did you try to install?
+      options:
+        - "One command (curl ... | bash)"
+        - "Downloaded the repo and ran bash deploy.sh"
+        - "Manual Docker Compose"
+        - "Other"
+    validations:
+      required: true
+  - type: textarea
+    id: step
+    attributes:
+      label: Which step failed?
+      description: Which instruction were you following, and what happened instead of what you expected?
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: Last 30 lines of output
+      description: Copy the end of the terminal output. Remove any passwords first.
+      render: text
+    validations:
+      required: true
