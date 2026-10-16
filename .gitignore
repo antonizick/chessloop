@@ -24,3 +24,11 @@ ehthumbs.db
 
 # Misc
 .claude/
+
+# Local data, backups and generated files
+passdata/
+*.db*
+backups/
+runs/
+*.tar.gz
+*.tsbuildinfo

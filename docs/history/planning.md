@@ -873,7 +873,7 @@ This hybrid approach keeps costs reasonable while using Opus where architectural
 ### Tailscale VPN & HMR Support
 
 **Problem:** 
-- Intermittent 502 errors when accessing the frontend through Tailscale VPN (https://bld2.taild1bb43.ts.net:8443)
+- Intermittent 502 errors when accessing the frontend through Tailscale VPN (https://your-host.your-tailnet.ts.net:8443)
 - Mixed content warnings: HTTPS pages trying to connect to insecure WebSocket (ws://)
 - Vite dev server HMR not auto-detecting host from browser requests
 
@@ -897,7 +897,7 @@ This hybrid approach keeps costs reasonable while using Opus where architectural
 
 **Testing & Verification:**
 - ✅ Localhost access (http://localhost:8090) — fully functional
-- ✅ Tailscale access (https://bld2.taild1bb43.ts.net:8443) — fully functional, no 502 errors
+- ✅ Tailscale access (https://your-host.your-tailnet.ts.net:8443) — fully functional, no 502 errors
 - ✅ Practice boards — pieces draggable, no console warnings
 - ✅ HMR — hot reloads work transparently over both connections
 

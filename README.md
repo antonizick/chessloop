@@ -1,5 +1,7 @@
 # ChessLoop
 
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE)
+
 Self-hosted, move-based spaced-repetition chess opening trainer.
 
 Teach it your repertoire by playing moves. It drills you back, corrects mistakes, and schedules review so the positions that break you get more practice.
@@ -436,3 +438,9 @@ so this issue self-heals after a daemon restart.
 | Docker (prod) | Backend, frontend | internal | — |
 | Dev | FastAPI | `8100` | `--port` flag |
 | Dev | Vite | `8090` | `server.port` in `vite.config.ts` |
+
+---
+
+## License
+
+ChessLoop is free software, licensed under the [GNU Affero General Public License v3.0 or later](LICENSE) (AGPL-3.0-or-later). If you run a modified version as a network service, the AGPL requires you to offer its users the source code. See [NOTICE](NOTICE) and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
