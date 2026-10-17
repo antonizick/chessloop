@@ -85,3 +85,18 @@ def test_blank_values_from_compose_mean_the_defaults(monkeypatch):
     s = _settings()
     assert s.frontend_url == "http://localhost:8090"
     assert s.cors_origin_list == []
+
+
+def test_wildcard_cors_from_old_installers_is_ignored():
+    # F-015: older deploy.sh wrote CORS_ORIGINS=*; with allow_credentials that lets any site call the API
+    s = _settings(cors_origins="*")
+    assert s.cors_origin_list == []
+    assert s.cors_wildcard_ignored
+    s = _settings(cors_origins="https://chess.example.org, *")
+    assert s.cors_origin_list == ["https://chess.example.org"]
+
+
+def test_explicit_cors_origins_are_kept():
+    s = _settings(cors_origins="https://a.example.org,https://b.example.org")
+    assert s.cors_origin_list == ["https://a.example.org", "https://b.example.org"]
+    assert not s.cors_wildcard_ignored

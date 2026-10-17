@@ -62,10 +62,19 @@ def _log_email_setup() -> None:
         )
 
 
+def _log_cors_setup() -> None:
+    if settings.cors_wildcard_ignored:
+        logging.getLogger("chessloop.startup").warning(
+            "CORS_ORIGINS=* is ignored: the web UI does not need it. "
+            "List exact origins (https://example.org) only if another site must call the API"
+        )
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     init_db()
     _log_email_setup()
+    _log_cors_setup()
     yield
 
 

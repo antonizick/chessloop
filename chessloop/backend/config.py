@@ -61,11 +61,14 @@ class Settings(BaseSettings):
         return bool(self.smtp_host.strip())
 
     @property
+    def cors_wildcard_ignored(self) -> bool:
+        return "*" in (o.strip() for o in self.cors_origins.split(","))
+
+    @property
     def cors_origin_list(self) -> list[str]:
-        origins = self.cors_origins.strip()
-        if origins == "*":
-            return ["*"]
-        return [o.strip() for o in origins.split(",") if o.strip()]
+        # "*" (written by older installers) would let any website call the API with
+        # credentials. The UI and API share one origin through nginx, so it is ignored.
+        return [o.strip() for o in self.cors_origins.split(",") if o.strip() and o.strip() != "*"]
 
 
 # Values that are public (docs, examples, old defaults): anyone could sign tokens with them.
