@@ -24,6 +24,7 @@ If a library with the same name already exists, it is skipped (idempotent).
 """
 
 import argparse
+import getpass
 import os
 import sys
 from dataclasses import dataclass, field
@@ -375,9 +376,8 @@ def seed_from_lichess(client: ChessLoopClient) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Seed ChessLoop from Lichess Explorer")
     parser.add_argument("--url",      default="http://localhost:8100", help="ChessLoop backend URL")
-    parser.add_argument("--email",    default="seedbot@chessloop.app",  help="Seed account email")
+    parser.add_argument("--email", required=True, help="Email of the ChessLoop account to use")
     parser.add_argument("--username", default="seedbot",               help="Seed account username")
-    parser.add_argument("--password", default="SeedBot1234!",           help="Seed account password")
     args = parser.parse_args()
 
     print(f"ChessLoop Lichess seed script")
@@ -386,7 +386,9 @@ def main() -> None:
     print(f"Lichess token: {'***' + LICHESS_API_TOKEN[-4:] if LICHESS_API_TOKEN else 'MISSING'}\n")
 
     client = ChessLoopClient(args.url)
-    client.register_or_login(args.email, args.username, args.password)
+    # No default password (there must never be a known login); never on the command line.
+    password = os.environ.get("CHESSLOOP_SEED_PASSWORD") or getpass.getpass(f"Password for {args.email}: ")
+    client.register_or_login(args.email, args.username, password)
 
     print("\nSeeding openings from Lichess…\n")
     seed_from_lichess(client)

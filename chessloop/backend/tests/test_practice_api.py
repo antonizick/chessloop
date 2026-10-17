@@ -56,12 +56,12 @@ def _verify(email):
 def _bootstrap(client):
     """Register, login, create library with one teaching line. Returns (headers, lib, line)."""
     r = client.post("/api/auth/register", json={
-        "email": "a@b.com", "username": "alice", "password": "passw0rd12",
+        "email": "a@b.com", "username": "alice", "password": "Kn1ght-to-f3!",
     })
     assert r.status_code == 201, r.text
     _verify("a@b.com")
 
-    r = client.post("/api/auth/login", json={"email": "a@b.com", "password": "passw0rd12"})
+    r = client.post("/api/auth/login", json={"email": "a@b.com", "password": "Kn1ght-to-f3!"})
     assert r.status_code == 200
     H = {"Authorization": f"Bearer {r.json()['access_token']}"}
 
@@ -232,9 +232,9 @@ def test_session_must_belong_to_user(client):
     sid = client.post("/api/practice/session/start", headers=H_a, json={"mode": "weakest", "scope": {}}).json()["id"]
 
     # Make a second user, attempt access
-    client.post("/api/auth/register", json={"email": "b@b.com", "username": "bob", "password": "passw0rd12"})
+    client.post("/api/auth/register", json={"email": "b@b.com", "username": "bob", "password": "Kn1ght-to-f3!"})
     _verify("b@b.com")
-    tok = client.post("/api/auth/login", json={"email": "b@b.com", "password": "passw0rd12"}).json()["access_token"]
+    tok = client.post("/api/auth/login", json={"email": "b@b.com", "password": "Kn1ght-to-f3!"}).json()["access_token"]
     H_b = {"Authorization": f"Bearer {tok}"}
 
     r = client.get(f"/api/practice/session/{sid}/next", headers=H_b)

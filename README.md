@@ -136,14 +136,17 @@ http://YOUR-SERVER-IP:PORT
 
 ### First login
 
-The deploy script creates a default admin account automatically:
+There is **no default login**. Create your admin account with one command (it asks you to choose a password, at least 12 characters, and your typing is hidden):
 
-| Field | Value |
-|---|---|
-| Email | `admin@example.com` |
-| Password | `admin` |
+```bash
+cd /opt/chessloop/chessloop
+docker compose -f docker-compose.prod.yml exec backend \
+  python seeds/create_admin.py --email you@example.com
+```
 
-> **⚠ Change the default password immediately** — go to **Settings → Account** before sharing the URL with anyone.
+Then sign in with that email and password. The admin account is ready to use straight away: it does not need email verification. You can change the password later in **Settings → Account → Change password**.
+
+**Email is optional.** Without email (SMTP) settings, people who register can log in straight away (`EMAIL_VERIFICATION=auto`, the default, turns verification on only when SMTP is set up). An admin can verify accounts and set passwords in **Admin → Users**.
 
 The admin account has full access to the Admin panel (⚙ icon in the sidebar), where you can manage users, create/download backups, and import openings from the Lichess database.
 
@@ -335,11 +338,13 @@ Populate the instance with 16 curated opening libraries and publish them to Publ
 ```bash
 # Against a running Docker install:
 docker compose -f /opt/chessloop/chessloop/docker-compose.prod.yml \
-  exec backend python seeds/seed_libraries.py --url http://localhost:8000
+  exec -T backend python seeds/seed_libraries.py
 
 # Against the dev server:
 cd chessloop/backend && python seeds/seed_libraries.py
 ```
+
+It writes straight into the database (no email or login needed) and is safe to run again. New accounts registered afterwards get a copy of "Ruy López — Closed".
 
 ---
 

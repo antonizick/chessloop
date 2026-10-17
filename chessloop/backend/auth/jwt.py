@@ -19,12 +19,24 @@ def _encode(sub: str, ttl: timedelta, token_type: str, extra: Optional[dict] = N
     return jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
 
 
-def create_access_token(user_id: UUID) -> str:
-    return _encode(str(user_id), timedelta(minutes=settings.access_ttl_min), "access")
+# Access and refresh tokens carry the user's token_version ("tv"). Bumping
+# User.token_version (password change or reset) makes every token issued before
+# it fail, so a stolen session dies with the old password. Tokens from before
+# this claim existed have no "tv" and count as version 0.
+def create_access_token(user_id: UUID, token_version: int = 0) -> str:
+    return _encode(
+        str(user_id), timedelta(minutes=settings.access_ttl_min), "access", extra={"tv": token_version}
+    )
 
 
-def create_refresh_token(user_id: UUID) -> str:
-    return _encode(str(user_id), timedelta(days=settings.refresh_ttl_days), "refresh")
+def create_refresh_token(user_id: UUID, token_version: int = 0) -> str:
+    return _encode(
+        str(user_id), timedelta(days=settings.refresh_ttl_days), "refresh", extra={"tv": token_version}
+    )
+
+
+def token_version_matches(payload: dict, current_version: int) -> bool:
+    return payload.get("tv", 0) == current_version
 
 
 def create_mfa_challenge_token(user_id: UUID) -> str:
@@ -62,6 +74,7 @@ __all__ = [
     "create_email_verification_token",
     "create_password_reset_token",
     "password_hash_fingerprint",
+    "token_version_matches",
     "decode_token",
     "JWTError",
 ]

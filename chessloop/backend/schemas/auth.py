@@ -10,7 +10,7 @@ from config import settings
 class RegisterRequest(BaseModel):
     email: EmailStr
     username: str = Field(min_length=3, max_length=32)
-    password: str = Field(min_length=8, max_length=128)
+    password: str = Field(max_length=128)  # strength rule: auth.policy.password_problem
 
     @field_validator("email")
     @classmethod
@@ -65,6 +65,8 @@ class RefreshRequest(BaseModel):
 class RegisterResponse(BaseModel):
     email: EmailStr
     message: str = "Check your email to verify your account."
+    # What the UI should tell the person to do: check_email | ask_admin | login
+    next_step: str = "check_email"
 
 
 class VerifyEmailRequest(BaseModel):
@@ -81,8 +83,21 @@ class ForgotPasswordRequest(BaseModel):
 
 class ResetPasswordRequest(BaseModel):
     token: str
-    new_password: str = Field(min_length=8, max_length=128)
+    new_password: str = Field(max_length=128)
     disable_mfa: bool = False
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str = Field(max_length=128)
+    new_password: str = Field(max_length=128)
+
+
+class AuthConfigResponse(BaseModel):
+    """Public, secret-free facts the login/register pages need."""
+    registration_open: bool
+    email_verification: bool
+    smtp_configured: bool
+    password_min_length: int
 
 
 class PreferencesRequest(BaseModel):
@@ -117,6 +132,18 @@ class BannerResponse(BaseModel):
 
 class SystemSettingsContent(BaseModel):
     enforce_email_verification: bool
+
+
+class SystemSettingsUpdate(BaseModel):
+    # null clears the admin's choice so CHESSLOOP_EMAIL_VERIFICATION decides again
+    enforce_email_verification: Optional[bool]
+
+
+class SystemSettingsResponse(BaseModel):
+    enforce_email_verification: bool  # the effective value
+    source: str                       # 'admin' (set here) or 'config' (.env)
+    config_mode: str                  # CHESSLOOP_EMAIL_VERIFICATION: auto | on | off
+    smtp_configured: bool             # never the SMTP host or credentials
 
 
 class UserResponse(BaseModel):

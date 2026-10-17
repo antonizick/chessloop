@@ -22,7 +22,7 @@ The script automatically:
 - Starts all services
 - Sets up autostart on boot via systemd
 
-After deploy, access ChessLoop at `http://your-server-ip:8090`, register an account, and promote yourself to admin. Full instructions are printed at the end of the deploy script.
+After deploy, create your admin account with `docker compose -f docker-compose.prod.yml exec backend python seeds/create_admin.py --email you@example.com` (it asks for a password), then open `http://your-server-ip:8090`. Full instructions are printed at the end of the deploy script.
 
 **For updates:** Re-run the same deploy command. It will pull the latest code and rebuild services.
 
@@ -241,31 +241,21 @@ See `docker-compose.prod.yml` for full SSL-inside-Docker notes.
 
 ### 4. Create your first admin account
 
-Register normally in the UI. Then promote yourself to admin via Python:
+There is no default admin. Create one (or promote an existing account) with:
 
 ```bash
 cd backend
 source .venv/bin/activate
-
-python3 << 'EOF'
-import sys
-from sqlmodel import Session, create_engine, select
-from models.user import User
-
-engine = create_engine("sqlite:///chessloop.db", echo=False)
-with Session(engine) as session:
-    user = session.exec(select(User).where(User.username == "yourname")).first()
-    if user:
-        user.role = "admin"
-        session.add(user)
-        session.commit()
-        print(f"✅ {user.username} promoted to admin")
-    else:
-        print("❌ User not found")
-EOF
+python seeds/create_admin.py --email you@example.com      # asks for a password
 ```
 
-Once promoted, the **Admin panel** (⚙ icon in the sidebar) grants:
+In Docker: `docker compose -f docker-compose.prod.yml exec backend python seeds/create_admin.py --email you@example.com`.
+For scripts, pipe the password in instead: `printf '%s\n' "$PW" | … create_admin.py --email you@example.com --password-stdin`
+(or set `CHESSLOOP_ADMIN_EMAIL` / `CHESSLOOP_ADMIN_PASSWORD`). The password is never taken from the command line.
+The admin is created already verified. Running it again for an existing account makes it an admin and keeps
+its password unless you add `--reset-password`. Exit codes: 0 done, 2 invalid input, 3 database error.
+
+The **Admin panel** (⚙ icon in the sidebar) grants:
 - Backup creation, download, and deletion
 - User promotion / demotion
 - Opening import from Lichess (with automatic GitHub line population)
@@ -295,22 +285,14 @@ You can optionally:
 ChessLoop ships with a seed script that populates 16 curated opening libraries and publishes them to the Public Discovery page. Useful on a fresh install.
 
 ```bash
-cd backend
-source .venv/bin/activate
-
-# Against the dev server (default):
+# Dev database (from backend/, venv active):
 python seeds/seed_libraries.py
 
-# Against Docker:
-python seeds/seed_libraries.py --url http://localhost:8090
+# Docker install:
+docker compose -f docker-compose.prod.yml exec -T backend python seeds/seed_libraries.py
 ```
 
-The script creates a `seedbot` account, adds the 16 openings, and publishes them. Any existing library with the same name is skipped.
-
-To seed with your own account:
-```bash
-python seeds/seed_libraries.py --email you@example.com --username you --password YourPassword
-```
+The script writes the 16 openings straight into the database, owned by a hidden `seedbot` account that cannot log in, and publishes them. It needs no email and no login. Anything already seeded is skipped.
 
 ---
 

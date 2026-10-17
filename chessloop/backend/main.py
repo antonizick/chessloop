@@ -27,9 +27,16 @@ def _setup_logging() -> None:
     file_handler.setFormatter(fmt)
     file_handler.setLevel(logging.INFO)
 
+    # stderr too, so app warnings (e.g. "SMTP not configured") reach `docker compose logs`.
+    # uvicorn's own loggers don't propagate to root, so nothing is printed twice.
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(fmt)
+    console_handler.setLevel(logging.INFO)
+
     root = logging.getLogger()
     root.setLevel(logging.INFO)
     root.addHandler(file_handler)
+    root.addHandler(console_handler)
 
     # Also write uvicorn access logs to the same file
     for name in ("uvicorn", "uvicorn.access", "uvicorn.error"):
@@ -42,9 +49,23 @@ _setup_logging()
 _FRONTEND_LOG_PATH = Path(settings.db_path).parent / "logs" / "frontend.log"
 
 
+def _log_email_setup() -> None:
+    log = logging.getLogger("chessloop.startup")
+    if settings.smtp_configured:
+        log.info("Email: SMTP server %s:%s configured", settings.smtp_host, settings.smtp_port)
+    else:
+        log.info("Email: SMTP not configured; ChessLoop will not send any email")
+    if settings.email_verification == "on" and not settings.smtp_configured:
+        log.warning(
+            "EMAIL_VERIFICATION=on but SMTP is not configured: new accounts cannot verify "
+            "and must be verified by an admin (Admin → Users)"
+        )
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     init_db()
+    _log_email_setup()
     yield
 
 

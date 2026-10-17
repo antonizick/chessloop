@@ -1,9 +1,28 @@
 import { api } from "./client";
 import type { LoginResponse, TokenResponse, User } from "@/types";
 
+/** Public, secret-free server facts for the sign-in and registration pages. */
+export interface AuthConfig {
+  registration_open: boolean;
+  email_verification: boolean;
+  smtp_configured: boolean;
+  password_min_length: number;
+}
+
+export interface RegisterResult {
+  email: string;
+  message: string;
+  next_step: "check_email" | "ask_admin" | "login";
+}
+
 export const authApi = {
+  config: () => api<AuthConfig>("/auth/config", { auth: false }),
+
   register: (body: { email: string; username: string; password: string }) =>
-    api<{ email: string; message: string }>("/auth/register", { method: "POST", body: JSON.stringify(body), auth: false }),
+    api<RegisterResult>("/auth/register", { method: "POST", body: JSON.stringify(body), auth: false }),
+
+  changePassword: (body: { current_password: string; new_password: string }) =>
+    api<TokenResponse>("/auth/change-password", { method: "POST", body: JSON.stringify(body) }),
 
   verifyEmail: (token: string) =>
     api<TokenResponse>("/auth/verify-email", { method: "POST", body: JSON.stringify({ token }), auth: false }),
