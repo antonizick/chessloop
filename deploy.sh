@@ -134,7 +134,7 @@ fmt_secs() {
 _last_log_line() {
     [ -n "$LOG_FILE" ] || return 0
     tail -c 4000 "$LOG_FILE" 2>/dev/null | tr '\r' '\n' | sed -E 's/\x1b\[[0-9;?]*[A-Za-z]//g' \
-        | grep -v '^[[:space:]]*$' | tail -n 1 | cut -c "1-${1:-40}" || true
+        | grep -av '^[[:space:]]*$' | tail -n 1 | cut -c "1-${1:-40}" || true
 }
 
 # run "What it does" command...
@@ -179,7 +179,7 @@ show_log_tail() {
     [ -n "$LOG_FILE" ] || return 0
     _say "  ${DIM}Last lines of the log:${RST}"
     tail -n 200 "$LOG_FILE" | tr '\r' '\n' | sed -E 's/\x1b\[[0-9;?]*[A-Za-z]//g' \
-        | grep -v '^[[:space:]]*$' | tail -n "${1:-15}" | sed 's/^/      /' >&2 || true
+        | grep -av '^[[:space:]]*$' | tail -n "${1:-15}" | sed 's/^/      /' >&2 || true
 }
 
 # A password chosen by the installer is shown once, on the screen only: it is

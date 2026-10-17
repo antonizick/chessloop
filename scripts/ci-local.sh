@@ -2,7 +2,7 @@
 # Run the same checks as .github/workflows/ci.yml on your own machine.
 # Needs Docker (everything runs in containers, so your local Python and Node
 # versions don't matter). Usage: scripts/ci-local.sh [step ...]
-# Steps: backend frontend shell compose images secrets   (default: all)
+# Steps: backend frontend shell helpers compose images secrets   (default: all)
 set -euo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
@@ -45,6 +45,11 @@ step_shell() {
   docker run --rm -v "$ROOT:/mnt" -w /mnt "$SHELLCHECK_IMAGE" "${files[@]}"
 }
 
+step_helpers() {
+  # deploy.sh's helper functions (no Docker needed, except one .env read-back check)
+  bash scripts/test-deploy-helpers.sh
+}
+
 step_compose() {
   JWT_SECRET=ci-dummy-not-a-secret docker compose -f chessloop/docker-compose.prod.yml config -q
   JWT_SECRET=ci-dummy-not-a-secret docker compose -f chessloop/docker-compose.yml config -q
@@ -67,7 +72,7 @@ step_secrets() {
 
 ADVISORY=" shell "   # failing here is reported but doesn't fail the run (see ci.yml)
 steps=("$@")
-[[ ${#steps[@]} -gt 0 ]] || steps=(backend frontend shell compose images secrets)
+[[ ${#steps[@]} -gt 0 ]] || steps=(backend frontend shell helpers compose images secrets)
 
 failed=()
 advisory_failed=()
