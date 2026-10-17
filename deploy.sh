@@ -208,6 +208,8 @@ on_err() { ERR_CMD="$1"; ERR_LINE="$2"; }
 on_exit() {
     local rc=$?
     stop_sudo_keepalive
+    # A half-written settings file holds the JWT secret: never leave one behind.
+    [ -n "$SUBDIR" ] && rm -f "$SUBDIR"/.env.new.* 2>/dev/null
     [ "$rc" -eq 0 ] && return 0
     blank
     if [ "$rc" -eq 130 ]; then
@@ -439,11 +441,15 @@ env_get() {
     printf '%s' "$v"
 }
 
+# has_nul FILE: the file contains NUL bytes (UTF-16 text, for example).
+has_nul() { [ "$(tr -d '\000' < "$1" | wc -c)" != "$(wc -c < "$1")" ]; }
+
 # ini_set SECTION KEY VALUE < in > out: set KEY=VALUE in [SECTION] of a
 # Windows-style ini file (.wslconfig), keeping everything else; output CRLF.
 ini_set() {
     SEC="$1" KEY="$2" VAL="$3" awk '
         BEGIN { sec = tolower(ENVIRON["SEC"]); key = tolower(ENVIRON["KEY"]); line = ENVIRON["KEY"] "=" ENVIRON["VAL"]; in_sec = 0; done = 0 }
+        NR == 1 { sub(/^\xef\xbb\xbf/, "") }   # a UTF-8 BOM (Notepad) would hide the first section
         { sub(/\r$/, "") }
         /^[ \t]*\[/ {
             if (in_sec && !done) { print line; done = 1 }
@@ -467,6 +473,7 @@ ini_set() {
 ini_get() {
     SEC="$1" KEY="$2" awk '
         BEGIN { sec = tolower(ENVIRON["SEC"]); key = tolower(ENVIRON["KEY"]) }
+        NR == 1 { sub(/^\xef\xbb\xbf/, "") }
         { sub(/\r$/, "") }
         /^[ \t]*\[/ { h = tolower($0); gsub(/[ \t]/, "", h); in_sec = (h == "[" sec "]"); next }
         in_sec && /=/ {
@@ -789,6 +796,8 @@ state_get() { env_get "$STATE_FILE" "$1"; }
 state_set() {
     [ -f "$STATE_FILE" ] || ( umask 077; : > "$STATE_FILE" )
     env_set "$STATE_FILE" "$1" "$2"
+    # Run with sudo: the install's owner must be able to read it on the next run.
+    if [ "$(id -u)" -eq 0 ] && [ "$OWNER" != root ]; then chown "$OWNER" "$STATE_FILE" 2>/dev/null || true; fi
 }
 
 # Sets RESUME / REUSE_CLONE, or offers Update and stops.
@@ -1188,7 +1197,8 @@ install_docker_engine() {
     note "computer is changed. It comes from Docker's official repository."
     apt_update_once
     if [ "${#CONFLICT_PKGS[@]}" -gt 0 ]; then
-        run "Removing ${CONFLICT_PKGS[*]} (replaced by Docker's packages)" apt_get remove "${CONFLICT_PKGS[@]}"
+        run "Removing ${CONFLICT_PKGS[*]} (replaced by Docker's packages)" apt_get remove "${CONFLICT_PKGS[@]}" \
+            || fatal "Couldn't remove ${CONFLICT_PKGS[*]}. See the log."
     fi
     add_docker_repo
     run "Installing Docker Engine (about 1 minute)" apt_get install \
@@ -1528,6 +1538,8 @@ win_path_of() {
 # everything else (a copy of the old file is kept next to it).
 wslconfig_set() {
     local file="$1" section="$2" key="$3" value="$4" tmp
+    # PowerShell 5.1's ">" writes UTF-16: editing that as text would break it.
+    if [ -f "$file" ] && has_nul "$file"; then return 2; fi
     tmp="$(mktemp)"
     if [ -f "$file" ]; then
         [ "$(ini_get "$section" "$key" < "$file")" = "$value" ] && { rm -f "$tmp"; return 0; }
@@ -1552,6 +1564,12 @@ setup_wsl_windows_side() {
         return 0
     fi
     wslconfig="$profile/.wslconfig"
+    if [ -f "$wslconfig" ] && has_nul "$wslconfig"; then
+        warn "Your Windows .wslconfig is saved in a format (UTF-16) the installer won't edit."
+        print_wsl_manual_steps
+        [ "$WSL_MIRRORED" = 1 ] && note "  For phone access also add under [wsl2]:  networkingMode=mirrored"
+        return 0
+    fi
     if [ "$WSL_KEEPALIVE" = 1 ]; then
         wslconfig_set "$wslconfig" general instanceIdleTimeout -1
         ok "Ubuntu keeps running when its window is closed ([general] instanceIdleTimeout=-1 in .wslconfig)"
@@ -1582,7 +1600,10 @@ print_wsl_manual_steps() {
 # ═══════════════════════════════════════════════════════════════════════════
 #  SUMMARY (shown only when the admin really can sign in)
 # ═══════════════════════════════════════════════════════════════════════════
-docker_words() { if [ "${DOCKER[0]}" = sudo ]; then echo "sudo docker"; else echo "docker"; fi; }
+docker_words() {
+    # Run as root through sudo: the install's owner still needs sudo until the docker group applies.
+    if [ "${DOCKER[0]}" = sudo ] || { [ "$(id -u)" -eq 0 ] && [ "$OWNER" != root ]; }; then echo "sudo docker"; else echo "docker"; fi
+}
 
 print_summary() {
     local d url lan_ok=0
@@ -1695,6 +1716,9 @@ do_install() {
     note "Nothing is changed until you confirm."
     preflight
     check_existing_install
+    if [ "${#CONFLICT_PKGS[@]}" -gt 0 ] && [ "$NONINTERACTIVE" = 1 ] && [ "${CHESSLOOP_ALLOW_PACKAGE_REMOVAL:-0}" != 1 ]; then
+        fatal "Docker's instructions say to remove ${CONFLICT_PKGS[*]} first, and other software may use them. To allow that in --yes mode, set CHESSLOOP_ALLOW_PACKAGE_REMOVAL=1."
+    fi
 
     if [ "$RESUME" = 1 ]; then
         load_resume_answers
@@ -2117,6 +2141,7 @@ Settings for --yes (environment variables; the defaults are in brackets):
   CHESSLOOP_ALLOW_UNTESTED=1       continue on an untested system or processor
   CHESSLOOP_ALLOW_LOW_RESOURCES=1  continue with little memory or disk
   CHESSLOOP_ALLOW_PUBLIC_LAN=1     allow "lan" on a machine with a public IP address
+  CHESSLOOP_ALLOW_PACKAGE_REMOVAL=1  remove packages Docker conflicts with (containerd, runc, …)
   CHESSLOOP_PROGRESS=plain         stream command output instead of a progress line
 
 Interactive mode asks for all of these. sudo may still ask for your password.
