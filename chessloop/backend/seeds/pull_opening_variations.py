@@ -13,11 +13,12 @@ Arguments:
     opening_name: Name of the opening library (must exist in ChessLoop)
     --count: Number of variations to fetch (default 5)
     --url: ChessLoop backend URL (default http://localhost:8100)
-    --email: Seed account email (default seedbot@chessloop.app)
-    --password: Seed account password (default SeedBot1234!)
+    --email: email of the ChessLoop account to use (required)
+    The account password comes from CHESSLOOP_SEED_PASSWORD, or is asked for.
 """
 
 import argparse
+import getpass
 import os
 import sys
 from pathlib import Path
@@ -207,9 +208,8 @@ def main() -> None:
     parser.add_argument("opening_name", help="Name of the opening library (must exist)")
     parser.add_argument("--count", type=int, default=5, help="Number of variations to fetch (default 5)")
     parser.add_argument("--url", default="http://localhost:8100", help="ChessLoop backend URL")
-    parser.add_argument("--email", default="seedbot@chessloop.app", help="Seed account email")
+    parser.add_argument("--email", required=True, help="Email of the ChessLoop account to use")
     parser.add_argument("--username", default="seedbot", help="Seed account username")
-    parser.add_argument("--password", default="SeedBot1234!", help="Seed account password")
 
     args = parser.parse_args()
 
@@ -219,7 +219,9 @@ def main() -> None:
     print(f"Variations to fetch: {args.count}\n")
 
     client = ChessLoopClient(args.url)
-    client.register_or_login(args.email, args.username, args.password)
+    # No default password (there must never be a known login); never on the command line.
+    password = os.environ.get("CHESSLOOP_SEED_PASSWORD") or getpass.getpass(f"Password for {args.email}: ")
+    client.register_or_login(args.email, args.username, password)
 
     # Find the opening library
     print(f"\nLooking up opening: {args.opening_name}")

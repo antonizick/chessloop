@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
 import { authApi } from "@/api/auth";
 import { useAuthStore } from "@/stores/auth";
@@ -16,6 +17,8 @@ export function Login() {
   const [unverified, setUnverified] = useState(false);
   const [resendState, setResendState] = useState<"idle" | "sending" | "sent">("idle");
   const [loading, setLoading] = useState(false);
+  const { data: serverConfig } = useQuery({ queryKey: ["auth-config"], queryFn: authApi.config });
+  const canEmail = serverConfig?.smtp_configured ?? true;
 
   async function completeLogin(access: string, refresh: string) {
     setTokens(access, refresh);
@@ -94,9 +97,15 @@ export function Login() {
                 onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" required />
             </div>
             {err && <p className="text-sm text-red-400">{err}</p>}
-            {unverified && (
+            {unverified && !canEmail && (
               <p className="text-sm text-red-400">
-                Email not verified.{" "}
+                Your account is not verified yet, and this server can't send email.
+                Ask your ChessLoop admin to verify it (Admin → Users), then sign in again.
+              </p>
+            )}
+            {unverified && canEmail && (
+              <p className="text-sm text-red-400">
+                Email not verified. Check your inbox for the link, or{" "}
                 <button
                   type="button"
                   className="underline disabled:opacity-60"
@@ -107,7 +116,7 @@ export function Login() {
                     ? "Sending…"
                     : resendState === "sent"
                     ? "Verification email sent"
-                    : "Resend verification email"}
+                    : "resend the verification email"}
                 </button>
               </p>
             )}

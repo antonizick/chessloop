@@ -1,4 +1,5 @@
-from typing import Optional
+from typing import Literal, Optional
+from pydantic import field_validator
 from pydantic_settings import BaseSettings
 
 
@@ -10,7 +11,13 @@ class Settings(BaseSettings):
     refresh_ttl_days: int = 30
     cors_origins: str = "http://localhost:8090,http://localhost:5173"
     frontend_url: str = "http://localhost:8090"
-    email_mx_check: bool = True
+    # auto: verification is required only when SMTP is configured (there is a way
+    # to deliver the link); on/off force it. An admin's choice in Admin → System
+    # settings (a system_settings row) overrides this.
+    email_verification: Literal["auto", "on", "off"] = "auto"
+    # Live MX lookup at registration. Off by default: it fails on offline/LAN-only
+    # hosts and adds nothing when nobody is going to be emailed.
+    email_mx_check: bool = False
 
     smtp_host: str = ""
     smtp_port: int = 587
@@ -22,7 +29,17 @@ class Settings(BaseSettings):
     class Config:
         env_prefix = "CHESSLOOP_"
         env_file = ".env"
-        extra = "ignore"  # ignore unknown env vars (e.g. LICHESS_API_TOKEN)
+        extra = "ignore"
+
+    @field_validator("email_verification", mode="before")
+    @classmethod
+    def _normalise_mode(cls, v):
+        # "EMAIL_VERIFICATION=" (blank in .env) means the default, not a crash
+        return (v.strip().lower() or "auto") if isinstance(v, str) else v
+
+    @property
+    def smtp_configured(self) -> bool:
+        return bool(self.smtp_host.strip())
 
     @property
     def cors_origin_list(self) -> list[str]:

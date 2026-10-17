@@ -78,6 +78,14 @@ export interface BannerContent {
 
 export interface SystemSettingsContent {
   enforce_email_verification: boolean;
+  source: "admin" | "config";
+  config_mode: "auto" | "on" | "off";
+  smtp_configured: boolean;
+}
+
+export interface SystemSettingsUpdate {
+  /** null clears the admin's choice so the server's EMAIL_VERIFICATION applies */
+  enforce_email_verification: boolean | null;
 }
 
 export const adminApi = {
@@ -128,6 +136,6 @@ export const adminApi = {
     api<BannerContent>("/admin/banner", { method: "PUT", body: JSON.stringify(body) }),
 
   getSystemSettings: () => api<SystemSettingsContent>("/admin/system-settings"),
-  updateSystemSettings: (body: SystemSettingsContent) =>
+  updateSystemSettings: (body: SystemSettingsUpdate) =>
     api<SystemSettingsContent>("/admin/system-settings", { method: "PUT", body: JSON.stringify(body) }),
 };

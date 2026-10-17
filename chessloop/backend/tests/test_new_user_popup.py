@@ -50,12 +50,12 @@ def _make_admin(email):
 
 def _register_and_login(client, email, username, admin=False):
     client.post("/api/auth/register", json={
-        "email": email, "username": username, "password": "passw0rd12",
+        "email": email, "username": username, "password": "Kn1ght-to-f3!",
     })
     _verify(email)
     if admin:
         _make_admin(email)
-    r = client.post("/api/auth/login", json={"email": email, "password": "passw0rd12"})
+    r = client.post("/api/auth/login", json={"email": email, "password": "Kn1ght-to-f3!"})
     assert r.status_code == 200, r.text
     return {"Authorization": f"Bearer {r.json()['access_token']}"}
 

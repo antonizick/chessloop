@@ -24,7 +24,7 @@ def client():
         yield c
 
 
-def _register_and_verify(client, email="reset@test.com", username="resetter", password="passw0rd12"):
+def _register_and_verify(client, email="reset@test.com", username="resetter", password="Kn1ght-to-f3!"):
     r = client.post("/api/auth/register", json={"email": email, "username": username, "password": password})
     assert r.status_code == 201, r.text
 
@@ -54,14 +54,14 @@ def test_reset_password_then_login_with_new_password(client):
     _register_and_verify(client)
     token = _reset_token_for("reset@test.com")
 
-    r = client.post("/api/auth/reset-password", json={"token": token, "new_password": "newpassw0rd"})
+    r = client.post("/api/auth/reset-password", json={"token": token, "new_password": "Bish0p-to-c4!"})
     assert r.status_code == 200, r.text
     assert "access_token" in r.json()
 
-    r = client.post("/api/auth/login", json={"email": "reset@test.com", "password": "newpassw0rd"})
+    r = client.post("/api/auth/login", json={"email": "reset@test.com", "password": "Bish0p-to-c4!"})
     assert r.status_code == 200
 
-    r = client.post("/api/auth/login", json={"email": "reset@test.com", "password": "passw0rd12"})
+    r = client.post("/api/auth/login", json={"email": "reset@test.com", "password": "Kn1ght-to-f3!"})
     assert r.status_code == 401
 
 
@@ -69,10 +69,10 @@ def test_reset_password_allows_same_password(client):
     _register_and_verify(client)
     token = _reset_token_for("reset@test.com")
 
-    r = client.post("/api/auth/reset-password", json={"token": token, "new_password": "passw0rd12"})
+    r = client.post("/api/auth/reset-password", json={"token": token, "new_password": "Kn1ght-to-f3!"})
     assert r.status_code == 200, r.text
 
-    r = client.post("/api/auth/login", json={"email": "reset@test.com", "password": "passw0rd12"})
+    r = client.post("/api/auth/login", json={"email": "reset@test.com", "password": "Kn1ght-to-f3!"})
     assert r.status_code == 200
 
 
@@ -80,10 +80,10 @@ def test_reset_password_token_is_single_use(client):
     _register_and_verify(client)
     token = _reset_token_for("reset@test.com")
 
-    r = client.post("/api/auth/reset-password", json={"token": token, "new_password": "newpassw0rd"})
+    r = client.post("/api/auth/reset-password", json={"token": token, "new_password": "Bish0p-to-c4!"})
     assert r.status_code == 200
 
-    r = client.post("/api/auth/reset-password", json={"token": token, "new_password": "anotherpassw0rd"})
+    r = client.post("/api/auth/reset-password", json={"token": token, "new_password": "R00k-to-e1-now"})
     assert r.status_code == 401
 
 
@@ -95,7 +95,7 @@ def test_validate_reset_token_reflects_single_use(client):
     r = client.get("/api/auth/reset-password/validate", params={"token": token})
     assert r.status_code == 204
 
-    client.post("/api/auth/reset-password", json={"token": token, "new_password": "newpassw0rd"})
+    client.post("/api/auth/reset-password", json={"token": token, "new_password": "Bish0p-to-c4!"})
 
     r = client.get("/api/auth/reset-password/validate", params={"token": token})
     assert r.status_code == 401
@@ -110,13 +110,13 @@ def test_validate_reset_token_does_not_consume_it(client):
         r = client.get("/api/auth/reset-password/validate", params={"token": token})
         assert r.status_code == 204
 
-    r = client.post("/api/auth/reset-password", json={"token": token, "new_password": "newpassw0rd"})
+    r = client.post("/api/auth/reset-password", json={"token": token, "new_password": "Bish0p-to-c4!"})
     assert r.status_code == 200, r.text
 
 
 def test_reset_password_rejects_bad_token(client):
     _register_and_verify(client)
-    r = client.post("/api/auth/reset-password", json={"token": "not-a-real-token", "new_password": "newpassw0rd"})
+    r = client.post("/api/auth/reset-password", json={"token": "not-a-real-token", "new_password": "Bish0p-to-c4!"})
     assert r.status_code == 401
 
 
@@ -132,14 +132,14 @@ def test_reset_password_rejects_wrong_token_type(client):
         u = s.exec(select(User).where(User.email == "reset@test.com")).first()
         verify_token = jwt_utils.create_email_verification_token(u.id)
 
-    r = client.post("/api/auth/reset-password", json={"token": verify_token, "new_password": "newpassw0rd"})
+    r = client.post("/api/auth/reset-password", json={"token": verify_token, "new_password": "Bish0p-to-c4!"})
     assert r.status_code == 401
 
 
 def test_reset_password_can_disable_existing_mfa(client):
     _register_and_verify(client)
 
-    login = client.post("/api/auth/login", json={"email": "reset@test.com", "password": "passw0rd12"})
+    login = client.post("/api/auth/login", json={"email": "reset@test.com", "password": "Kn1ght-to-f3!"})
     access = login.json()["access_token"]
     headers = {"Authorization": f"Bearer {access}"}
 
@@ -154,11 +154,11 @@ def test_reset_password_can_disable_existing_mfa(client):
     token = _reset_token_for("reset@test.com")
     r = client.post(
         "/api/auth/reset-password",
-        json={"token": token, "new_password": "newpassw0rd", "disable_mfa": True},
+        json={"token": token, "new_password": "Bish0p-to-c4!", "disable_mfa": True},
     )
     assert r.status_code == 200, r.text
 
-    r = client.post("/api/auth/login", json={"email": "reset@test.com", "password": "newpassw0rd"})
+    r = client.post("/api/auth/login", json={"email": "reset@test.com", "password": "Bish0p-to-c4!"})
     assert r.status_code == 200
     assert "mfa_required" not in r.json()
 
@@ -166,7 +166,7 @@ def test_reset_password_can_disable_existing_mfa(client):
 def test_reset_password_without_disable_mfa_keeps_existing_mfa(client):
     _register_and_verify(client)
 
-    login = client.post("/api/auth/login", json={"email": "reset@test.com", "password": "passw0rd12"})
+    login = client.post("/api/auth/login", json={"email": "reset@test.com", "password": "Kn1ght-to-f3!"})
     access = login.json()["access_token"]
     headers = {"Authorization": f"Bearer {access}"}
 
@@ -178,10 +178,10 @@ def test_reset_password_without_disable_mfa_keeps_existing_mfa(client):
     client.post("/api/auth/mfa/confirm", json={"totp_code": code}, headers=headers)
 
     token = _reset_token_for("reset@test.com")
-    r = client.post("/api/auth/reset-password", json={"token": token, "new_password": "newpassw0rd"})
+    r = client.post("/api/auth/reset-password", json={"token": token, "new_password": "Bish0p-to-c4!"})
     assert r.status_code == 200
 
-    r = client.post("/api/auth/login", json={"email": "reset@test.com", "password": "newpassw0rd"})
+    r = client.post("/api/auth/login", json={"email": "reset@test.com", "password": "Bish0p-to-c4!"})
     assert r.status_code == 200
     assert r.json().get("mfa_required") is True
 

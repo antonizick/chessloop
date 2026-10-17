@@ -14,6 +14,7 @@ interface AdminUser {
   email: string;
   role: string;
   mfa_enabled: boolean;
+  is_verified: boolean;
   created_at: string;
   last_login: string | null;
 }
@@ -31,7 +32,7 @@ const backupApi = {
   listUsers: () => api<AdminUser[]>("/admin/users"),
   createUser: (body: { email: string; username: string; password: string; role: string }) =>
     api<AdminUser>("/admin/users", { method: "POST", body: JSON.stringify(body) }),
-  updateUser: (userId: string, body: { email?: string; username?: string; role?: string; new_password?: string }) =>
+  updateUser: (userId: string, body: { email?: string; username?: string; role?: string; new_password?: string; is_verified?: boolean }) =>
     api<AdminUser>(`/admin/users/${userId}`, { method: "PATCH", body: JSON.stringify(body) }),
   deleteUser: (userId: string) =>
     api<void>(`/admin/users/${userId}`, { method: "DELETE" }),
@@ -688,6 +689,16 @@ function UsersSection() {
     onError: (e: any) => setCreateError(e.message ?? "Failed to update user"),
   });
 
+  const [verifyError, setVerifyError] = useState<string | null>(null);
+  const verifyMut = useMutation({
+    mutationFn: (userId: string) => backupApi.updateUser(userId, { is_verified: true }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-users"] });
+      setVerifyError(null);
+    },
+    onError: (e: any) => setVerifyError(e.message ?? "Failed to verify user"),
+  });
+
   const deleteMut = useMutation({
     mutationFn: (userId: string) => backupApi.deleteUser(userId),
     onSuccess: () => {
@@ -778,6 +789,8 @@ function UsersSection() {
         </div>
       )}
 
+      {verifyError && <p className="text-red-400 text-sm">{verifyError}</p>}
+
       {/* Users list */}
       {isLoading ? (
         <p className="text-ink-500 text-sm">Loading…</p>
@@ -790,6 +803,7 @@ function UsersSection() {
                 <th className="pb-2 font-medium">Email</th>
                 <th className="pb-2 font-medium">Role</th>
                 <th className="pb-2 font-medium">MFA</th>
+                <th className="pb-2 font-medium">Verified</th>
                 <th className="pb-2 font-medium">Joined</th>
                 <th className="pb-2" />
               </tr>
@@ -812,6 +826,20 @@ function UsersSection() {
                   </td>
                   <td className="py-2 pr-4 text-xs text-ink-400">
                     {u.mfa_enabled ? "✓" : "—"}
+                  </td>
+                  <td className="py-2 pr-4 text-xs">
+                    {u.is_verified ? (
+                      <span className="text-ink-400">✓</span>
+                    ) : (
+                      <button
+                        className="btn-secondary text-xs px-2 py-0.5"
+                        title="Let this person sign in without clicking an email link"
+                        onClick={() => verifyMut.mutate(u.id)}
+                        disabled={verifyMut.isPending}
+                      >
+                        Verify
+                      </button>
+                    )}
                   </td>
                   <td className="py-2 pr-4 text-xs text-ink-500">
                     {new Date(u.created_at).toLocaleDateString()}
@@ -885,6 +913,9 @@ function UsersSection() {
                   onChange={(e) => setEditForm({ ...editForm, new_password: e.target.value })}
                   placeholder="Leave blank to keep current password"
                 />
+                <p className="text-xs text-ink-500">
+                  At least 12 characters. Setting one signs this user out on all devices; tell them the new password.
+                </p>
               </div>
             </div>
             {createError && <p className="text-red-400 text-sm mb-4">{createError}</p>}
@@ -1094,6 +1125,7 @@ function BannerSection() {
 
 function SystemSettingsSection() {
   const qc = useQueryClient();
+  const [err, setErr] = useState<string | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ["admin-system-settings"],
@@ -1101,9 +1133,13 @@ function SystemSettingsSection() {
   });
 
   const toggleMut = useMutation({
-    mutationFn: (enforce_email_verification: boolean) =>
+    mutationFn: (enforce_email_verification: boolean | null) =>
       adminApi.updateSystemSettings({ enforce_email_verification }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-system-settings"] }),
+    onSuccess: () => {
+      setErr(null);
+      qc.invalidateQueries({ queryKey: ["admin-system-settings"] });
+    },
+    onError: (e: any) => setErr(e.message ?? "Could not save the setting"),
   });
 
   if (isLoading || !data) return <div className="card">Loading…</div>;
@@ -1112,6 +1148,16 @@ function SystemSettingsSection() {
     <div className="card flex flex-col gap-4">
       <h2>System settings</h2>
 
+      <div className="text-sm max-w-md">
+        <div className="font-medium">Email (SMTP)</div>
+        <p className="text-xs text-ink-400 mt-0.5">
+          {data.smtp_configured
+            ? "Configured: ChessLoop can send verification and password-reset emails."
+            : "Not configured: ChessLoop can't send email, so new accounts can't verify themselves " +
+              "and \"Forgot password\" can't work. You can verify users and set passwords in the Users tab."}
+        </p>
+      </div>
+
       <div className="flex items-center justify-between max-w-md">
         <div>
           <div className="text-sm font-medium">Require email verification</div>
@@ -1119,6 +1165,20 @@ function SystemSettingsSection() {
             When on, new accounts must click the emailed verification link before they can log
             in. When off, new accounts are verified automatically at registration and skip that
             step entirely.
+          </p>
+          <p className="text-xs text-ink-500 mt-1">
+            {data.source === "admin"
+              ? "Set here by an admin. "
+              : `Following the server setting (EMAIL_VERIFICATION=${data.config_mode}). `}
+            {data.source === "admin" && (
+              <button
+                className="underline"
+                onClick={() => toggleMut.mutate(null)}
+                disabled={toggleMut.isPending}
+              >
+                Use the server setting
+              </button>
+            )}
           </p>
         </div>
         <button
@@ -1137,6 +1197,7 @@ function SystemSettingsSection() {
           />
         </button>
       </div>
+      {err && <p className="text-sm text-red-400 max-w-md" role="alert">{err}</p>}
     </div>
   );
 }

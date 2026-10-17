@@ -103,7 +103,7 @@ def test_new_account_receives_default_opening(client):
     r = client.post("/api/auth/register", json={
         "email": "newuser@test.com",
         "username": "newuser",
-        "password": "password123",
+        "password": "Kn1ght-to-f3!",
     })
     assert r.status_code == 201
     _verify("newuser@test.com")
@@ -111,7 +111,7 @@ def test_new_account_receives_default_opening(client):
     # Get the user's libraries
     r = client.post("/api/auth/login", json={
         "email": "newuser@test.com",
-        "password": "password123",
+        "password": "Kn1ght-to-f3!",
     })
     assert r.status_code == 200
     token = r.json()["access_token"]
@@ -134,7 +134,7 @@ def test_registration_succeeds_without_default_opening(client):
     r = client.post("/api/auth/register", json={
         "email": "user@test.com",
         "username": "user",
-        "password": "password123",
+        "password": "Kn1ght-to-f3!",
     })
     assert r.status_code == 201
     assert r.json()["email"] == "user@test.com"
@@ -143,7 +143,7 @@ def test_registration_succeeds_without_default_opening(client):
     # Verify the user can log in
     r = client.post("/api/auth/login", json={
         "email": "user@test.com",
-        "password": "password123",
+        "password": "Kn1ght-to-f3!",
     })
     assert r.status_code == 200
     assert "access_token" in r.json()

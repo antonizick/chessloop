@@ -17,8 +17,23 @@ History before this changelog: see `git log`.
 - `scripts/ci-local.sh` runs the same checks locally in Docker, and `.gitleaks.toml` configures the secret scan.
 - CI status badge in the README.
 - `VITE_ALLOWED_HOSTS` environment variable for the Vite dev server's allowed hostnames.
+- **Change password** in Settings → Account (`POST /api/auth/change-password`). It checks the current password, applies the password rule, signs out every other session and is rate limited.
+- `CHESSLOOP_EMAIL_VERIFICATION` (`auto` default, `on`, `off`): with `auto`, new accounts must verify their email only when SMTP is configured, so an install without email no longer locks every new user out.
+- Public `GET /api/auth/config` (registration open, verification required, SMTP configured, password minimum length; no secrets). The sign-in page uses it: when the server cannot send email, an unverified user is told to ask their admin instead of being offered a resend that cannot arrive.
+- Admin → Users shows whether each account is verified, with a **Verify** button; admins can verify accounts and set passwords on a server without email. Admin → System settings shows whether SMTP is configured and whether the verification setting comes from the server or from an admin, with a "Use the server setting" link.
+- `seeds/create_admin.py --email … [--username …] [--password-stdin] [--reset-password]`, also reading `CHESSLOOP_ADMIN_EMAIL`/`CHESSLOOP_ADMIN_PASSWORD`, and asking for the password (hidden) when run in a terminal. Exit codes 0/2/3.
+- The backend's own log messages (for example "SMTP not configured — skipping email") now also go to the container output, so they show in `docker compose logs`; startup logs whether email is configured.
 
 ### Changed
+- **No default admin account.** `seeds/create_admin.py` no longer creates `admin@example.com` / `admin`; it creates the admin you specify, already verified. The installer summary prints the command instead of default credentials.
+- One password rule everywhere a password is set: at least 12 characters and not built on a common word (see SECURITY.md). It used to be 8 characters for registration and reset, and none for admin-created accounts.
+- Changing or resetting a password (including an admin setting one) now invalidates all existing sign-in tokens for that account (token version stored in the JWT).
+- `EMAIL_MX_CHECK` now defaults to `false`: the live DNS lookup rejected every address on offline or LAN-only servers.
+- `seeds/seed_libraries.py` writes the 16 starter libraries straight into the database and publishes them, instead of registering a `seed@chessloop.local` account over HTTP (which was rejected, so seeding always failed). It needs no email, no login and no options, and new accounts again receive "Ruy López — Closed". The old `--url/--email/--username/--password` options and the default seed password are gone.
+- `seeds/seed_lichess.py` and `seeds/pull_opening_variations.py` no longer default to a `seedbot@chessloop.app` / `SeedBot1234!` account: `--email` is required and the password comes from `CHESSLOOP_SEED_PASSWORD` or a hidden prompt.
+- Accounts created by an admin in Admin → Users are verified.
+- Admin → System settings no longer saves the verification choice just by opening the page; the server's `EMAIL_VERIFICATION` applies until an admin changes the toggle. Turning verification on without SMTP is refused with an explanation.
+- The registration page now says what to do next (sign in, check your email, or ask the admin) instead of always "Check your email".
 - Vite dev server no longer has a hard-coded personal hostname; it accepts `localhost,127.0.0.1` unless `VITE_ALLOWED_HOSTS` is set.
 - `planning.md` moved to `docs/history/planning.md`.
 - `.gitignore` now also ignores `*.db*`, `*.tsbuildinfo`, `passdata/`, `backups/`, `runs/` and `*.tar.gz`.

@@ -434,12 +434,12 @@ print_summary() {
     echo -e "    http://localhost:$port"
     echo -e "    http://$server_ip:$port"
     blank
-    echo -e "  ${BOLD}First login:${RST}"
-    echo -e "    Email:    ${BOLD}admin@example.com${RST}"
-    echo -e "    Password: ${BOLD}admin${RST}"
-    blank
-    echo -e "  ${R}${BOLD}⚠  Change the default password immediately.${RST}"
-    echo -e "  ${R}   Go to Settings → Account before sharing this URL with anyone.${RST}"
+    echo -e "  ${BOLD}Create your admin account${RST} (there is no default login):"
+    echo -e "    cd $subdir"
+    echo -e "    $DOCKER_CMD compose -f docker-compose.prod.yml exec backend \\"
+    echo -e "      python seeds/create_admin.py --email ${BOLD}you@example.com${RST}"
+    echo -e "    It asks you to choose a password (at least 12 characters)."
+    echo -e "    You can change it later in Settings → Account."
     blank
     echo -e "  ${BOLD}Service management:${RST}"
     echo -e "    Start:   systemctl start chessloop"
@@ -621,14 +621,9 @@ do_install() {
     header "Verifying health"
     health_check "$public_port" "$subdir" || true
 
-    # ── Default admin account ─────────────────────────────────────────────
-    header "Creating default admin account"
-    if $DOCKER_CMD compose -f docker-compose.prod.yml exec -T backend \
-            python seeds/create_admin.py; then
-        ok "Admin account ready."
-    else
-        warn "Could not create admin account automatically — create one after login."
-    fi
+    # ── Admin account ─────────────────────────────────────────────────────
+    # There is no default admin (ADR-0008). Until the installer asks for the
+    # admin's email and password itself, the summary prints the command to run.
 
     # ── Systemd ───────────────────────────────────────────────────────────
     blank

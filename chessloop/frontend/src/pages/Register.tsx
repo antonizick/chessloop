@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { authApi } from "@/api/auth";
+import { authApi, type RegisterResult } from "@/api/auth";
 
 export function Register() {
   const [email, setEmail] = useState("");
@@ -8,7 +8,7 @@ export function Register() {
   const [password, setPassword] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [registered, setRegistered] = useState(false);
+  const [registered, setRegistered] = useState<RegisterResult | null>(null);
   const [resendState, setResendState] = useState<"idle" | "sending" | "sent">("idle");
 
   async function onSubmit(e: React.FormEvent) {
@@ -16,8 +16,7 @@ export function Register() {
     setErr(null);
     setLoading(true);
     try {
-      await authApi.register({ email, username, password });
-      setRegistered(true);
+      setRegistered(await authApi.register({ email, username, password }));
     } catch (e: any) {
       setErr(e.message ?? "Registration failed");
     } finally {
@@ -32,6 +31,18 @@ export function Register() {
     } finally {
       setResendState("sent");
     }
+  }
+
+  if (registered && registered.next_step !== "check_email") {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6">
+        <div className="w-full max-w-sm card">
+          <h1 className="mb-4 text-gold-400">Account created</h1>
+          <p className="text-sm text-ink-200">{registered.message}</p>
+          <Link to="/login" className="btn-primary mt-4 block text-center">Go to sign in</Link>
+        </div>
+      </div>
+    );
   }
 
   if (registered) {
@@ -74,9 +85,10 @@ export function Register() {
               onChange={(e) => setUsername(e.target.value)} required />
           </div>
           <div>
-            <label className="label">Password (min 8)</label>
-            <input className="input" type="password" value={password} minLength={8}
-              onChange={(e) => setPassword(e.target.value)} required />
+            <label className="label">Password (at least 12 characters)</label>
+            <input className="input" type="password" value={password} minLength={12} maxLength={128}
+              onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" required />
+            <p className="text-xs text-ink-400 mt-1">A few unrelated words make a strong, memorable password.</p>
           </div>
           {err && <p className="text-sm text-red-400">{err}</p>}
           <button className="btn-primary" disabled={loading}>

@@ -10,7 +10,12 @@ from fastapi.testclient import TestClient
 
 
 @pytest.fixture()
-def client():
+def client(monkeypatch):
+    # These tests cover the verification loop itself, so force it on
+    # (the default "auto" turns it off when SMTP is not configured).
+    from config import settings
+    monkeypatch.setattr(settings, "email_verification", "on")
+
     from sqlmodel import SQLModel
     from database import engine
     import models  # noqa: F401
@@ -26,7 +31,7 @@ def client():
 
 def _register(client, email="new@test.com", username="newbie"):
     r = client.post("/api/auth/register", json={
-        "email": email, "username": username, "password": "passw0rd12",
+        "email": email, "username": username, "password": "Kn1ght-to-f3!",
     })
     assert r.status_code == 201, r.text
     assert r.json()["email"] == email
@@ -46,7 +51,7 @@ def _token_for(email):
 
 def test_login_blocked_until_verified(client):
     _register(client)
-    r = client.post("/api/auth/login", json={"email": "new@test.com", "password": "passw0rd12"})
+    r = client.post("/api/auth/login", json={"email": "new@test.com", "password": "Kn1ght-to-f3!"})
     assert r.status_code == 403
 
 
@@ -58,7 +63,7 @@ def test_verify_email_then_login_succeeds(client):
     assert r.status_code == 200
     assert "access_token" in r.json()
 
-    r = client.post("/api/auth/login", json={"email": "new@test.com", "password": "passw0rd12"})
+    r = client.post("/api/auth/login", json={"email": "new@test.com", "password": "Kn1ght-to-f3!"})
     assert r.status_code == 200
     assert "access_token" in r.json()
 

@@ -28,6 +28,8 @@ def get_current_user(
     user = session.get(User, user_id)
     if not user:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "User not found")
+    if not jwt_utils.token_version_matches(payload, user.token_version):
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Session expired, please log in again")
     return user
 
 

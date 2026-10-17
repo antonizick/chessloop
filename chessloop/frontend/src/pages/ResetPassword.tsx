@@ -88,13 +88,13 @@ export function ResetPassword() {
             <h1 className="mb-4 text-gold-400 text-center">Choose a new password</h1>
             <form onSubmit={onSubmit} className="flex flex-col gap-3">
               <div>
-                <label className="label">New password (min 8)</label>
-                <input className="input" type="password" value={password} minLength={8}
+                <label className="label">New password (at least 12 characters)</label>
+                <input className="input" type="password" value={password} minLength={12} maxLength={128}
                   onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" required autoFocus />
               </div>
               <div>
                 <label className="label">Confirm new password</label>
-                <input className="input" type="password" value={confirmPassword} minLength={8}
+                <input className="input" type="password" value={confirmPassword} minLength={12} maxLength={128}
                   onChange={(e) => setConfirmPassword(e.target.value)} autoComplete="new-password" required />
               </div>
               <label className="flex items-center gap-2 text-sm text-ink-300">

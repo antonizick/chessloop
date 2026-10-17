@@ -38,10 +38,10 @@ def _verify(email):
 
 def _auth(client):
     client.post("/api/auth/register", json={
-        "email": "g@b.com", "username": "gamer", "password": "passw0rd12",
+        "email": "g@b.com", "username": "gamer", "password": "Kn1ght-to-f3!",
     })
     _verify("g@b.com")
-    r = client.post("/api/auth/login", json={"email": "g@b.com", "password": "passw0rd12"})
+    r = client.post("/api/auth/login", json={"email": "g@b.com", "password": "Kn1ght-to-f3!"})
     return {"Authorization": f"Bearer {r.json()['access_token']}"}
 
 
@@ -113,9 +113,9 @@ def test_games_are_owner_scoped(client):
     gid = r.json()["id"]
 
     # A different user cannot see or fetch it
-    client.post("/api/auth/register", json={"email": "h@b.com", "username": "other", "password": "passw0rd12"})
+    client.post("/api/auth/register", json={"email": "h@b.com", "username": "other", "password": "Kn1ght-to-f3!"})
     _verify("h@b.com")
-    r = client.post("/api/auth/login", json={"email": "h@b.com", "password": "passw0rd12"})
+    r = client.post("/api/auth/login", json={"email": "h@b.com", "password": "Kn1ght-to-f3!"})
     H2 = {"Authorization": f"Bearer {r.json()['access_token']}"}
 
     assert client.get("/api/games", headers=H2).json() == []

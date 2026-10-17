@@ -155,6 +155,7 @@ export function Settings() {
           <dt className="text-ink-300">MFA</dt>
           <dd>{me?.mfa_enabled ? "Enabled" : "Disabled"}</dd>
         </dl>
+        <ChangePasswordForm />
       </div>
 
       {/* ── App theme ─────────────────────────────────────────────────────── */}
@@ -404,5 +405,91 @@ export function Settings() {
         )}
       </div>
     </div>
+  );
+}
+
+// ── Change password ───────────────────────────────────────────────────────────
+
+const MIN_PASSWORD = 12;
+
+function ChangePasswordForm() {
+  const setTokens = useAuthStore((s) => s.setTokens);
+  const [open, setOpen] = useState(false);
+  const [current, setCurrent] = useState("");
+  const [next, setNext] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [err, setErr] = useState<string | null>(null);
+  const [done, setDone] = useState(false);
+
+  const change = useMutation({
+    mutationFn: () => authApi.changePassword({ current_password: current, new_password: next }),
+    onSuccess: (tokens) => {
+      // The old tokens were revoked server-side; keep this tab signed in with the new ones.
+      setTokens(tokens.access_token, tokens.refresh_token);
+      setCurrent(""); setNext(""); setConfirm("");
+      setOpen(false);
+      setDone(true);
+    },
+    onError: (e: any) => setErr(e.message ?? "Could not change the password"),
+  });
+
+  function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setErr(null);
+    if (next.length < MIN_PASSWORD) return setErr(`The new password needs at least ${MIN_PASSWORD} characters.`);
+    if (next !== confirm) return setErr("The two new passwords don't match.");
+    change.mutate();
+  }
+
+  if (!open) {
+    return (
+      <div className="mt-4 flex items-center gap-3">
+        <button className="btn-secondary" onClick={() => { setOpen(true); setDone(false); setErr(null); }}>
+          Change password
+        </button>
+        {done && (
+          <p className="text-sm text-green-400" role="status">
+            Password changed. Other devices have been signed out.
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  const strength =
+    next.length === 0 ? null
+      : next.length < MIN_PASSWORD ? `${MIN_PASSWORD - next.length} more character${MIN_PASSWORD - next.length === 1 ? "" : "s"} needed`
+      : next.length >= 16 ? "Good length"
+      : "Long enough. Longer is stronger.";
+
+  return (
+    <form onSubmit={onSubmit} className="mt-4 flex flex-col gap-3 max-w-sm">
+      <h3 className="text-sm font-medium text-ink-100">Change password</h3>
+      <div>
+        <label className="label">Current password</label>
+        <input className="input" type="password" value={current} autoComplete="current-password"
+          onChange={(e) => setCurrent(e.target.value)} required autoFocus />
+      </div>
+      <div>
+        <label className="label">New password (at least {MIN_PASSWORD} characters)</label>
+        <input className="input" type="password" value={next} autoComplete="new-password" maxLength={128}
+          onChange={(e) => setNext(e.target.value)} required />
+        {strength && <p className="text-xs text-ink-400 mt-1">{strength}</p>}
+      </div>
+      <div>
+        <label className="label">Confirm new password</label>
+        <input className="input" type="password" value={confirm} autoComplete="new-password" maxLength={128}
+          onChange={(e) => setConfirm(e.target.value)} required />
+      </div>
+      {err && <p className="text-sm text-red-400" role="alert">{err}</p>}
+      <div className="flex gap-2">
+        <button className="btn-primary" disabled={change.isPending}>
+          {change.isPending ? "Saving…" : "Save new password"}
+        </button>
+        <button type="button" className="btn-ghost" onClick={() => setOpen(false)} disabled={change.isPending}>
+          Cancel
+        </button>
+      </div>
+    </form>
   );
 }

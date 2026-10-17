@@ -17,7 +17,7 @@ from models.user import User
 from models.new_user_announcement import NewUserAnnouncement
 from models.banner_announcement import BannerAnnouncement
 from models.system_settings import SystemSettings
-from schemas.auth import NewUserPopupContent, BannerContent, SystemSettingsContent
+from schemas.auth import NewUserPopupContent, BannerContent, SystemSettingsUpdate, SystemSettingsResponse
 from models.practice import PracticePosition, ReviewLog, PracticeSession
 from models.line import Line, MoveNote
 from models.game import Game
@@ -26,11 +26,14 @@ from models.published_library import PublishedLibrary
 from models.library_video_link import LibraryVideoLink
 from auth.dependencies import get_current_user
 from auth.password import hash_password
+from auth.policy import password_problem, verification_required, verification_source
+from config import settings as app_settings
+from services.activity_log import log_activity
 from services import backup_service
 from services import opening_import
-
 # Special user ID for seeded opening libraries (so they don't appear in admin's account)
-SEEDBOT_USER_ID = UUID("00000000-0000-0000-0000-000000000001")
+from services.starter_libraries import SEEDBOT_USER_ID
+
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -50,11 +53,31 @@ class UserAdminResponse(BaseModel):
     email: str
     role: str
     mfa_enabled: bool
+    is_verified: bool
     created_at: str
     last_login: str | None
 
     class Config:
         from_attributes = True
+
+
+def _user_admin_response(u: User) -> UserAdminResponse:
+    return UserAdminResponse(
+        id=u.id,
+        username=u.username,
+        email=u.email,
+        role=u.role,
+        mfa_enabled=u.mfa_enabled,
+        is_verified=u.is_verified,
+        created_at=u.created_at.isoformat(),
+        last_login=u.last_login.isoformat() if u.last_login else None,
+    )
+
+
+def _require_strong(password: str) -> None:
+    problem = password_problem(password)
+    if problem:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, problem)
 
 
 class PatchUserRoleRequest(BaseModel):
@@ -73,6 +96,7 @@ class UpdateUserRequest(BaseModel):
     username: Optional[str] = None
     role: Optional[str] = None
     new_password: Optional[str] = None
+    is_verified: Optional[bool] = None
 
 
 @router.get("/users", response_model=list[UserAdminResponse])
@@ -81,18 +105,7 @@ def list_users(
     _: User = Depends(require_admin),
 ):
     users = session.exec(select(User).where(User.id != SEEDBOT_USER_ID).order_by(User.created_at)).all()  # type: ignore[arg-type]
-    return [
-        UserAdminResponse(
-            id=u.id,
-            username=u.username,
-            email=u.email,
-            role=u.role,
-            mfa_enabled=u.mfa_enabled,
-            created_at=u.created_at.isoformat(),
-            last_login=u.last_login.isoformat() if u.last_login else None,
-        )
-        for u in users
-    ]
+    return [_user_admin_response(u) for u in users]
 
 
 @router.post("/users", response_model=UserAdminResponse, status_code=status.HTTP_201_CREATED)
@@ -110,27 +123,21 @@ def create_user(
     ).first()
     if existing:
         raise HTTPException(status.HTTP_409_CONFLICT, "Email or username already exists")
+    _require_strong(body.password)
 
-    # Create user with hashed password
+    # An account the admin creates is vouched for: verified, so it can log in
+    # on a server without email.
     user = User(
         email=body.email,
         username=body.username,
         password_hash=hash_password(body.password),
         role=body.role,
+        is_verified=True,
     )
     session.add(user)
     session.commit()
     session.refresh(user)
-
-    return UserAdminResponse(
-        id=user.id,
-        username=user.username,
-        email=user.email,
-        role=user.role,
-        mfa_enabled=user.mfa_enabled,
-        created_at=user.created_at.isoformat(),
-        last_login=user.last_login.isoformat() if user.last_login else None,
-    )
+    return _user_admin_response(user)
 
 
 @router.patch("/users/{user_id}", response_model=UserAdminResponse)
@@ -170,21 +177,23 @@ def update_user(
             raise HTTPException(status.HTTP_400_BAD_REQUEST, "Cannot change your own role")
         target.role = body.role
     if body.new_password:
+        _require_strong(body.new_password)
         target.password_hash = hash_password(body.new_password)
+        target.token_version += 1  # sign the user out everywhere
+    if body.is_verified is not None:
+        target.is_verified = body.is_verified
 
     session.add(target)
     session.commit()
     session.refresh(target)
-
-    return UserAdminResponse(
-        id=target.id,
-        username=target.username,
-        email=target.email,
-        role=target.role,
-        mfa_enabled=target.mfa_enabled,
-        created_at=target.created_at.isoformat(),
-        last_login=target.last_login.isoformat() if target.last_login else None,
-    )
+    if body.new_password:
+        log_activity(session, admin.id, admin.username, "admin_password_reset", target=target.username)
+    if body.is_verified is not None:
+        log_activity(
+            session, admin.id, admin.username,
+            "admin_verify_user" if body.is_verified else "admin_unverify_user", target=target.username,
+        )
+    return _user_admin_response(target)
 
 
 @router.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -967,37 +976,49 @@ def update_banner(
 # ── System settings ──────────────────────────────────────────────────────────
 
 
-def _get_or_create_system_settings(session: Session) -> SystemSettings:
-    settings_row = session.exec(select(SystemSettings)).first()
-    if not settings_row:
-        settings_row = SystemSettings()
-        session.add(settings_row)
-        session.commit()
-        session.refresh(settings_row)
-    return settings_row
+def _system_settings_response(session: Session) -> SystemSettingsResponse:
+    return SystemSettingsResponse(
+        enforce_email_verification=verification_required(session),
+        source=verification_source(session),
+        config_mode=app_settings.email_verification,
+        smtp_configured=app_settings.smtp_configured,
+    )
 
 
-@router.get("/system-settings", response_model=SystemSettingsContent)
+@router.get("/system-settings", response_model=SystemSettingsResponse)
 def get_system_settings(
     session: Session = Depends(get_session),
     _: User = Depends(require_admin),
 ):
-    settings_row = _get_or_create_system_settings(session)
-    return SystemSettingsContent(enforce_email_verification=settings_row.enforce_email_verification)
+    # Read-only: creating the row here would silently freeze the .env default.
+    return _system_settings_response(session)
 
 
-@router.put("/system-settings", response_model=SystemSettingsContent)
+@router.put("/system-settings", response_model=SystemSettingsResponse)
 def update_system_settings(
-    body: SystemSettingsContent,
+    body: SystemSettingsUpdate,
     session: Session = Depends(get_session),
     _: User = Depends(require_admin),
 ):
-    settings_row = _get_or_create_system_settings(session)
+    settings_row = session.exec(select(SystemSettings)).first()
+    if body.enforce_email_verification is None:
+        if settings_row:
+            session.delete(settings_row)
+            session.commit()
+        return _system_settings_response(session)
+
+    if body.enforce_email_verification and not app_settings.smtp_configured:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Email verification needs email (SMTP) to be set up first. Without it, new accounts "
+            "could never receive their verification link and could not log in.",
+        )
+    if not settings_row:
+        settings_row = SystemSettings()
     settings_row.enforce_email_verification = body.enforce_email_verification
     session.add(settings_row)
     session.commit()
-    session.refresh(settings_row)
-    return SystemSettingsContent(enforce_email_verification=settings_row.enforce_email_verification)
+    return _system_settings_response(session)
 
 
 # ── Logs ──────────────────────────────────────────────────────────────────────

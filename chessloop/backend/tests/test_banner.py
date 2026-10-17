@@ -50,12 +50,12 @@ def _make_admin(email):
 
 def _register_and_login(client, email, username, admin=False):
     client.post("/api/auth/register", json={
-        "email": email, "username": username, "password": "passw0rd12",
+        "email": email, "username": username, "password": "Kn1ght-to-f3!",
     })
     _verify(email)
     if admin:
         _make_admin(email)
-    r = client.post("/api/auth/login", json={"email": email, "password": "passw0rd12"})
+    r = client.post("/api/auth/login", json={"email": email, "password": "Kn1ght-to-f3!"})
     assert r.status_code == 200, r.text
     return {"Authorization": f"Bearer {r.json()['access_token']}"}
 
@@ -131,19 +131,22 @@ def test_system_settings_toggle_controls_new_registration_verification(client):
 
     r = client.get("/api/admin/system-settings", headers=H_admin)
     assert r.status_code == 200
-    assert r.json() == {"enforce_email_verification": True}
+    # No SMTP in tests and the default mode is "auto" -> verification is off
+    assert r.json()["enforce_email_verification"] is False
+    assert r.json()["source"] == "config"
 
     r = client.put("/api/admin/system-settings", headers=H_admin, json={
         "enforce_email_verification": False,
     })
     assert r.status_code == 200
-    assert r.json() == {"enforce_email_verification": False}
+    assert r.json()["enforce_email_verification"] is False
+    assert r.json()["source"] == "admin"
 
     # New account registers while enforcement is off -> can log in without verifying
     client.post("/api/auth/register", json={
-        "email": "skipverify@test.com", "username": "skipverify", "password": "passw0rd12",
+        "email": "skipverify@test.com", "username": "skipverify", "password": "Kn1ght-to-f3!",
     })
-    r = client.post("/api/auth/login", json={"email": "skipverify@test.com", "password": "passw0rd12"})
+    r = client.post("/api/auth/login", json={"email": "skipverify@test.com", "password": "Kn1ght-to-f3!"})
     assert r.status_code == 200, r.text
 
 
