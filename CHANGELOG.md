@@ -13,6 +13,9 @@ History before this changelog: see `git log`.
 - `SECURITY.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md` (Contributor Covenant 2.1) and this changelog.
 - GitHub issue templates (install problem, bug report, feature request), a pull request template and Dependabot configuration.
 - `.editorconfig` and `.gitattributes` (LF line endings, so scripts work when cloned on Windows for WSL).
+- GitHub Actions CI (`.github/workflows/ci.yml`) on pushes to `main` and pull requests: backend tests, frontend type check and build, ShellCheck (advisory for now), Compose file validation, Docker image builds and a gitleaks secret scan. Actions and scanner images are pinned by SHA or digest.
+- `scripts/ci-local.sh` runs the same checks locally in Docker, and `.gitleaks.toml` configures the secret scan.
+- CI status badge in the README.
 - `VITE_ALLOWED_HOSTS` environment variable for the Vite dev server's allowed hostnames.
 
 ### Changed
