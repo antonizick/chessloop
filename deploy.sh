@@ -1098,8 +1098,7 @@ apt_update_once() {
 }
 
 explain_network_failure() {
-    note "This is usually a network problem: check this computer's internet connection,"
-    note "then run the installer again. It continues where it stopped."
+    note "This is usually a network problem: check this computer's internet connection."
     FATAL_SHOWN=1; exit 1
 }
 
