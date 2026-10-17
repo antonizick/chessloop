@@ -44,7 +44,7 @@ History before this changelog: see `git log`.
 - `planning.md` moved to `docs/history/planning.md`.
 - The data volume's name is pinned to `chessloop_chessloop-data`, the name Compose has always given it, so existing installs keep their data and the name no longer depends on the folder. Scripts and docs that said `chessloop-data` pointed at an empty volume.
 - The port is bound to `127.0.0.1` by default (it was `0.0.0.0` when `.env` had no `BIND_ADDR`), as the docs always said.
-- No CORS headers by default (the UI and API share one origin); nginx no longer adds `Access-Control-Allow-Origin: *`, and the installer no longer writes `CORS_ORIGINS=*` when no domain is given.
+- No CORS headers by default (the UI and API share one origin); nginx no longer adds `Access-Control-Allow-Origin: *`, and the installer no longer writes `CORS_ORIGINS=*` when no domain is given. The backend ignores `CORS_ORIGINS=*` (with a startup warning), so installs that already have it in `.env` stop sending wildcard CORS with credentials after an update.
 - Email links default to `https://DOMAIN` (or `http://localhost:PUBLIC_PORT`), and the sender to the `SMTP_USER` address, instead of `no-reply@chessloop.local`, which real mail servers reject.
 - nginx's config is built into its own image (`chessloop/nginx/Dockerfile`) instead of bind-mounted, so the proxy also starts when Docker brings containers back at boot before the file is available (Docker Desktop on Windows).
 - Health checks work: the backend uses Python instead of `curl` (not in the image), nginx checks `127.0.0.1` instead of `localhost` (IPv6 in Alpine).

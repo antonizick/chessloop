@@ -29,7 +29,7 @@ You will get a reply through the same GitHub thread. ChessLoop is maintained by 
 
 ## Network model and headers
 - Only the nginx container publishes a port: `PUBLIC_PORT` (default 8090) on `BIND_ADDR`, which defaults to `127.0.0.1` (this computer only). Set `BIND_ADDR=0.0.0.0` to let other devices on your network connect. The backend and frontend containers are reachable only inside the Docker network.
-- The web UI and the API share one origin, so no CORS is needed and none is sent by default. `CORS_ORIGINS` adds explicit origins for another front end; do not set it to `*`.
+- The web UI and the API share one origin, so no CORS is needed and none is sent by default. `CORS_ORIGINS` adds explicit origins for another front end; `*` is ignored.
 - nginx sends `Content-Security-Policy` (scripts and API calls only from ChessLoop itself; inline styles and `https:`/`data:` images allowed for admin-written banners, the board and the MFA QR code; no framing by other sites), `X-Frame-Options: SAMEORIGIN`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin` and a `Permissions-Policy` that turns off camera, microphone, location, payment and USB. It does not send `Strict-Transport-Security`: HTTPS is terminated by your reverse proxy, which should add it.
 - Behind a TLS proxy, nginx passes the proxy's `X-Forwarded-Proto` on to the backend.
 - The interactive API docs (`/docs`, `/openapi.json`) are not published by the Docker stack.
