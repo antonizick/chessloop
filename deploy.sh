@@ -718,8 +718,13 @@ check_docker() {
         desktop)
             if docker info >/dev/null 2>&1; then
                 ok "Docker: Docker Desktop (WSL integration), $(docker version --format '{{.Server.Version}}' 2>/dev/null || echo running)"
+            elif [ ! -e "$(command -v docker)" ]; then
+                # The link Docker Desktop left in /usr/bin points nowhere: Desktop is
+                # stopped, or its integration was switched off for this distribution.
+                explain_desktop_shim
+                FATAL_SHOWN=1; exit 1
             else
-                fatal "Docker Desktop's WSL integration is on, but Docker Desktop isn't running. Start Docker Desktop in Windows, wait until it says \"Engine running\", then run the installer again."
+                fatal "Docker Desktop isn't ready yet. Wait until Docker Desktop says \"Engine running\", then run the installer again."
             fi
             ;;
         none)
