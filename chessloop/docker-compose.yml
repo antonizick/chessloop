@@ -1,4 +1,13 @@
-version: "3.8"
+##############################################################################
+# DEVELOPMENT ONLY. Do not use this file to run ChessLoop for real use.
+# To install ChessLoop, follow the README (deploy.sh), which uses
+# docker-compose.prod.yml.
+#
+# This file keeps the database in ./data (a bind mount you can inspect) and is
+# for working on ChessLoop's code:
+#   echo "JWT_SECRET=$(openssl rand -base64 32)" > .env
+#   docker compose up -d --build
+##############################################################################
 
 services:
   backend:
@@ -7,17 +16,21 @@ services:
     restart: unless-stopped
     environment:
       - CHESSLOOP_DB_PATH=/data/chessloop.db
-      - CHESSLOOP_JWT_SECRET=${JWT_SECRET:-change-me-in-production}
+      - CHESSLOOP_BACKUP_DIR=/data/backups
+      - CHESSLOOP_JWT_SECRET=${JWT_SECRET:?JWT_SECRET is not set. Add a line JWT_SECRET=... to .env, using the output of openssl rand -base64 32}
       - CHESSLOOP_ACCESS_TTL_MIN=15
       - CHESSLOOP_REFRESH_TTL_DAYS=30
       - CHESSLOOP_CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:${PUBLIC_PORT:-8090},http://localhost:5180}
-      - CHESSLOOP_FRONTEND_URL=${FRONTEND_URL:-http://localhost:${PUBLIC_PORT:-8090}}
+      - CHESSLOOP_FRONTEND_URL=${FRONTEND_URL:-}
+      - CHESSLOOP_PUBLIC_PORT=${PUBLIC_PORT:-8090}
       - CHESSLOOP_SMTP_HOST=${SMTP_HOST:-}
       - CHESSLOOP_SMTP_PORT=${SMTP_PORT:-587}
       - CHESSLOOP_SMTP_USER=${SMTP_USER:-}
       - CHESSLOOP_SMTP_PASSWORD=${SMTP_PASSWORD:-}
-      - CHESSLOOP_SMTP_FROM=${SMTP_FROM:-ChessLoop <no-reply@chessloop.local>}
+      - CHESSLOOP_SMTP_FROM=${SMTP_FROM:-}
       - CHESSLOOP_SMTP_USE_TLS=${SMTP_USE_TLS:-true}
+      - CHESSLOOP_EMAIL_VERIFICATION=${EMAIL_VERIFICATION:-auto}
+      - CHESSLOOP_EMAIL_MX_CHECK=${EMAIL_MX_CHECK:-false}
     volumes:
       - ./data:/data
     # Backend stays on the internal Docker network only — no host port binding.
@@ -30,14 +43,11 @@ services:
       - backend
 
   nginx:
-    image: nginx:alpine
+    build: ./nginx
     container_name: chessloop-nginx
     restart: unless-stopped
     ports:
-      - "${PUBLIC_PORT:-8090}:80"
-    volumes:
-      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - "127.0.0.1:${PUBLIC_PORT:-8090}:80"
     depends_on:
       - backend
       - frontend
-

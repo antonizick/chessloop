@@ -569,11 +569,11 @@ do_install() {
     _read -rp "  ${BOLD}Domain name${RST} (e.g. chess.example.com — leave blank for localhost/IP only): " domain
     domain="${domain:-}"
 
-    local cors_origins
+    # The UI and the API share one origin through nginx, so no CORS list is
+    # needed without a domain (never "*").
+    local cors_origins=""
     if [ -n "$domain" ]; then
         cors_origins="https://$domain,http://$domain,http://localhost:$public_port"
-    else
-        cors_origins="*"
     fi
 
     # ── JWT secret ────────────────────────────────────────────────────────
@@ -605,8 +605,10 @@ do_install() {
             echo "DOMAIN=$domain"
             echo ""
         fi
-        echo "# CORS allowed origins"
-        echo "CORS_ORIGINS=$cors_origins"
+        if [ -n "$cors_origins" ]; then
+            echo "# CORS allowed origins"
+            echo "CORS_ORIGINS=$cors_origins"
+        fi
     } > "$env_file"
     ok "Config written to $env_file"
 
