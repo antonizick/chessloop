@@ -1566,8 +1566,18 @@ setup_wsl_windows_side() {
     wslconfig="$profile/.wslconfig"
     if [ -f "$wslconfig" ] && has_nul "$wslconfig"; then
         warn "Your Windows .wslconfig is saved in a format (UTF-16) the installer won't edit."
-        print_wsl_manual_steps
-        [ "$WSL_MIRRORED" = 1 ] && note "  For phone access also add under [wsl2]:  networkingMode=mirrored"
+        note "Open it in Notepad (in PowerShell: notepad \$env:USERPROFILE\\.wslconfig), add these"
+        note "two lines at the end, save, then run wsl --shutdown:"
+        note "  [general]"
+        note "  instanceIdleTimeout=-1"
+        [ "$WSL_MIRRORED" = 1 ] && note "For phone access, also add networkingMode=mirrored under its [wsl2] line."
+        if [ "$WSL_KEEPALIVE" = 1 ] && [ -n "$WSL_DISTRO" ]; then
+            local su="${appdata:-$profile/AppData/Roaming}/Microsoft/Windows/Start Menu/Programs/Startup"
+            if [ -d "$su" ]; then
+                printf 'wsl.exe -d %s --exec /bin/true\r\n' "$WSL_DISTRO" > "$su/ChessLoop.cmd"
+                ok "Ubuntu starts when you sign in to Windows (Startup\\ChessLoop.cmd)"
+            fi
+        fi
         return 0
     fi
     if [ "$WSL_KEEPALIVE" = 1 ]; then
