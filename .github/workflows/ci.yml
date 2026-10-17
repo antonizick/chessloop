@@ -108,6 +108,42 @@ jobs:
           cache-from: type=gha,scope=${{ matrix.image }}
           cache-to: type=gha,mode=max,scope=${{ matrix.image }}
 
+  install:
+    name: Install smoke (advisory)
+    runs-on: ubuntu-24.04
+    # Advisory until Phase 12 makes it required (R16).
+    continue-on-error: true
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # the installer clones this checkout
+          persist-credentials: false
+      - name: Unit tests for the installer's helpers
+        run: bash scripts/test-deploy-helpers.sh
+      - name: Install with deploy.sh --yes from this commit
+        run: |
+          git checkout -B ci-install
+          pw="Ci-$(openssl rand -hex 16)"
+          echo "::add-mask::$pw"
+          echo "CI_ADMIN_PASSWORD=$pw" >> "$GITHUB_ENV"
+          CHESSLOOP_REPO="$GITHUB_WORKSPACE" CHESSLOOP_REF=ci-install \
+          CHESSLOOP_ADMIN_EMAIL=ci-admin@example.com CHESSLOOP_ADMIN_PASSWORD="$pw" \
+          CHESSLOOP_ACCESS=local CHESSLOOP_PORT=8090 \
+            bash deploy.sh --yes
+      - name: Smoke test (admin login, register, library, practice, restart)
+        env:
+          SMOKE_ADMIN_EMAIL: ci-admin@example.com
+          SMOKE_ADMIN_PASSWORD: ${{ env.CI_ADMIN_PASSWORD }}
+          SMOKE_RESTART_CMD: docker compose -f /opt/chessloop/chessloop/docker-compose.prod.yml restart
+        run: bash scripts/smoke.sh http://localhost:8090
+      - name: Show logs
+        if: failure()
+        run: |
+          docker compose -f /opt/chessloop/chessloop/docker-compose.prod.yml ps -a || true
+          docker compose -f /opt/chessloop/chessloop/docker-compose.prod.yml logs --tail 200 || true
+          tail -n 100 ~/chessloop-install-*.log || true
+
   secrets:
     name: Secret scan (gitleaks)
     runs-on: ubuntu-24.04

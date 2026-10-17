@@ -25,103 +25,46 @@ Teach it your repertoire by playing moves. It drills you back, corrects mistakes
 
 ## Deploy to a new machine
 
-One command on any Ubuntu, Debian, RHEL, or Arch Linux machine:
+One command on Ubuntu 24.04 or 26.04, Debian 12 or 13, or Ubuntu inside WSL 2 on Windows 11 (all 64-bit Intel/AMD). Other systems are not tested; the installer says so and asks before it continues.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/antonizick/chessloop/main/deploy.sh | bash
 ```
 
-Or if you already have the repo:
+Prefer to read the script before running it? Download it, look at it, then run it:
 
 ```bash
+curl -fsSLO https://raw.githubusercontent.com/antonizick/chessloop/main/deploy.sh
+less deploy.sh
 bash deploy.sh
 ```
 
-The script opens an interactive menu:
+You need: about 2 GB of memory, 5 GB of free disk space, an internet connection, and a user who can use `sudo`. The install takes about 3 to 10 minutes, mostly downloading and building. The installer checks all of this first, tells you what it is going to do, and changes nothing until you say "Continue".
 
-```
-  ╔═══════════════════════════════════════════════════════╗
-  ║              ♞  ChessLoop  Deployer  v2              ║
-  ╚═══════════════════════════════════════════════════════╝
+### What the installer asks
 
-  1) Install    — Fresh install on this machine
-  2) Update     — Pull latest from GitHub (keeps your data)
-  3) Uninstall  — Remove ChessLoop (selective or full wipe)
-  4) Exit
-```
+1. **Where will you open ChessLoop?** Only on this computer; also on other devices in your home network; or from the internet with your own domain name (HTTPS). On a computer with a public internet address it warns before offering the plain-HTTP home-network choice.
+2. **Port.** The number at the end of the address (default 8090). If it is taken, the installer suggests a free one.
+3. **Your admin email and password.** Choose a password of at least 12 characters, or press Enter and the installer creates a strong one and shows it once. There is no default login.
+4. **Email (optional).** Skip it, or enter SMTP details; the installer sends a test message. Without email, people who register can sign in at once.
+5. **Starter opening libraries** (recommended).
+6. **On Windows with WSL:** whether to keep Ubuntu running when its window is closed and start it with Windows.
 
----
+Then it installs Docker Engine from Docker's official repository if needed, downloads ChessLoop into `/opt/chessloop`, writes the settings file `chessloop/.env` (readable only by you), builds and starts ChessLoop, creates your admin account and checks that it can sign in. It writes a log of the run to `~/chessloop-install-<date>.log` (passwords are never in it). If something fails, it says which step, shows the last lines of the log, and tells you how to report it. Run the installer again and it continues where it stopped.
 
-## Install walkthrough
+### Unattended install
 
-The install flow guides you through every decision:
+For scripts and testing, every answer can come from an environment variable:
 
-### 1. Install directory
-
-Default: `/opt/chessloop`. You can pick any path you have access to.
-
-### 2. Dependencies
-
-The script detects your Linux distribution and auto-installs whatever is missing: `git`, `curl`, `openssl`, Docker, and Docker Compose. You will be prompted for your sudo password if needed.
-
-### 3. Port
-
-The script scans all ports currently in use and suggests the first free port at or above the default (8090). You can accept the suggestion or type any port from 1–65535.
-
-```
-  Scanning listening ports…
-    In use: 22 80 443 3306 8080
-  ✓ Port 8090 is free.
-
-  Public web port [default: 8090]: _
+```bash
+CHESSLOOP_ADMIN_EMAIL=you@example.com bash deploy.sh --yes
 ```
 
-### 4. Network access (bind address)
+`bash deploy.sh --help` lists the settings (`CHESSLOOP_ACCESS`, `CHESSLOOP_PORT`, `CHESSLOOP_DOMAIN`, `CHESSLOOP_ADMIN_PASSWORD`, `CHESSLOOP_SEED`, `CHESSLOOP_SMTP_*`, `CHESSLOOP_INSTALL_DIR`, `CHESSLOOP_REPO`, `CHESSLOOP_REF`, …). Without `CHESSLOOP_ADMIN_PASSWORD` the installer generates a password and prints it once.
 
-This is the most consequential choice. The script explains both options in full before asking:
+### Windows 11 (WSL 2)
 
----
-
-**Option 1 — Localhost only** *(recommended for internet-facing servers)*
-
-ChessLoop listens on `127.0.0.1` only. It cannot be reached directly from any other machine. You add a reverse proxy (Caddy, Nginx, Cloudflare Tunnel, Tailscale Funnel) in front, which handles HTTPS and forwards requests to `localhost:8090`.
-
-- Passwords are never sent in plain text (SSL from the proxy)
-- The app is not directly exposed to port scanners or the internet
-- Required if you plan to use a domain name with a real SSL cert
-- One extra step: install your proxy of choice
-
-*Best for: VPS/cloud servers, anyone with a domain name*
-
----
-
-**Option 2 — All interfaces** *(simplest for home/LAN use)*
-
-ChessLoop listens on `0.0.0.0`. Any device on your network — or the internet if your firewall allows it — can reach ChessLoop directly at `http://YOUR-IP:8090`.
-
-- No extra software needed, works immediately after install
-- HTTP only — passwords travel in plain text over the network
-- Not recommended if this server is reachable from the internet
-
-*Best for: Raspberry Pi, home server, LAN-only access*
-
----
-
-### 5. Domain name (optional)
-
-If you have a domain (e.g. `chess.example.com`), enter it here. The script will configure CORS to accept requests from that origin. Leave blank for IP-only access.
-
-### 6. Build and start
-
-Docker builds the backend and frontend containers. This takes 3–10 minutes on a fresh machine. After the build, all three services start automatically (backend, frontend, nginx reverse proxy).
-
-### 7. Health check
-
-The script polls `http://localhost:PORT/api/health` every 2 seconds for up to 90 seconds. You see progress in the terminal.
-
-### 8. Autostart (optional)
-
-Prompts to install a systemd service so ChessLoop restarts automatically on reboot. Recommended for any server that needs to stay up.
+Open ChessLoop in your **Windows** browser at `http://localhost:8090`. Windows stops Ubuntu (and ChessLoop) shortly after you close its last window and does not restart it with Windows; the installer offers to change two settings for your Windows user (`%UserProfile%\.wslconfig` and a `ChessLoop.cmd` file in the Startup folder) so ChessLoop keeps running. They apply after `wsl --shutdown` or a Windows restart. To reach ChessLoop from a phone, WSL needs mirrored networking and a Windows firewall rule; the installer prints the exact steps. If Docker Desktop is installed, switch on its WSL integration for your Ubuntu first (Settings > Resources > WSL integration).
 
 ---
 
@@ -130,21 +73,21 @@ Prompts to install a systemd service so ChessLoop restarts automatically on rebo
 ### Access
 
 ```
-http://localhost:PORT
-http://YOUR-SERVER-IP:PORT
+http://localhost:PORT          (this computer; on Windows, in your Windows browser)
+http://YOUR-COMPUTERS-IP:PORT  (other devices, if you chose the home-network option)
 ```
 
 ### First login
 
-There is **no default login**. Create your admin account with one command (it asks you to choose a password, at least 12 characters, and your typing is hidden):
+Sign in with the admin email and password you gave the installer. The admin account is ready at once: it does not need email verification. Change the password later in **Settings → Account → Change password**.
+
+To create another admin, or reset a forgotten admin password, run:
 
 ```bash
 cd /opt/chessloop/chessloop
-docker compose -f docker-compose.prod.yml exec backend \
-  python seeds/create_admin.py --email you@example.com
+sudo docker compose -f docker-compose.prod.yml exec backend \
+  python seeds/create_admin.py --email you@example.com --reset-password
 ```
-
-Then sign in with that email and password. The admin account is ready to use straight away: it does not need email verification. You can change the password later in **Settings → Account → Change password**.
 
 **Email is optional.** Without email (SMTP) settings, people who register can log in straight away (`EMAIL_VERIFICATION=auto`, the default, turns verification on only when SMTP is set up). An admin can verify accounts and set passwords in **Admin → Users**.
 
@@ -152,15 +95,16 @@ The admin account has full access to the Admin panel (⚙ icon in the sidebar), 
 
 ### Service management
 
-```bash
-systemctl start   chessloop
-systemctl stop    chessloop
-systemctl restart chessloop
-systemctl status  chessloop
+Docker starts at boot and brings ChessLoop back by itself. To control it by hand:
 
-# Logs:
-docker compose -f /opt/chessloop/chessloop/docker-compose.prod.yml logs -f
+```bash
+cd /opt/chessloop/chessloop
+sudo docker compose -f docker-compose.prod.yml stop      # stop
+sudo docker compose -f docker-compose.prod.yml up -d     # start
+sudo docker compose -f docker-compose.prod.yml logs --tail 100
 ```
+
+(After you log out and in again, `sudo` is not needed for `docker`.) Installs made by older versions of the installer also have a `chessloop` systemd service; see Update.
 
 ---
 
@@ -392,7 +336,7 @@ npm run dev   # http://localhost:8090
 
 ```
 ChessLoop/
-├── deploy.sh                  ← interactive deploy/update/uninstall script
+├── deploy.sh                  ← installer: install (interactive or --yes), update, uninstall
 └── chessloop/
     ├── .env.example
     ├── docker-compose.yml     ← development
