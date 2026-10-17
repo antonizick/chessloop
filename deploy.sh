@@ -2633,6 +2633,25 @@ roll_back() {
     FATAL_SHOWN=1; exit 1
 }
 
+# WSL (F-036, ADR-0017): installs made before the keep-alive existed stop
+# whenever Ubuntu's window closes. Update offers what Install does now.
+offer_wsl_keepalive() {
+    local profile appdata cmd
+    is_wsl && [ "$DOCKER_KIND" = engine ] || return 0
+    IS_WSL=1; WSL_DISTRO="${WSL_DISTRO_NAME:-}"
+    profile="$(win_path_of USERPROFILE)"
+    [ -n "$profile" ] && [ -d "$profile" ] || return 0
+    appdata="$(win_path_of APPDATA)"
+    cmd="${appdata:-$profile/AppData/Roaming}/Microsoft/Windows/Start Menu/Programs/Startup/ChessLoop.cmd"
+    if [ -f "$cmd" ] && [ -f "$profile/.wslconfig" ] && ! has_nul "$profile/.wslconfig" \
+        && [ "$(ini_get general instanceIdleTimeout < "$profile/.wslconfig")" = "-1" ]; then
+        return 0
+    fi
+    ask_wsl_keepalive
+    WSL_MIRRORED=0
+    setup_wsl_windows_side
+}
+
 # The checks done on every Update, also when there is nothing new.
 tidy_up() {
     remove_old_unit
@@ -2640,6 +2659,7 @@ tidy_up() {
     handle_stray_volume
     remove_empty_old_backups
     install_command_link
+    offer_wsl_keepalive
 }
 
 record_update() {
