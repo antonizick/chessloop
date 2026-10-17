@@ -2499,7 +2499,7 @@ check_accounts() {
                 else warn "Couldn't remove it: $(tail -n 1 <<<"$out")"; fi
             fi
         else
-            note "It owns $libs libraries."
+            note "Libraries it owns: $libs."
             if [ "$NONINTERACTIVE" = 1 ] || ask_yn "Lock it (a random password nobody knows; its libraries stay)?" Y; then
                 if out="$(legacy_admin --lock)"; then ok "Locked the old account admin@example.com."
                 else warn "Couldn't lock it: $(tail -n 1 <<<"$out")"; fi
@@ -2700,7 +2700,7 @@ do_update() {
     tidy_up
     if [ "$new" = "$old" ] || git_owner merge-base --is-ancestor "$new" "$old" 2>/dev/null; then
         newer=0
-        ok "ChessLoop is up to date ($old_desc)."
+        ok "ChessLoop is up to date: $old_desc."
         if [ "$UPDATE_FORCE" != 1 ] && { [ "$NONINTERACTIVE" = 1 ] || ! ask_yn "Rebuild it anyway?" N; }; then
             ensure_running
             check_accounts
