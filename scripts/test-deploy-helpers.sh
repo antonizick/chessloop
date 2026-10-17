@@ -88,7 +88,6 @@ check "desktop shim" desktop-shim "$(docker_kind_of "/mnt/c/Program Files/Docker
 check "desktop integration" desktop "$(docker_kind_of /mnt/wsl/docker-desktop/cli-tools/usr/bin/docker)"
 ln -s "/mnt/wsl/docker-desktop/cli-tools/usr/bin/docker" "$TMP/docker-link"
 check "desktop via link" desktop "$(docker_kind_of "$TMP/docker-link")"
-[ ! -e "$TMP/docker-link" ] && pass || fail "a Desktop link that points nowhere must count as missing"
 
 check "desktop running" running "$(desktop_state_from 'Docker Desktop.exe            6484 Console                    1    187,020 K')"
 check "desktop stopped" stopped "$(desktop_state_from 'INFO: No tasks are running which match the specified criteria.')"

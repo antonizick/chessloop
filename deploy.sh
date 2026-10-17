@@ -693,8 +693,9 @@ explain_desktop_shim() {
             ;;
         running)
             err "Docker Desktop is running in Windows, but this Ubuntu can't use it yet."
-            note "In Docker Desktop: Settings > Resources > WSL integration, switch on"
-            note "\"$distro\", click Apply & restart, then run the installer again."
+            note "If Docker Desktop has only just started, wait until it says \"Engine running\""
+            note "and run the installer again. Otherwise, in Docker Desktop: Settings > Resources >"
+            note "WSL integration, switch on \"$distro\", click Apply & restart, then run the installer again."
             ;;
         *)
             err "Docker Desktop is installed in Windows, but this Ubuntu can't use it yet."
@@ -718,13 +719,13 @@ check_docker() {
         desktop)
             if docker info >/dev/null 2>&1; then
                 ok "Docker: Docker Desktop (WSL integration), $(docker version --format '{{.Server.Version}}' 2>/dev/null || echo running)"
-            elif [ ! -e "$(command -v docker)" ]; then
-                # The link Docker Desktop left in /usr/bin points nowhere: Desktop is
-                # stopped, or its integration was switched off for this distribution.
+            else
+                # Docker Desktop's command is here (a link into /mnt/wsl, which every
+                # distribution sees), but no engine answers: Desktop is stopped, still
+                # starting, or its integration is off for this distribution (no
+                # /var/run/docker.sock).
                 explain_desktop_shim
                 FATAL_SHOWN=1; exit 1
-            else
-                fatal "Docker Desktop isn't ready yet. Wait until Docker Desktop says \"Engine running\", then run the installer again."
             fi
             ;;
         none)
