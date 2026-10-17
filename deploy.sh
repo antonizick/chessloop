@@ -2612,6 +2612,8 @@ roll_back() {
     fi
     if [ "$restore_data" = 1 ] && [ -n "$PRE_UPDATE_BACKUP" ]; then
         info "Putting back the data from before the update…"
+        # Stopped first: a backend that keeps crashing can't be used to stage the data.
+        run "Stopping the new version" dc stop || true
         if stage_restore "$PRE_UPDATE_BACKUP" archive && swap_in_staged_data; then
             ok "Data: back to the backup from before the update."
         else
