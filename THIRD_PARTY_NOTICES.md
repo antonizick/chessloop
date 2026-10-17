@@ -74,8 +74,8 @@ The remaining ~170 transitive npm packages are listed with their licences in `pa
 
 | Image | Used in | Licence (summary) |
 |---|---|---|
-| `python:3.12-slim` | backend Dockerfile | Debian packages (various, mostly GPL/LGPL/BSD) and Python (PSF-2.0) |
-| `node:20-alpine` | frontend build stage (not shipped) | Node.js (MIT) on Alpine Linux (various) |
-| `nginx:alpine`, `nginx:1.27-alpine` | frontend and reverse proxy | nginx (BSD-2-Clause) on Alpine Linux (various) |
+| `python:3.12.15-slim-trixie` | backend Dockerfile | Debian packages (various, mostly GPL/LGPL/BSD) and Python (PSF-2.0) |
+| `node:24-alpine` | frontend build stage (not shipped) | Node.js (MIT) on Alpine Linux (various) |
+| `nginx:1.30-alpine` | frontend and reverse proxy (`nginx/Dockerfile`) | nginx (BSD-2-Clause) on Alpine Linux (various) |
 
 Base images contain many packages under their own licences; see each image's documentation on Docker Hub.

@@ -2,23 +2,27 @@
 # docker-compose.prod.yml — ChessLoop production configuration
 #
 # Usage:
-#   cp .env.example .env          # fill in JWT_SECRET, PUBLIC_PORT, DOMAIN
+#   cp .env.example .env          # set JWT_SECRET (required); see the comments there
 #   docker compose -f docker-compose.prod.yml up -d --build
+#
+# Every setting comes from .env (next to this file). Don't edit this file to
+# configure ChessLoop: a later update could conflict with your change.
 #
 # SSL:
 #   This file assumes you're terminating SSL *upstream* (Caddy, Nginx on the
 #   host, Cloudflare Tunnel, Tailscale Funnel, etc.).  If you want SSL inside
 #   this Compose stack, see the "SSL inside Docker" notes at the bottom.
 #
-# Backups:
-#   The DB lives in the named volume chessloop-data.
-#   Use the Admin panel (role=admin required) to create & download backups,
-#   or snapshot the volume directly:
-#     docker run --rm -v chessloop-data:/src -v $(pwd):/out alpine \
+# Data:
+#   The database and server-side backups live in the Docker volume
+#   "chessloop_chessloop-data" (the name is pinned below, so it is the same
+#   whatever folder this file is in). Use Admin → Backups to create and
+#   download backups, or snapshot the volume while the stack is stopped:
+#     docker run --rm -v chessloop_chessloop-data:/src -v "$(pwd)":/out alpine \
 #       tar czf /out/chessloop-backup.tar.gz -C /src .
 ##############################################################################
 
-version: "3.8"
+name: chessloop
 
 services:
 
@@ -32,20 +36,37 @@ services:
     environment:
       - CHESSLOOP_DB_PATH=/data/chessloop.db
       - CHESSLOOP_BACKUP_DIR=/data/backups
-      - CHESSLOOP_JWT_SECRET=${JWT_SECRET:?err — set JWT_SECRET in .env}
+      # Checked again at startup: the .env.example placeholder or a short value is refused.
+      - CHESSLOOP_JWT_SECRET=${JWT_SECRET:?JWT_SECRET is not set. Add a line JWT_SECRET=... to .env, using the output of openssl rand -base64 32}
       - CHESSLOOP_ACCESS_TTL_MIN=${ACCESS_TTL_MIN:-15}
       - CHESSLOOP_REFRESH_TTL_DAYS=${REFRESH_TTL_DAYS:-30}
-      # CORS_ORIGINS set in .env — defaults to domain-based origin when DOMAIN is set
-      - CHESSLOOP_CORS_ORIGINS=${CORS_ORIGINS:-https://${DOMAIN:-localhost}}
+      # The web UI and the API share one origin through nginx, so no CORS is
+      # needed; list extra origins (comma-separated) only for another front end.
+      - CHESSLOOP_CORS_ORIGINS=${CORS_ORIGINS:-}
+      # Base of the links in emails. Blank: https://DOMAIN, else http://localhost:PUBLIC_PORT.
+      - CHESSLOOP_FRONTEND_URL=${FRONTEND_URL:-}
+      - CHESSLOOP_DOMAIN=${DOMAIN:-}
+      - CHESSLOOP_PUBLIC_PORT=${PUBLIC_PORT:-8090}
+      - CHESSLOOP_SMTP_HOST=${SMTP_HOST:-}
+      - CHESSLOOP_SMTP_PORT=${SMTP_PORT:-587}
+      - CHESSLOOP_SMTP_USER=${SMTP_USER:-}
+      - CHESSLOOP_SMTP_PASSWORD=${SMTP_PASSWORD:-}
+      - CHESSLOOP_SMTP_FROM=${SMTP_FROM:-}
+      - CHESSLOOP_SMTP_USE_TLS=${SMTP_USE_TLS:-true}
+      - CHESSLOOP_EMAIL_VERIFICATION=${EMAIL_VERIFICATION:-auto}
+      - CHESSLOOP_EMAIL_MX_CHECK=${EMAIL_MX_CHECK:-false}
+      - CHESSLOOP_LICHESS_API_TOKEN=${LICHESS_API_TOKEN:-}
     volumes:
       - chessloop-data:/data
     # Backend is NOT exposed to the host; nginx proxies /api/* to it.
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      # python:*-slim has no curl or wget
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=3)"]
       interval: 30s
       timeout: 5s
       retries: 3
-      start_period: 10s
+      start_period: 60s
+      start_interval: 2s
 
   # ─── Frontend (React static) ──────────────────────────────────────────────
   frontend:
@@ -54,33 +75,47 @@ services:
       dockerfile: Dockerfile
     container_name: chessloop-frontend
     restart: always
-    depends_on:
-      - backend
-
-  # ─── Nginx (reverse proxy) ────────────────────────────────────────────────
-  nginx:
-    image: nginx:1.27-alpine
-    container_name: chessloop-nginx
-    restart: always
-    ports:
-      # BIND_ADDR: 127.0.0.1 (localhost/reverse-proxy mode, default)
-      #            0.0.0.0  (direct LAN/internet access)
-      # Set BIND_ADDR in .env, or export it before running docker compose.
-      - "${BIND_ADDR:-0.0.0.0}:${PUBLIC_PORT:-8090}:80"
-    volumes:
-      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
-    depends_on:
-      - backend
-      - frontend
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost/api/health"]
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/"]
       interval: 30s
       timeout: 5s
       retries: 3
+      start_period: 20s
+      start_interval: 2s
+
+  # ─── Nginx (reverse proxy) ────────────────────────────────────────────────
+  nginx:
+    # nginx/default.conf is built into this image instead of bind-mounted: a
+    # mounted file can be missing when Docker starts containers at boot (F-042).
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    container_name: chessloop-nginx
+    restart: always
+    ports:
+      # BIND_ADDR: 127.0.0.1 (this computer only, or behind a reverse proxy; default)
+      #            0.0.0.0  (other devices on the network can connect)
+      - "${BIND_ADDR:-127.0.0.1}:${PUBLIC_PORT:-8090}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
+    healthcheck:
+      # 127.0.0.1, not localhost: localhost is ::1 in Alpine and nginx listens on IPv4
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+      start_interval: 2s
 
 volumes:
   chessloop-data:
-    driver: local
+    # Pinned to the name Compose has always given this volume (project
+    # "chessloop" + "_chessloop-data"), so existing installs keep their data
+    # (ADR-0009).
+    name: chessloop_chessloop-data
 
 ##############################################################################
 # ── SSL inside Docker (optional) ────────────────────────────────────────────
@@ -91,15 +126,14 @@ volumes:
 #   2. Mount the cert & key into the nginx container:
 #
 #       volumes:
-#         - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
 #         - /etc/letsencrypt:/etc/letsencrypt:ro
 #
-#   3. Update nginx/default.conf to listen on 443 ssl and add:
+#   3. Update nginx/default.conf to listen on 443 ssl, rebuild the nginx image
+#      (docker compose -f docker-compose.prod.yml up -d --build), and add:
 #
 #       ssl_certificate     /etc/letsencrypt/live/YOUR_DOMAIN/fullchain.pem;
 #       ssl_certificate_key /etc/letsencrypt/live/YOUR_DOMAIN/privkey.pem;
 #       ssl_protocols       TLSv1.2 TLSv1.3;
-#       ssl_ciphers         HIGH:!aNULL:!MD5;
 #
 #   4. Add a port binding for 443 in the nginx service above:
 #       ports:

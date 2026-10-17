@@ -9,7 +9,7 @@ cd "$(dirname "${BASH_SOURCE[0]}")/.."
 ROOT=$PWD
 
 # Keep these in step with the workflow.
-PYTHON_IMAGE=python:3.12-slim
+PYTHON_IMAGE=python:3.12.15-slim-trixie  # same as chessloop/backend/Dockerfile
 NODE_IMAGE=node:24-alpine
 SHELLCHECK_IMAGE=koalaman/shellcheck@sha256:61862eba1fcf09a484ebcc6feea46f1782532571a34ed51fedf90dd25f925a8d
 GITLEAKS_IMAGE=zricethezav/gitleaks@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f
@@ -53,6 +53,7 @@ step_compose() {
 step_images() {
   docker build -q -t chessloop-ci-backend chessloop/backend >/dev/null
   docker build -q -t chessloop-ci-frontend chessloop/frontend >/dev/null
+  docker build -q -t chessloop-ci-nginx chessloop/nginx >/dev/null
 }
 
 step_secrets() {

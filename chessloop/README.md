@@ -193,12 +193,12 @@ Edit `.env` and set:
 |---|---|---|---|
 | `JWT_SECRET` | **yes** | — | Long random string. Generate: `openssl rand -hex 32` |
 | `PUBLIC_PORT` | no | `8090` | Host port for the web UI |
-| `DOMAIN` | for CORS | `localhost` | Your public domain (e.g. `chess.mysite.com`) |
+| `DOMAIN` | no | — | Your public domain (e.g. `chess.mysite.com`); used for email links |
 
 ### 2. Build and start
 
 ```bash
-# Development (binds to 0.0.0.0 so you can reach it from other machines)
+# Development only (database in ./data, port bound to 127.0.0.1)
 docker compose up --build
 
 # Production (binds to 127.0.0.1 — put a reverse proxy in front)
@@ -322,7 +322,7 @@ Changes take effect immediately (live preview in Settings before saving).
 | `/api/public/` | Browse/search public libraries, star, comment |
 | `/api/admin/` | Backup CRUD + user management (admin role required) |
 
-Full interactive docs: `http://localhost:8100/docs` (dev) or `http://YOUR_HOST/api/docs` (Docker).
+Full interactive docs: `http://localhost:8100/docs` when you run the backend with uvicorn for development. The Docker stack does not publish them.
 
 ---
 
@@ -403,7 +403,7 @@ For volume-level snapshots in Docker:
 
 ```bash
 docker run --rm \
-  -v chessloop-data:/src \
+  -v chessloop_chessloop-data:/src \
   -v $(pwd):/out \
   alpine tar czf /out/chessloop-backup-$(date +%F).tar.gz -C /src .
 ```

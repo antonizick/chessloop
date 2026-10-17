@@ -178,7 +178,7 @@ What happens:
 2. `git pull` downloads the latest commits from the main branch
 3. If you're already up to date you can still force a rebuild
 4. `docker compose up -d --build --remove-orphans` rebuilds the containers
-5. Your database (user accounts, libraries, SRS progress) lives in the `chessloop-data` Docker volume and is **never removed** by the update process
+5. Your database (user accounts, libraries, SRS progress) lives in the `chessloop_chessloop-data` Docker volume and is **never removed** by the update process
 6. Health check confirms the new version is running
 
 ---
@@ -265,7 +265,8 @@ cp .env.example .env
 # Edit .env:
 #   PUBLIC_PORT=8090
 #   BIND_ADDR=127.0.0.1        # or 0.0.0.0 for direct access
-#   JWT_SECRET=$(openssl rand -base64 32)
+#   JWT_SECRET=<paste the output of: openssl rand -base64 32>
+#   (.env does not run commands; ChessLoop refuses to start with the example value)
 #   DOMAIN=chess.example.com   # optional
 
 # Build and start
@@ -283,8 +284,12 @@ docker compose -f docker-compose.prod.yml logs -f
 | `JWT_SECRET` | **yes** | — | Long random string. Generate: `openssl rand -base64 32` |
 | `PUBLIC_PORT` | no | `8090` | Host port the web UI listens on |
 | `BIND_ADDR` | no | `127.0.0.1` | `127.0.0.1` (localhost only) or `0.0.0.0` (all interfaces) |
-| `DOMAIN` | no | `localhost` | Your public domain — used to scope CORS origins |
-| `CORS_ORIGINS` | no | auto | Explicit CORS allow-list (overrides the DOMAIN-derived value) |
+| `DOMAIN` | no | — | Your public domain; email links use `https://DOMAIN` |
+| `FRONTEND_URL` | no | `https://DOMAIN` or `http://localhost:PUBLIC_PORT` | Address used in email links (set it for a home-network install) |
+| `CORS_ORIGINS` | no | — | Extra origins allowed to call the API from a browser. Not needed: the UI and API share one origin |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM`, `SMTP_USE_TLS` | no | no email | Outgoing mail; see `chessloop/.env.example` |
+| `EMAIL_VERIFICATION` | no | `auto` | `auto` (on only with SMTP), `on`, `off` |
+| `EMAIL_MX_CHECK` | no | `false` | Check the email domain's mail servers at registration |
 | `ACCESS_TTL_MIN` | no | `15` | JWT access token lifetime in minutes |
 | `REFRESH_TTL_DAYS` | no | `30` | JWT refresh token lifetime in days |
 
@@ -308,7 +313,7 @@ Three backup types:
 
 ```bash
 docker run --rm \
-  -v chessloop-data:/src \
+  -v chessloop_chessloop-data:/src \
   -v $(pwd):/out \
   alpine tar czf /out/chessloop-$(date +%F).tar.gz -C /src .
 ```
@@ -321,7 +326,7 @@ docker compose -f /opt/chessloop/chessloop/docker-compose.prod.yml down
 
 # Restore the volume
 docker run --rm \
-  -v chessloop-data:/dst \
+  -v chessloop_chessloop-data:/dst \
   -v $(pwd):/src \
   alpine tar xzf /src/chessloop-YYYY-MM-DD.tar.gz -C /dst
 
@@ -404,7 +409,8 @@ ChessLoop/
     │       ├── components/    ← board, layout, practice, teaching
     │       └── pages/         ← Dashboard, Libraries, Practice, Stats, Settings, Admin
     └── nginx/
-        └── default.conf       ← /api/* → backend, /* → frontend SPA
+        ├── Dockerfile         ← nginx image with the config built in
+        └── default.conf       ← /api/* → backend, /* → frontend SPA, security headers
 ```
 
 ---
@@ -421,7 +427,7 @@ every API call returns 504.
 The host can ping containers directly; containers cannot ping each other.
 
 **Fix:** Stop and remove the containers, remove the network, then start fresh. The database lives in
-the `chessloop-data` Docker volume and is unaffected.
+the `chessloop_chessloop-data` Docker volume and is unaffected.
 
 ```bash
 docker stop chessloop-nginx chessloop-frontend chessloop-backend
