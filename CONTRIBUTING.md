@@ -29,6 +29,26 @@ cd chessloop/frontend && npm run lint && npm run build
 shellcheck deploy.sh manage.sh
 ```
 
+Or run everything CI runs in one go. It needs only Docker, because each step runs in a container (so your local Python and Node versions don't matter):
+```bash
+scripts/ci-local.sh            # all steps
+scripts/ci-local.sh backend    # or pick steps: backend frontend shell compose images secrets
+```
+
+### Continuous integration
+Every push to `main` and every pull request runs `.github/workflows/ci.yml`:
+
+| Job | What it checks |
+|---|---|
+| Backend tests | `pytest` on Python 3.12 |
+| Frontend lint and build | `npm run lint` and `npm run build` on Node 24 LTS |
+| ShellCheck (advisory) | `deploy.sh`, `manage.sh`, `scripts/*.sh`. Known warnings don't fail the run yet |
+| Compose files validate | `docker compose config` for the production and development files |
+| Docker image build | Builds the backend and frontend images (nothing is pushed) |
+| Secret scan | gitleaks over the full git history, configured in `.gitleaks.toml` |
+
+Workflow actions are pinned to a full commit SHA with the version in a comment; Dependabot proposes updates. CI uses no secrets or tokens.
+
 ## Pull requests
 - Branch from `main`; keep each PR focused on one change.
 - Use [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, `docs:`, `chore:`).

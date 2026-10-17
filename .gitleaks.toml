@@ -1,0 +1,7 @@
+# Gitleaks configuration for CI (see .github/workflows/ci.yml).
+# Start from the upstream default rules. No allow-list is needed: a scan of
+# the full history at 1902a12 (140 commits) found no leaks. If a false
+# positive ever appears, allow-list only that exact finding here, with a
+# comment that says why it is safe.
+[extend]
+useDefault = true

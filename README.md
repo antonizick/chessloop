@@ -1,6 +1,7 @@
 # ChessLoop
 
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE)
+[![CI](https://github.com/antonizick/chessloop/actions/workflows/ci.yml/badge.svg)](https://github.com/antonizick/chessloop/actions/workflows/ci.yml)
 
 Self-hosted, move-based spaced-repetition chess opening trainer.
 
