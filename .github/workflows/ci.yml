@@ -58,8 +58,8 @@ jobs:
   shell:
     name: ShellCheck (advisory)
     runs-on: ubuntu-24.04
-    # Advisory: deploy.sh and manage.sh have warnings today (finding F-021).
-    # Phases 08-09 rewrite them; Phase 12 makes this job required.
+    # Advisory until Phase 12 makes it required. deploy.sh and scripts/ are
+    # clean since Phase 09 (manage.sh, which had warnings, was removed: F-017).
     continue-on-error: true
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -70,7 +70,7 @@ jobs:
           shopt -s nullglob
           docker run --rm -v "$PWD:/mnt" -w /mnt \
             koalaman/shellcheck@sha256:61862eba1fcf09a484ebcc6feea46f1782532571a34ed51fedf90dd25f925a8d \
-            deploy.sh manage.sh scripts/*.sh
+            deploy.sh scripts/*.sh
 
   compose:
     name: Compose files validate
@@ -137,12 +137,33 @@ jobs:
           SMOKE_ADMIN_PASSWORD: ${{ env.CI_ADMIN_PASSWORD }}
           SMOKE_RESTART_CMD: docker compose -f /opt/chessloop/chessloop/docker-compose.prod.yml restart
         run: bash scripts/smoke.sh http://localhost:8090
+      - name: Back up, change the data, restore (chessloop backup / restore)
+        run: |
+          users() { docker exec chessloop-backend python -c 'import sqlite3; print(sqlite3.connect("/data/chessloop.db").execute("select count(*) from user").fetchone()[0])'; }
+          chessloop backup --yes
+          f=$(ls -1t ~/chessloop-backups/chessloop-*.tar.gz | head -n 1)
+          test "$(stat -c %a "$f")" = 600
+          (cd ~/chessloop-backups && sha256sum -c "$(basename "$f").sha256")
+          before=$(users)
+          curl -fsS -H 'Content-Type: application/json' -o /dev/null \
+            -d '{"email":"after-backup@example.com","username":"afterbackup","password":"Rook-to-e1-after!"}' \
+            http://localhost:8090/api/auth/register
+          test "$(users)" = $((before + 1))
+          chessloop restore "$f" --yes
+          test "$(users)" = "$before"
+      - name: Update when there is nothing new (chessloop update)
+        run: chessloop update --yes
+      - name: Admin login still works after restore and update
+        env:
+          SMOKE_ADMIN_EMAIL: ci-admin@example.com
+          SMOKE_ADMIN_PASSWORD: ${{ env.CI_ADMIN_PASSWORD }}
+        run: bash scripts/smoke.sh http://localhost:8090
       - name: Show logs
         if: failure()
         run: |
           docker compose -f /opt/chessloop/chessloop/docker-compose.prod.yml ps -a || true
           docker compose -f /opt/chessloop/chessloop/docker-compose.prod.yml logs --tail 200 || true
-          tail -n 100 ~/chessloop-install-*.log || true
+          tail -n 100 ~/chessloop-*.log || true
 
   secrets:
     name: Secret scan (gitleaks)
