@@ -46,6 +46,7 @@ CURRENT_STEP="starting"
 ERR_CMD=""
 ERR_LINE=""
 FATAL_SHOWN=0
+WORK_STARTED=0            # 1 once the user confirmed and the installer began changing things
 SUDO_KEEPALIVE_PID=""
 AS_ROOT=()                # (sudo) or () when running as root
 DOCKER=(docker)           # (sudo docker) until the user's docker group applies
@@ -216,7 +217,7 @@ on_exit() {
         [ -n "$ERR_CMD" ] && note "${DIM}command: $ERR_CMD (deploy.sh line $ERR_LINE, exit code $rc)${RST}"
         show_log_tail 15
     fi
-    if [ "$ACTION" = install ]; then
+    if [ "$ACTION" = install ] && [ "$WORK_STARTED" = 1 ]; then
         note "When the problem is fixed, run the installer again: it continues where it stopped."
     fi
     [ -n "$LOG_FILE" ] && note "Full log: ${BOLD}$LOG_FILE${RST}"
@@ -1708,6 +1709,7 @@ do_install() {
     fi
     ask_wsl_keepalive
     show_plan_and_confirm
+    WORK_STARTED=1
 
     setup_root
     setup_software
