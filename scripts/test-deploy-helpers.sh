@@ -89,6 +89,10 @@ check "desktop integration" desktop "$(docker_kind_of /mnt/wsl/docker-desktop/cl
 ln -s "/mnt/wsl/docker-desktop/cli-tools/usr/bin/docker" "$TMP/docker-link"
 check "desktop via link" desktop "$(docker_kind_of "$TMP/docker-link")"
 
+check "desktop running" running "$(desktop_state_from 'Docker Desktop.exe            6484 Console                    1    187,020 K')"
+check "desktop stopped" stopped "$(desktop_state_from 'INFO: No tasks are running which match the specified criteria.')"
+check "desktop unknown" unknown "$(desktop_state_from '')"
+
 # ── answers ──────────────────────────────────────────────────────────────
 yes_ valid_email sam@example.com
 yes_ valid_email first.last+chess@mail.example.co.uk

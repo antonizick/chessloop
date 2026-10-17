@@ -366,6 +366,13 @@ docker_kind_of() {
     esac
 }
 
+# desktop_state_from TASKLIST_OUTPUT → running | stopped | unknown
+desktop_state_from() {
+    if grep -qi 'Docker Desktop\.exe' <<<"$1"; then echo running
+    elif grep -qi 'No tasks are running' <<<"$1"; then echo stopped
+    else echo unknown; fi
+}
+
 # gen_password: 24 random letters and digits in groups of 4 (about 138 bits).
 gen_password() {
     local raw
@@ -664,15 +671,48 @@ check_systemd() {
     FATAL_SHOWN=1; exit 1
 }
 
+# Is Docker Desktop running in Windows? Asks Windows through WSL interop.
+docker_desktop_state() {
+    command -v tasklist.exe >/dev/null 2>&1 || { echo unknown; return 0; }
+    desktop_state_from "$(cd /mnt/c 2>/dev/null && tasklist.exe /FI "IMAGENAME eq Docker Desktop.exe" /NH 2>/dev/null | tr -d '\r' || true)"
+}
+
+# Only Docker Desktop's Windows program is visible from Ubuntu (F-041): it is
+# either not running (as after every Windows restart), or running without WSL
+# integration for this distribution. Never suggest installing Docker Engine
+# next to it (Docker: "Running both can cause conflicts").
+explain_desktop_shim() {
+    local distro="${WSL_DISTRO:-this Ubuntu}"
+    case "$(docker_desktop_state)" in
+        stopped)
+            err "Docker Desktop is installed in Windows, but it isn't running."
+            note "Start Docker Desktop from the Windows Start menu, wait until it says"
+            note "\"Engine running\", then run the installer again."
+            note "If you then see this message again: in Docker Desktop, Settings > Resources >"
+            note "WSL integration, switch on \"$distro\" and click Apply & restart."
+            ;;
+        running)
+            err "Docker Desktop is running in Windows, but this Ubuntu can't use it yet."
+            note "In Docker Desktop: Settings > Resources > WSL integration, switch on"
+            note "\"$distro\", click Apply & restart, then run the installer again."
+            ;;
+        *)
+            err "Docker Desktop is installed in Windows, but this Ubuntu can't use it yet."
+            note "1. Start Docker Desktop and wait until it says \"Engine running\"."
+            note "2. In Docker Desktop: Settings > Resources > WSL integration, switch on \"$distro\","
+            note "   and click Apply & restart."
+            note "Then run the installer again."
+            ;;
+    esac
+    note "(Or uninstall Docker Desktop: the installer then sets up Docker inside Ubuntu instead.)"
+}
+
 # What Docker is there? Sets DOCKER_KIND, NEED_DOCKER_INSTALL, NEED_COMPOSE_FIX.
 check_docker() {
     DOCKER_KIND="$(docker_kind_of "$(command -v docker 2>/dev/null || true)")"
     case "$DOCKER_KIND" in
         desktop-shim)
-            err "Docker Desktop is installed in Windows, but this Ubuntu can't use it yet."
-            note "In Docker Desktop: Settings > Resources > WSL integration, switch on"
-            note "\"${WSL_DISTRO:-this distribution}\", click Apply & restart, then run the installer again."
-            note "(Or uninstall Docker Desktop, and the installer sets up Docker inside Ubuntu instead.)"
+            explain_desktop_shim
             FATAL_SHOWN=1; exit 1
             ;;
         desktop)
