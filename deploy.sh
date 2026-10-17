@@ -111,11 +111,11 @@ err()     { _say "  ${R}✗${RST}  $*"; }
 note()    { _say "     $*"; }
 fatal()   { err "$*"; FATAL_SHOWN=1; exit 1; }
 blank()   { echo "" >&2; _log ""; }
-header()  { blank; _say "  ${C}${BOLD}$*${RST}"; _say "  $(printf '─%.0s' {1..60})"; }
+header()  { CURRENT_STEP="$*"; blank; _say "  ${C}${BOLD}$*${RST}"; _say "  $(printf '─%.0s' {1..60})"; }
 sep()     { _say "  ${DIM}$(printf '─%.0s' {1..60})${RST}"; }
 
 # step "Title": a new section; its name is shown if something fails in it.
-step() { CURRENT_STEP="$1"; header "$1"; }
+step() { header "$1"; }
 
 setup_log() {
     local name="$1" dir="${HOME:-/tmp}"
@@ -366,7 +366,7 @@ docker_kind_of() {
     esac
 }
 
-# gen_password: 24 random letters and digits in groups of 4 (about 140 bits).
+# gen_password: 24 random letters and digits in groups of 4 (about 138 bits).
 gen_password() {
     local raw
     raw="$(LC_ALL=C tr -dc 'abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789' </dev/urandom 2>/dev/null | head -c 24 || true)"
