@@ -10,6 +10,7 @@ from pydantic import BaseModel
 
 from config import settings
 from database import init_db
+from services import backup_service
 from routers import auth, libraries, lines, games, practice, stats, public, admin, new_user_popup, banner
 
 
@@ -73,6 +74,7 @@ def _log_cors_setup() -> None:
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     init_db()
+    backup_service.secure_backup_dir()
     _log_email_setup()
     _log_cors_setup()
     yield

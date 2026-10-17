@@ -382,15 +382,14 @@ def upload_backup(
     filename = f"{type}_{ts}_{backup_name[:40].replace(' ', '_')}.db"
 
     # Save file to backup directory
-    backup_dir = Path(backup_service.BACKUP_DIR)
-    backup_dir.mkdir(parents=True, exist_ok=True)
-    dest = backup_dir / filename
+    dest = backup_service._ensure_dir() / filename
 
     try:
         with open(dest, "wb") as f:
             f.write(file_bytes)
     except IOError as e:
         raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, f"Failed to save backup: {e}")
+    backup_service.secure_file(dest)
 
     size = dest.stat().st_size
 
