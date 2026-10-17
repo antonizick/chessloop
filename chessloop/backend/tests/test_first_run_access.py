@@ -140,6 +140,7 @@ def test_existing_admin_row_overrides_config(client, sent, monkeypatch, row_valu
 def test_mode_is_case_insensitive():
     from config import Settings
     assert Settings(email_verification=" ON ").email_verification == "on"
+    assert Settings(email_verification="").email_verification == "auto"
 
 
 # ── /auth/config ─────────────────────────────────────────────────────────────

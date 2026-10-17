@@ -34,7 +34,8 @@ class Settings(BaseSettings):
     @field_validator("email_verification", mode="before")
     @classmethod
     def _normalise_mode(cls, v):
-        return v.strip().lower() if isinstance(v, str) else v
+        # "EMAIL_VERIFICATION=" (blank in .env) means the default, not a crash
+        return (v.strip().lower() or "auto") if isinstance(v, str) else v
 
     @property
     def smtp_configured(self) -> bool:
