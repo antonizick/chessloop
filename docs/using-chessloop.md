@@ -35,7 +35,8 @@ This signs you out on every other device. If you forget your password and email 
 *Two-factor authentication* (MFA) asks for a six-digit code from an app on your phone each time you sign in. It protects your account even if someone learns your password.
 
 1. In **Settings**, find **Two-factor auth** and follow the steps. You scan a square code with an authenticator app (for example Google Authenticator or Aegis).
-2. Type the six-digit code to confirm.
+   - **Can't scan it?** (The app is on this same computer, or the camera does not work.) Choose **Can't scan? Enter manually** under the square code. It shows a secret key. Type that key into your app.
+2. Type the six-digit code the app shows to confirm.
 
 There are no recovery codes. To turn MFA off later, use **Remove MFA** in Settings, which asks for a code from your app. Keep your phone safe: if you lose the app, ask whoever runs your ChessLoop for help.
 
@@ -57,16 +58,17 @@ The installer loaded 16 starter opening libraries (Ruy López, Sicilian, Italian
 - **Learn / View** opens one read-only.
 - **Fork / Add to My Library** makes your own copy. You can change a copy, and practise it.
 
-New accounts also get a copy of "Ruy López — Closed" with all its lines. It is in your own libraries; the other 15 stay under **Public Opening Libraries** until you fork them.
+Accounts that people register later (for example your family) also get a copy of "Ruy López — Closed" with all its lines. It is in their own libraries; the other 15 stay under **Public Opening Libraries** until they fork them. The first account, the admin the installer made, starts with no libraries of its own: fork one from **Public Opening Libraries**, or make your own (next section).
 
 ## 6. Look at a library, then teach a line
 
-Open **My Opening Libraries** and click a library.
+Open **My Opening Libraries** and click a library. If you have none yet, fork one from **Public Opening Libraries**, or click **+ New** under **My Libraries** in the menu to make an empty one.
 
 ![A library](images/06-library.png)
 
 - The switch **Active in practice** decides whether its lines come up in practice.
-- Each line shows **Not Learned** until you have practised it.
+- **+ Add line** adds an empty line named like "Opening Line [9]". Double-click the name to rename it, then open the **Teaching board** to record its moves.
+- Each line shows **✗ Not Learned** until you mark it. Click it to mark the line **✓ Learned**. It also becomes Learned the first time you play its first move correctly in practice. [Practice](#7-practise) explains why this matters.
 - **Unrated Learning** is a read-only viewer to study the moves.
 - **Teaching board** is where you record moves.
 
@@ -78,7 +80,7 @@ On the **Teaching board**, drag pieces to play the moves of your opening. Each m
 
 | Control | What it does |
 |---|---|
-| Drag a piece | Records a move. |
+| Drag a piece, or click it and then click the square | Records a move. |
 | ⟪ ‹ › ⟫ | First move, previous, next, last. |
 | ↓ PGN | Downloads the line as a standard PGN file for other chess programs. |
 | ⧭ (on a line) | Duplicates the line. |
@@ -108,6 +110,8 @@ Open **Rated Practice**. Choose a session mode:
 ![Practice setup](images/10-practice.png)
 
 Choose where each line starts (**First move** is the gentlest), tick the libraries, and start. ChessLoop shows a position. Play the move you have learned.
+
+> **Your first session.** The switch **Learned/Active lines only** is on at first, so only lines marked **✓ Learned** come up. A new line is **✗ Not Learned**, so ChessLoop says "No lines are marked Learned yet". Do one of these: turn the switch **off** and start again, or mark the line **✓ Learned** in its library (see [section 6](#6-look-at-a-library-then-teach-a-line)). The switch is back on each time you open the page.
 
 - **Right:** it goes on, and the position comes back later.
 - **Wrong:** the board flashes red and shows the correct move. You must play the right move before going on. The position comes back sooner.

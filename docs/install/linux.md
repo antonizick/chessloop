@@ -32,7 +32,22 @@ Copy this line, paste it into the terminal and press `Enter`. To paste in most t
 curl -fsSL https://raw.githubusercontent.com/antonizick/chessloop/main/deploy.sh | bash
 ```
 
-You should see a box that says **ChessLoop Installer**, then a short check of your computer:
+You should see a box that says **ChessLoop Installer**, then a menu:
+
+```text
+  What would you like to do?
+
+    1)  Install    — Set up ChessLoop on this computer
+    2)  Update     — Get the latest version (backs up your data first)
+    3)  Back up    — Save all ChessLoop data to a file
+    4)  Restore    — Put back the data from a backup file
+    5)  Uninstall  — Remove ChessLoop (choose how much)
+    6)  Exit
+
+  Choice [1-6]:
+```
+
+Type `1` and press `Enter`. (The other choices are for later.) Next comes a short check of your computer:
 
 ```text
   Checking this computer

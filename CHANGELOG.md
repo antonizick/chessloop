@@ -9,6 +9,7 @@ History before this changelog: see `git log`.
 ## [Unreleased]
 
 ### Added
+- **Fresh-eyes fixes (Phase 11):** the guides now say what testers who followed only the docs had to guess: the installer's first menu, the "settings file" and "Rebuild it anyway?" questions, the account count that includes `seedbot`, "Can't scan? Enter manually" for two-factor sign-in, how to make a first library and line, what **Learned** means, that mobile data away from home does not work, Ubuntu's first-run "platform metrics" question on Windows, the `/mnt/c` prompt, and that ChessLoop needs up to 5 minutes to come back after a Windows restart.
 - **Starter libraries now hold real content:** each of the 16 starter openings has 7 to 9 named lines (127 in all), for example Chigorin, Breyer and Zaitsev under Ruy López — Closed. The lines are bundled in `services/starter_data.json`, so installing needs no network and no Lichess token. `scripts/build-starter-lines.py` (development only) builds the file; `tests/test_starter_content.py` replays every line.
 - `seeds/seed_libraries.py` now tops up libraries that already exist (adds missing lines, keeps your copies and edits), and `chessloop update` runs it (also when you are already on the newest version, for installs that were updated by an older script), printing "Added N lines to the starter libraries.".
 - User guides for people with no coding background: `docs/install/linux.md`, `docs/install/windows-wsl2.md` (from a PC with nothing installed to a working ChessLoop), `docs/using-chessloop.md`, `docs/backup-restore.md`, `docs/updating.md`, `docs/uninstall.md`, `docs/configuration.md` (every `.env` setting), `docs/troubleshooting.md`, `docs/faq.md`, `docs/glossary.md` and `docs/development.md`, with screenshots in `docs/images/`.
@@ -79,6 +80,8 @@ History before this changelog: see `git log`.
 - `.gitignore` now also ignores `*.db*`, `*.tsbuildinfo`, `passdata/`, `backups/`, `runs/` and `*.tar.gz`.
 
 ### Fixed
+- A first practice session no longer fails with a misleading message: when **Learned/Active lines only** is on and no line is marked Learned, the message now says so and what to do. The message also scrolls into view on a short window.
+- `chessloop update` explains its "Rebuild it anyway?" question.
 - Opening a public library on Discover showed no lines (the server answered 500 because each line lacked its `is_learned` field). The lines now load.
 - `chessloop install|update|backup|restore|uninstall` run without a terminal and without `--yes` (cron, a script, `ssh host chessloop backup`) now stop with only the two "use --yes" lines, instead of adding "Something went wrong" and an issue link.
 - Update's "Backup saved" archive was empty (86 bytes) and created an extra, empty `chessloop-data` volume, because it looked for the wrong volume name; level-3 uninstall said "Could not remove volume" and left the database. Every path now uses the real volume `chessloop_chessloop-data` (compared by exact name).

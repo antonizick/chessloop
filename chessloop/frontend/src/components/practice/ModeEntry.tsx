@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { PracticeMode } from "@/types";
 import { Tooltip } from "@/components/ui/Tooltip";
@@ -156,6 +156,12 @@ export function ModeEntry({ onStart, isLoading, error, isUnrated = false, leechC
   const [startPosition, setStartPosition] = useState<StartPosition>("first");
   const [learnedOnly, setLearnedOnly] = useState(true);
   const [selectedLibraryIds, setSelectedLibraryIds] = useState<Set<string> | null>(null);
+  const errorRef = useRef<HTMLDivElement>(null);
+
+  // On a short window the message sits above the Start button; bring it into view.
+  useEffect(() => {
+    if (error) errorRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [error]);
 
   const { data: libraries } = useQuery({
     queryKey: ["libraries"],
@@ -199,7 +205,11 @@ export function ModeEntry({ onStart, isLoading, error, isUnrated = false, leechC
       </div>
 
       {error && (
-        <div className="text-red-400 text-sm px-3 py-2 rounded bg-red-500/10 border border-red-500/20">
+        <div
+          ref={errorRef}
+          role="alert"
+          className="text-red-400 text-sm px-3 py-2 rounded bg-red-500/10 border border-red-500/20"
+        >
           {error}
         </div>
       )}

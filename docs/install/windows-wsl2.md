@@ -66,7 +66,9 @@ Retype new password:
 - Choose a password and type it twice. **Nothing shows while you type a password.** No dots, no stars. That is normal. Keep typing and press `Enter`.
 - This is your Ubuntu password. You need it later when the installer asks for `sudo`. It does not have to match your Windows password.
 
-You should end up at a line like `sam@PC-NAME:~$`. That is where you type commands. Leave this window open.
+Ubuntu may also ask: **Would you like to opt-in to platform metrics collection (Y/n)?** That is Ubuntu's own question about sending usage statistics. ChessLoop does not need it. Type `n` and press `Enter` to share nothing; either answer works.
+
+You should end up at a line like `sam@PC-NAME:~$`. That is where you type commands. Leave this window open. If your line shows a path like `sam@PC-NAME:/mnt/c/Users/sam$` instead, you are in your Windows folder: type `cd ~` and press `Enter`.
 
 ## Step 4. Run the ChessLoop installer
 
@@ -114,6 +116,8 @@ wsl --shutdown
 ```
 
 Then open Ubuntu once, or restart Windows. After that you can close the Ubuntu window, and ChessLoop stays up.
+
+**After a restart, be patient.** Sign in to Windows, then give it a few minutes: in the lab ChessLoop answered about 1½ minutes after sign-in, and it can take up to 5 minutes. Until then the browser shows "localhost refused to connect". You do not need to open anything.
 
 ### Doing it by hand
 
@@ -185,4 +189,4 @@ If Windows asked about its firewall when Docker Desktop first ran and you closed
 - **Type `chessloop` commands in an Ubuntu window.** Open the Start menu and choose **Ubuntu**. See [Daily commands](../../README.md#daily-commands).
 - **Open ChessLoop** at `http://localhost:8090` in your Windows browser.
 - **Back up** with `chessloop backup`. The file lands in the Ubuntu home folder. To see it in Windows, type `explorer.exe ~/chessloop-backups` in Ubuntu.
-- **"localhost refused to connect"** means Ubuntu is not running. Open the Ubuntu window and wait a few seconds. If it keeps happening, check [Step 6](#step-6-keep-chessloop-running).
+- **"localhost refused to connect"** means Ubuntu is not running. Open the Ubuntu window and wait a few seconds (after a Windows restart, wait up to 5 minutes first). If it keeps happening, check [Step 6](#step-6-keep-chessloop-running).
