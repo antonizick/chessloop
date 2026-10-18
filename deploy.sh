@@ -171,17 +171,27 @@ run() {
     if [ "$rc" -eq 0 ]; then
         ok "$label ${DIM}($(fmt_secs $((SECONDS - t0))))${RST}"
     else
+        local tail_lines
+        tail_lines="$(log_tail 15)"   # before our own message lands in the log
         err "$label: failed (exit code $rc, after $(fmt_secs $((SECONDS - t0))))."
-        show_log_tail 15
+        if [ -n "$tail_lines" ]; then
+            _say "  ${DIM}Last lines of the log:${RST}"
+            printf '%s\n' "$tail_lines" | sed 's/^/      /' >&2
+        fi
     fi
     return "$rc"
+}
+
+log_tail() {
+    [ -n "$LOG_FILE" ] || return 0
+    tail -n 200 "$LOG_FILE" | tr '\r' '\n' | sed -E 's/\x1b\[[0-9;?]*[A-Za-z]//g' \
+        | grep -av '^[[:space:]]*$' | tail -n "${1:-15}" || true
 }
 
 show_log_tail() {
     [ -n "$LOG_FILE" ] || return 0
     _say "  ${DIM}Last lines of the log:${RST}"
-    tail -n 200 "$LOG_FILE" | tr '\r' '\n' | sed -E 's/\x1b\[[0-9;?]*[A-Za-z]//g' \
-        | grep -av '^[[:space:]]*$' | tail -n "${1:-15}" | sed 's/^/      /' >&2 || true
+    log_tail "${1:-15}" | sed 's/^/      /' >&2
 }
 
 # A password chosen by the installer is shown once, on the screen only: it is
@@ -2220,7 +2230,7 @@ swap_in_staged_data() {
 current_counts() { in_backend python -c "$PY_COUNTS" 2>/dev/null; }
 
 counts_words() {
-    echo "$(count_of "$1" user) accounts, $(count_of "$1" library) libraries, $(count_of "$1" line) lines"
+    echo "accounts: $(count_of "$1" user), libraries: $(count_of "$1" library), lines: $(count_of "$1" line)"
 }
 
 # check_counts EXPECTED: the live database has exactly these row counts.
@@ -2554,6 +2564,11 @@ PRE_UPDATE_COUNTS=""
 # Shows the CHANGELOG.md lines that are new between two versions.
 show_changes() {
     local lines n
+    if ! git_owner cat-file -e "$1:CHANGELOG.md" 2>/dev/null; then
+        git_owner cat-file -e "$2:CHANGELOG.md" 2>/dev/null \
+            && note "What's new: see $INSTALL_DIR/CHANGELOG.md after the update."
+        return 0
+    fi
     lines="$(as_owner git -C "$INSTALL_DIR" diff --unified=0 "$1" "$2" -- CHANGELOG.md 2>/dev/null \
         | grep '^+' | grep -v '^+++' | sed 's/^+//' | grep -v '^[[:space:]]*$' || true)"
     [ -n "$lines" ] || return 0
@@ -2791,6 +2806,7 @@ INV_WSL_CMD=""        # Startup\ChessLoop.cmd as a Linux path, if it exists
 INV_WSLCONFIG=""      # .wslconfig as a Linux path, if it has our values
 INV_WSL_IDLE=0
 INV_WSL_MIRRORED=0
+INV_OLD_IMAGES=()     # general images versions before 2026-10 pulled (kept; listed with the command)
 
 # What ChessLoop has on this computer.
 collect_inventory() {
@@ -2818,6 +2834,11 @@ collect_inventory() {
     fi
     INV_STRAY=""
     stray_volume_exists && INV_STRAY="$(volume_state "$STRAY_VOLUME")"
+    INV_OLD_IMAGES=()
+    # ace261a ran stock nginx:1.27-alpine; its Update and README backups pulled alpine
+    for img in nginx:1.27-alpine alpine:latest; do
+        "${DOCKER[@]}" image inspect "$img" >/dev/null 2>&1 && INV_OLD_IMAGES+=("$img")
+    done
     INV_DIR_SIZE="$(du -sh "$INSTALL_DIR" 2>/dev/null | cut -f1 || true)"
     INV_UNIT=0; [ -f "$OLD_UNIT_PATH" ] && is_old_unit "$OLD_UNIT_PATH" && INV_UNIT=1
     INV_LINK=0; [ "$(readlink "$COMMAND_LINK" 2>/dev/null)" = "$INSTALL_DIR/deploy.sh" ] && INV_LINK=1
@@ -2896,6 +2917,7 @@ show_uninstall_plan() {
         note "• Your data (Docker volume $VOLUME_NAME), the settings and $INSTALL_DIR"
     fi
     [ "$INV_STRAY" = data ] && note "• The extra Docker volume $STRAY_VOLUME: it has files in it, so it is never deleted here"
+    [ "${#INV_OLD_IMAGES[@]}" -gt 0 ] && note "• General Docker images older versions downloaded: ${INV_OLD_IMAGES[*]} (other programs may use them)"
     [ "$INV_STRAY" = unknown ] && note "• The extra Docker volume $STRAY_VOLUME (couldn't look inside it)"
     note "• Your backups in $BACKUP_DIR and the logs (~/chessloop-*.log)"
     note "• Docker itself (other programs may use it)"
@@ -3042,6 +3064,10 @@ do_uninstall() {
         note "Docker keeps a build cache; to free that disk space:  sudo docker builder prune"
     fi
     [ "$INV_STRAY" = data ] && note "The extra volume $STRAY_VOLUME (with files) is still there; see above."
+    if [ "$level" -ge 2 ] && [ "${#INV_OLD_IMAGES[@]}" -gt 0 ]; then
+        note "Older versions also downloaded ${INV_OLD_IMAGES[*]}. If nothing else uses them:"
+        note "  sudo docker image rm ${INV_OLD_IMAGES[*]}"
+    fi
     blank
 }
 
