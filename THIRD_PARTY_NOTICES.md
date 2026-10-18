@@ -68,7 +68,7 @@ The remaining ~170 transitive npm packages are listed with their licences in `pa
 ## Data
 
 - **Lichess chess-openings** (<https://github.com/lichess-org/chess-openings>): opening names/moves fetched at runtime by the admin import. Released under CC0 1.0 (public domain dedication) per the repository README. Not bundled.
-- **Lichess Explorer API** (<https://explorer.lichess.ovh>): queried by the optional seed script; subject to Lichess terms of use. Not bundled.
+- **Lichess Explorer API** (<https://explorer.lichess.org>): queried by the optional seed script, and by the development-only `scripts/build-starter-lines.py`, which uses move popularity from the Lichess game database (CC0 1.0, <https://database.lichess.org>) to choose how each hand-written starter line continues. The result is bundled as `chessloop/backend/services/starter_data.json` (move lists and line names written for ChessLoop; no Lichess text or dataset is copied). The product itself never calls Lichess for this. Explorer use is subject to Lichess terms of use.
 
 ## Container base images
 

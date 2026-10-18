@@ -2492,6 +2492,25 @@ install_command_link() {
 # legacy_admin [--delete|--lock]: seeds/legacy_admin.py in the running backend.
 legacy_admin() { dc exec -T backend python seeds/legacy_admin.py "$@" 2>&1; }
 
+# starter_lines_added OUTPUT: the number in "Added N lines to the starter libraries."
+# (seeds/seed_libraries.py), or 0.
+starter_lines_added() { sed -n 's/^Added \([0-9][0-9]*\) lines to the starter libraries\.$/\1/p' <<<"$1" | tail -n 1 | grep . || echo 0; }
+
+# After an update: a new version may ship more lines for the starter libraries.
+# Only touches an install that has them (the script does nothing otherwise).
+top_up_starter_content() {
+    local out n
+    if ! out="$(dc exec -T backend python seeds/seed_libraries.py --top-up-only 2>&1)"; then
+        _log "seed_libraries.py --top-up-only: $out"
+        warn "Couldn't add the new starter lines (your data is fine). To try again later: $(prog_name) update"
+        return 0
+    fi
+    _log "$out"
+    n="$(starter_lines_added "$out")"
+    [ "$n" -gt 0 ] && ok "Added $n lines to the starter libraries."
+    return 0
+}
+
 # After an update: the old default admin (Phase 06 notes), an install without
 # any admin (F-026), and email verification left on without email.
 check_accounts() {
@@ -2773,6 +2792,7 @@ do_update() {
         roll_back "$old" 1 "the new version didn't start"
     fi
     ok "Updated: $old_desc → $(describe_commit "$new")"
+    top_up_starter_content
     check_accounts
     record_update "$ref"
     print_update_summary

@@ -10,7 +10,7 @@ Only to install and update. Your openings and practice work offline.
 In a Docker volume called `chessloop_chessloop-data`, on your computer. Nothing is sent anywhere. Back it up with `chessloop backup` ([Backup and restore](backup-restore.md)).
 
 **Do I need a Lichess account?**
-No. The starter libraries and everything else work without one.
+No. The starter libraries (16 openings with 127 lines) and everything else work without one.
 
 **Do I need email?**
 No. Without email, new users sign in at once and an admin sets passwords in Admin panel → Users. Email only adds verification links and "Forgot password". See [Configuration](configuration.md#email).

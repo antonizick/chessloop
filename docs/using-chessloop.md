@@ -50,14 +50,14 @@ Only people who can reach your ChessLoop can register. At home, that is people o
 
 ## 5. The starter libraries
 
-The installer loaded 16 starter opening libraries (Ruy López, Sicilian, Italian and more). You do not need a Lichess account. Find them under **Public Opening Libraries**.
+The installer loaded 16 starter opening libraries (Ruy López, Sicilian, Italian and more). Each one holds several named lines, such as "Chigorin" or "Breyer" under Ruy López — Closed, 127 lines in all. They come with ChessLoop, so you do not need a Lichess account. Find them under **Public Opening Libraries**.
 
 ![Public libraries](images/04-public-libraries.png)
 
 - **Learn / View** opens one read-only.
 - **Fork / Add to My Library** makes your own copy. You can change a copy, and practise it.
 
-New accounts also get a copy of "Ruy López — Closed".
+New accounts also get a copy of "Ruy López — Closed" with all its lines. It is in your own libraries; the other 15 stay under **Public Opening Libraries** until you fork them.
 
 ## 6. Look at a library, then teach a line
 
