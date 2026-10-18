@@ -2738,6 +2738,8 @@ do_update() {
         ok "ChessLoop is up to date: $old_desc."
         if [ "$UPDATE_FORCE" != 1 ] && { [ "$NONINTERACTIVE" = 1 ] || ! ask_yn "Rebuild it anyway?" N; }; then
             ensure_running
+            # An install updated by an older script has the new code but never ran its top-up.
+            top_up_starter_content
             check_accounts
             record_update "$ref"
             return 0

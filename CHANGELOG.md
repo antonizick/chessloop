@@ -10,7 +10,7 @@ History before this changelog: see `git log`.
 
 ### Added
 - **Starter libraries now hold real content:** each of the 16 starter openings has 7 to 9 named lines (127 in all), for example Chigorin, Breyer and Zaitsev under Ruy López — Closed. The lines are bundled in `services/starter_data.json`, so installing needs no network and no Lichess token. `scripts/build-starter-lines.py` (development only) builds the file; `tests/test_starter_content.py` replays every line.
-- `seeds/seed_libraries.py` now tops up libraries that already exist (adds missing lines, keeps your copies and edits), and `chessloop update` runs it, printing "Added N lines to the starter libraries.".
+- `seeds/seed_libraries.py` now tops up libraries that already exist (adds missing lines, keeps your copies and edits), and `chessloop update` runs it (also when you are already on the newest version, for installs that were updated by an older script), printing "Added N lines to the starter libraries.".
 - User guides for people with no coding background: `docs/install/linux.md`, `docs/install/windows-wsl2.md` (from a PC with nothing installed to a working ChessLoop), `docs/using-chessloop.md`, `docs/backup-restore.md`, `docs/updating.md`, `docs/uninstall.md`, `docs/configuration.md` (every `.env` setting), `docs/troubleshooting.md`, `docs/faq.md`, `docs/glossary.md` and `docs/development.md`, with screenshots in `docs/images/`.
 - `scripts/check-doc-links.py` (offline check of links, anchors, images and banned words in the docs; CI job "Docs links", also `scripts/ci-local.sh docs`), `scripts/extract-doc-commands.sh` and `scripts/readability.py`.
 - `LICENSE` (GNU AGPL-3.0-or-later), `NOTICE` and `THIRD_PARTY_NOTICES.md`.
