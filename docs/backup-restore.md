@@ -10,7 +10,7 @@ A *backup* is a copy of everything ChessLoop knows: accounts, libraries, lines a
 chessloop backup
 ```
 
-The file lands in `~/chessloop-backups`. **Copy it to another computer or a USB stick.** A backup on the same disk is lost with the disk.
+The file lands in `~/chessloop-backups`. **Copy it to another computer or a USB stick.** A backup on the same disk is lost with the disk. On a Linux desktop, open your home folder in the file manager, open `chessloop-backups`, and drag the newest `.tar.gz` file onto the stick.
 
 On Windows, type these in an Ubuntu window (see the [Windows guide](install/windows-wsl2.md#everyday-use-on-windows)).
 

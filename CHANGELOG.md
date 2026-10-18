@@ -80,6 +80,7 @@ History before this changelog: see `git log`.
 - `.gitignore` now also ignores `*.db*`, `*.tsbuildinfo`, `passdata/`, `backups/`, `runs/` and `*.tar.gz`.
 
 ### Fixed
+- **Signing in as a different person no longer shows the previous person's libraries and stats.** The browser kept its cached answers after Logout, so the next account on the same tab saw the last account's data for up to 30 seconds (until a reload). The cache is now cleared when someone signs out or a different user signs in. Found by Phase 11 fresh-eyes testers.
 - A first practice session no longer fails with a misleading message: when **Learned/Active lines only** is on and no line is marked Learned, the message now says so and what to do. The message also scrolls into view on a short window.
 - `chessloop update` explains its "Rebuild it anyway?" question.
 - Opening a public library on Discover showed no lines (the server answered 500 because each line lacked its `is_learned` field). The lines now load.
