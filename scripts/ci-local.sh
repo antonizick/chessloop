@@ -2,7 +2,7 @@
 # Run the same checks as .github/workflows/ci.yml on your own machine.
 # Needs Docker (everything runs in containers, so your local Python and Node
 # versions don't matter). Usage: scripts/ci-local.sh [step ...]
-# Steps: backend frontend shell helpers compose images secrets   (default: all)
+# Steps: backend frontend shell helpers compose images docs secrets   (default: all)
 set -euo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
@@ -61,6 +61,10 @@ step_images() {
   docker build -q -t chessloop-ci-nginx chessloop/nginx >/dev/null
 }
 
+step_docs() {
+  python3 scripts/check-doc-links.py
+}
+
 step_secrets() {
   # A git worktree's .git is a pointer file, so scan the real repository dir.
   local gitdir src=$ROOT
@@ -72,7 +76,7 @@ step_secrets() {
 
 ADVISORY=" shell "   # failing here is reported but doesn't fail the run (see ci.yml)
 steps=("$@")
-[[ ${#steps[@]} -gt 0 ]] || steps=(backend frontend shell helpers compose images secrets)
+[[ ${#steps[@]} -gt 0 ]] || steps=(backend frontend shell helpers compose images docs secrets)
 
 failed=()
 advisory_failed=()

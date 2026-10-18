@@ -165,6 +165,16 @@ jobs:
           docker compose -f /opt/chessloop/chessloop/docker-compose.prod.yml logs --tail 200 || true
           tail -n 100 ~/chessloop-*.log || true
 
+  docs:
+    name: Docs links
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Check links, anchors, images and banned words in the user docs
+        run: python3 scripts/check-doc-links.py
+
   secrets:
     name: Secret scan (gitleaks)
     runs-on: ubuntu-24.04
