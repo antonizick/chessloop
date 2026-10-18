@@ -11,7 +11,7 @@ You need:
 - **Windows 11, version 22H2 or newer.** To check: press the `Windows` key, type `winver` and press `Enter`. The window says "Version 22H2" or a later one such as 23H2, 24H2 or 25H2. Windows 10 is not covered.
 - **Administrator rights** on the PC for the first step.
 - A 64-bit Intel or AMD PC with *virtualization* switched on. It is on by default on almost every PC. If step 2 says virtualization is off, [Troubleshooting](../troubleshooting.md#windows-virtualization-is-turned-off) shows how to turn it on.
-- About **2 GB of free memory** for Ubuntu and **8 GB of free disk space**.
+- About **2 GB of free memory** and **8 GB of free disk space**. (Ubuntu takes about 1.5 GB and ChessLoop about 3 GB; the rest is room to spare.)
 - An **internet connection**.
 - **Ubuntu 24.04 or 26.04.** Both work. The plain `wsl --install` command gives you the newest one, and that is fine.
 

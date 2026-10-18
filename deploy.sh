@@ -28,7 +28,7 @@ DEFAULT_PORT=8090
 VOLUME_NAME="chessloop_chessloop-data"     # pinned in docker-compose.prod.yml (ADR-0009)
 STATE_NAME=".chessloop-install"            # progress of an install, so a re-run can continue
 ISSUE_URL="$GITHUB_URL/issues/new?template=install_problem.yml"
-HTTPS_GUIDE_URL="$GITHUB_URL#adding-https-after-localhost-only-install"
+HTTPS_GUIDE_URL="$GITHUB_URL#not-covered-hosting-chessloop-on-the-internet"
 WSL_LAN_GUIDE_URL="https://learn.microsoft.com/windows/wsl/networking#mirrored-mode-networking"
 MIN_RAM_MIB=1800      # a "2 GB" machine reports about 1.9 GiB; 2 GiB builds fine (Phase 04)
 MIN_DISK_MIB=3072     # an install adds about 2.6 GB (Phase 04)
@@ -1774,8 +1774,8 @@ print_summary() {
             ;;
         domain)
             _say "    On the internet, after you set up HTTPS:  ${BOLD}https://$DOMAIN${RST}"
-            note "Next step: put an HTTPS server (Caddy is the easiest) in front of"
-            note "http://localhost:$PORT and point $DOMAIN at this computer. Guide:"
+            note "ChessLoop itself only listens on this computer. Setting up HTTPS and"
+            note "publishing it on the internet is not covered by this project:"
             note "  $HTTPS_GUIDE_URL"
             ;;
     esac
