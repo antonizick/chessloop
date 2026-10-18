@@ -79,6 +79,7 @@ History before this changelog: see `git log`.
 - `.gitignore` now also ignores `*.db*`, `*.tsbuildinfo`, `passdata/`, `backups/`, `runs/` and `*.tar.gz`.
 
 ### Fixed
+- Opening a public library on Discover showed no lines (the server answered 500 because each line lacked its `is_learned` field). The lines now load.
 - `chessloop install|update|backup|restore|uninstall` run without a terminal and without `--yes` (cron, a script, `ssh host chessloop backup`) now stop with only the two "use --yes" lines, instead of adding "Something went wrong" and an issue link.
 - Update's "Backup saved" archive was empty (86 bytes) and created an extra, empty `chessloop-data` volume, because it looked for the wrong volume name; level-3 uninstall said "Could not remove volume" and left the database. Every path now uses the real volume `chessloop_chessloop-data` (compared by exact name).
 - Restoring a backup in Admin → Backups emptied the Backups list: entries whose files still exist are now kept.

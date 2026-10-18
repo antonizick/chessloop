@@ -453,7 +453,13 @@ def test_seed_direct_is_idempotent_and_new_users_get_ruy_lopez(client):
     libs = client.get("/api/libraries", headers=H).json()
     assert [lib["name"] for lib in libs] == ["Ruy López — Closed"]
     # Discover lists them all
-    assert len(client.get("/api/public/libraries", headers=H).json()) == len(STARTERS)
+    listed = client.get("/api/public/libraries", headers=H).json()
+    assert len(listed) == len(STARTERS)
+    # F-055: opening a public library returns its lines (it used to be a 500)
+    for lib in listed:
+        r = client.get(f"/api/public/libraries/{lib['id']}/lines", headers=H)
+        assert r.status_code == 200, lib["name"]
+        assert 6 <= len(r.json()) <= 10 and all(x["name"] and not x["is_learned"] for x in r.json())
 
 
 def test_seedbot_is_verified_hidden_and_cannot_log_in(client):
