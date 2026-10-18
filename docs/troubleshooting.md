@@ -72,7 +72,7 @@ chessloop status
 **Fix:** `bash /opt/chessloop/deploy.sh status`. The next `bash /opt/chessloop/deploy.sh update` adds the command.
 
 ### The page does not load after the computer restarted
-**Fix:** wait a minute. Docker starts first, then ChessLoop. Then run `chessloop status`. If it says stopped, run `chessloop start`. (`chessloop stop` lasts until the next restart; to keep it off, uninstall at level 1.)
+**Fix:** wait. Docker starts first, then ChessLoop. On Linux that takes about a minute; on Windows with WSL it can take up to 5 minutes after you sign in to Windows. Then run `chessloop status`. If it says stopped, run `chessloop start`. (`chessloop stop` lasts until the next restart; to keep it off, uninstall at level 1.)
 
 ### Every page shows an error, or "504 Gateway Timeout"
 **Cause:** Docker's network between ChessLoop's parts can break when Docker restarts (seen on WSL after sleep). The containers show as running but cannot talk to each other.
@@ -103,7 +103,7 @@ They are in `~/chessloop-backups` of the user who ran the command. On Windows th
 
 ### "localhost refused to connect"
 **Cause:** Ubuntu is not running. Windows stops it about 15 seconds after the last Ubuntu window closes, and does not start it again after a restart.
-**Fix:** open **Ubuntu** from the Start menu and wait a few seconds. To stop it happening, use the [keep-alive setting](install/windows-wsl2.md#step-6-keep-chessloop-running).
+**Fix:** if you restarted Windows a moment ago, wait up to 5 minutes after signing in first. If it still does not load, open **Ubuntu** from the Start menu and wait a few seconds. To stop it happening, use the [keep-alive setting](install/windows-wsl2.md#step-6-keep-chessloop-running).
 
 ### `wsl --install` finished but there is no Ubuntu
 **Cause:** on a PC that never had WSL, the first run installs only WSL.
