@@ -222,6 +222,7 @@ on_exit() {
     # A half-written settings file holds the JWT secret: never leave one behind.
     [ -n "$SUBDIR" ] && rm -f "$SUBDIR"/.env.new.* 2>/dev/null
     [ "$rc" -eq 0 ] && return 0
+    [ "$FATAL_SHOWN" -eq 2 ] && return 0   # refused cleanly (no terminal): the two plain lines are enough
     blank
     if [ "$rc" -eq 130 ]; then
         err "Stopped (Ctrl+C) during: ${BOLD}$CURRENT_STEP${RST}"
@@ -3297,6 +3298,7 @@ main() {
             if [ "$NONINTERACTIVE" != 1 ] && ! tty_ok; then
                 echo "This installer asks questions, so it needs a terminal." >&2
                 echo "To run it without questions use --yes (see: bash deploy.sh --help)." >&2
+                FATAL_SHOWN=2   # nothing went wrong: on_exit prints nothing more (F-059)
                 exit 1
             fi
             ;;

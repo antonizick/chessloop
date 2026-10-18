@@ -330,5 +330,20 @@ else
     echo "(Docker not available: skipped the backup/restore round trip)" >&2
 fi
 
+# ── no terminal and no --yes: refuse with two plain lines (F-059) ────────
+# setsid drops the controlling terminal, so /dev/tty cannot be opened.
+if command -v setsid > /dev/null; then
+    for act in install update backup restore uninstall; do
+        setsid -w bash "$ROOT/deploy.sh" "$act" < /dev/null > "$TMP/nt.out" 2> "$TMP/nt.err"
+        rc=$?
+        check "no terminal ($act): exit 1" 1 "$rc"
+        check "no terminal ($act): says use --yes" 1 "$(grep -c 'use --yes' "$TMP/nt.err")"
+        check "no terminal ($act): two lines only" 2 "$(wc -l < "$TMP/nt.err")"
+        check "no terminal ($act): no 'went wrong'" 0 "$(cat "$TMP/nt.out" "$TMP/nt.err" | grep -ci 'went wrong\|install problem')"
+    done
+else
+    echo "(setsid not available: skipped the no-terminal check)" >&2
+fi
+
 echo "deploy.sh helpers: $PASS passed, $FAIL failed"
 [ "$FAIL" -eq 0 ]
