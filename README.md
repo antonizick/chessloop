@@ -95,49 +95,54 @@ The admin account has full access to the Admin panel (⚙ icon in the sidebar), 
 
 ### Service management
 
-Docker starts at boot and brings ChessLoop back by itself. To control it by hand:
+Docker starts at boot and brings ChessLoop back by itself. The installer adds a `chessloop` command (a link to `/opt/chessloop/deploy.sh`) for everything else:
 
 ```bash
-cd /opt/chessloop/chessloop
-sudo docker compose -f docker-compose.prod.yml stop      # stop
-sudo docker compose -f docker-compose.prod.yml up -d     # start
-sudo docker compose -f docker-compose.prod.yml logs --tail 100
+chessloop status      # running? address, version, latest backup
+chessloop stop        # stop (Docker starts it again when the computer restarts)
+chessloop start
+chessloop restart
+chessloop logs        # the last messages; chessloop logs -f keeps following
+chessloop help        # all commands
 ```
 
-(After you log out and in again, `sudo` is not needed for `docker`.) Installs made by older versions of the installer also have a `chessloop` systemd service; see Update.
+If `chessloop` isn't found (an install made before this command existed), use `bash /opt/chessloop/deploy.sh status` and so on; the next Update adds the command. Older installs also had a `chessloop` systemd service that never worked (it restarted every 10 seconds with an error); Update removes it.
 
 ---
 
 ## Update (pull new code, keep your data)
 
-Run the deploy script again and choose **Update**:
-
 ```bash
-bash /opt/chessloop/deploy.sh
-# → choose 2) Update
+chessloop update          # or: bash /opt/chessloop/deploy.sh update
 ```
 
 What happens:
-1. The script creates a timestamped snapshot of your Docker volume before touching anything
-2. `git pull` downloads the latest commits from the main branch
-3. If you're already up to date you can still force a rebuild
-4. `docker compose up -d --build --remove-orphans` rebuilds the containers
-5. Your database (user accounts, libraries, SRS progress) lives in the `chessloop_chessloop-data` Docker volume and is **never removed** by the update process
-6. Health check confirms the new version is running
+1. It shows the installed version and fetches the new one (the branch the install follows, normally `main`), with the new lines from `CHANGELOG.md`.
+2. It saves a backup of all data in `~/chessloop-backups/` first. If that fails, nothing is changed (`--no-backup` overrides this).
+3. Files of ChessLoop that you changed by hand are put aside with `git stash` (your settings in `chessloop/.env` are never touched).
+4. It builds and starts the new version and waits until it is healthy.
+5. If the new version doesn't build or doesn't start, it goes back to the previous version and, if needed, to the data from the backup, and says what went wrong.
+6. It tidies up after older versions: the broken `chessloop` systemd service, the extra empty `chessloop-data` Docker volume, and the old `admin@example.com` account with the password `admin` (it offers to remove or lock it).
+
+Your data (user accounts, libraries, SRS progress) lives in the `chessloop_chessloop-data` Docker volume; Update never removes it. Unattended: `chessloop update --yes`.
 
 ---
 
 ## Uninstall
 
-Run the deploy script and choose **Uninstall**. Three levels:
+```bash
+chessloop uninstall       # or: bash /opt/chessloop/deploy.sh uninstall
+```
 
-| Level | What is removed |
-|---|---|
-| **1 — Containers only** | Stops and removes running containers. Images and all data stay on disk. |
-| **2 — Containers + images** | Removes containers and the Docker images. The database volume and files remain. |
-| **3 — Full wipe** | Removes everything: containers, images, database, files, systemd service. Requires typing `DELETE` then `YES`. |
+It lists exactly what will be removed, with sizes, before asking. Three levels:
 
-Levels 1 and 2 are reversible — you can reinstall and your data will still be there. Level 3 is permanent.
+| Level | What is removed | What stays |
+|---|---|---|
+| **1: Stop ChessLoop** | Its containers | Data, settings, files, Docker images. `chessloop start` brings it back. |
+| **2: Also the images** | Containers and ChessLoop's Docker images | Data, settings, files. `chessloop start` rebuilds the images. |
+| **3: Everything** | Containers, images, the data volume (all accounts and libraries), `/opt/chessloop` with the settings, the `chessloop` command, and on Windows the settings that keep Ubuntu running (you are asked) | Your backups in `~/chessloop-backups`, Docker itself |
+
+Level 3 offers a final backup first (with the settings file) and asks you to type `DELETE`. Every level also removes the old `chessloop` systemd service if an older version installed one. Docker stays installed: the script prints the command to remove it.
 
 ---
 
@@ -241,9 +246,26 @@ docker compose -f docker-compose.prod.yml logs -f
 
 ## Backups
 
+A backup holds password hashes and two-factor secrets: keep it private. Backups are written so that only your user can read them (mode 600).
+
+### From the command line
+
+```bash
+chessloop backup                          # → ~/chessloop-backups/chessloop-<date>-<time>.tar.gz (+ .sha256)
+chessloop backup --with-settings          # also the settings file .env (it holds your secret key)
+chessloop restore                         # choose one of your backups
+chessloop restore ~/chessloop-backups/chessloop-20261017-153000.tar.gz
+```
+
+The backup is a consistent copy made while ChessLoop runs (SQLite's backup API), plus the Admin-panel backups and a checksum. **Restore** checks the file (checksum, database integrity), saves a safety backup of the current data, puts the backup in place, starts ChessLoop and confirms that every table has the same number of rows as the backup. It also accepts a `full_….db` file downloaded from Admin → Backups.
+
+**Moving to a new computer:** install ChessLoop there, copy the backup file over, and run `chessloop restore FILE`. Everyone signs in again (each install has its own secret key), with the accounts and passwords from the backup.
+
+Copy backups to another computer or a USB stick: a backup on the same disk is lost with the disk.
+
 ### From the Admin panel
 
-Admin → Backups tab. Create named backups on demand, download them to your computer, and restore from any backup without downtime.
+Admin → Backups tab. Create named backups on demand, download them to your computer, and restore from any backup without downtime. They are stored inside the data volume (`/data/backups`, mode 600), so they are lost with the volume: download the ones you want to keep.
 
 Three backup types:
 
@@ -252,31 +274,6 @@ Three backup types:
 | `full` | Entire database: users, libraries, lines, SRS progress |
 | `content` | Libraries and lines only (portable to another instance) |
 | `progress` | SRS cards and review log only |
-
-### Docker volume snapshot
-
-```bash
-docker run --rm \
-  -v chessloop_chessloop-data:/src \
-  -v $(pwd):/out \
-  alpine tar czf /out/chessloop-$(date +%F).tar.gz -C /src .
-```
-
-### Restore from snapshot
-
-```bash
-# Stop services first
-docker compose -f /opt/chessloop/chessloop/docker-compose.prod.yml down
-
-# Restore the volume
-docker run --rm \
-  -v chessloop_chessloop-data:/dst \
-  -v $(pwd):/src \
-  alpine tar xzf /src/chessloop-YYYY-MM-DD.tar.gz -C /dst
-
-# Restart
-docker compose -f /opt/chessloop/chessloop/docker-compose.prod.yml up -d
-```
 
 ---
 
@@ -336,7 +333,7 @@ npm run dev   # http://localhost:8090
 
 ```
 ChessLoop/
-├── deploy.sh                  ← installer: install (interactive or --yes), update, uninstall
+├── deploy.sh                  ← installer and the `chessloop` command: install, update, backup, restore, uninstall, status
 └── chessloop/
     ├── .env.example
     ├── docker-compose.yml     ← development
@@ -363,26 +360,17 @@ ChessLoop/
 
 ### All API calls fail / 504 Gateway Timeout after Docker restart (WSL2)
 
-**Symptom:** The app shows a connectivity error, `manage.sh` reports all containers as running, but
-every API call returns 504.
+**Symptom:** The app shows a connectivity error, `chessloop status` shows all containers running, but every API call returns 504.
 
-**Cause:** Docker's bridge network loses its iptables FORWARD rule when the Docker daemon restarts
-(common on WSL2 after sleep/hibernate). Containers stay listed as "Up" but can't reach each other.
-The host can ping containers directly; containers cannot ping each other.
+**Cause:** Docker's bridge network can lose its iptables FORWARD rule when the Docker daemon restarts (seen on WSL2 after sleep or hibernate). Containers stay listed as "Up" but can't reach each other.
 
-**Fix:** Stop and remove the containers, remove the network, then start fresh. The database lives in
-the `chessloop_chessloop-data` Docker volume and is unaffected.
+**Fix:** Recreate the containers and their network. The database lives in the `chessloop_chessloop-data` Docker volume and is unaffected.
 
 ```bash
-docker stop chessloop-nginx chessloop-frontend chessloop-backend
-docker rm   chessloop-nginx chessloop-frontend chessloop-backend
-docker network rm chessloop-net
-./manage.sh   # choose Start
+cd /opt/chessloop/chessloop
+sudo docker compose -f docker-compose.prod.yml down
+chessloop start
 ```
-
-**Prevention:** All containers are started with `--restart always` (baked into `manage.sh`). When the
-Docker daemon comes back up it automatically restarts the containers and re-adds the iptables rules,
-so this issue self-heals after a daemon restart.
 
 ---
 

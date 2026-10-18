@@ -474,3 +474,68 @@ def test_seed_script_entry_point(client, capsys):
     assert "Done:" in capsys.readouterr().out
     assert script.main() == 0
     assert "16 already there" in capsys.readouterr().out
+
+
+# ── legacy_admin.py (the admin@example.com / "admin" account of old installs) ──
+
+
+def _legacy_admin(**extra):
+    from auth.password import hash_password
+    from models import User
+    with _session() as s:
+        u = User(email="admin@example.com", username="admin", password_hash=hash_password("admin"),
+                 role="admin", is_verified=False, **extra)
+        s.add(u)
+        s.commit()
+        s.refresh(u)
+        return u.id
+
+
+def test_legacy_admin_report(client, capsys):
+    script = _load_script("legacy_admin")
+    assert script.main([]) == 0
+    assert capsys.readouterr().out.split() == ["default_admin=0", "libraries=0", "other_admins=0"]
+    _legacy_admin()
+    _admin_headers(client)
+    assert script.main([]) == 0
+    assert capsys.readouterr().out.split() == ["default_admin=1", "libraries=0", "other_admins=1"]
+
+
+def test_legacy_admin_changed_password_is_not_legacy(client, capsys):
+    from auth.password import hash_password
+    from models import User
+    _legacy_admin()
+    with _session() as s:
+        u = s.exec(select(User).where(User.email == "admin@example.com")).first()
+        u.password_hash = hash_password(NEW_PW)
+        s.add(u)
+        s.commit()
+    script = _load_script("legacy_admin")
+    assert script.main([]) == 0
+    assert "default_admin=0" in capsys.readouterr().out
+    assert script.main(["--delete"]) == 1
+    assert _user("admin@example.com") is not None
+
+
+def test_legacy_admin_delete(client):
+    _legacy_admin()
+    assert _load_script("legacy_admin").main(["--delete"]) == 0
+    assert _user("admin@example.com") is None
+
+
+def test_legacy_admin_with_libraries_is_locked_not_deleted(client):
+    from auth.password import verify_password
+    from models import Library
+    uid = _legacy_admin()
+    with _session() as s:
+        s.add(Library(name="Old notes", color="white", owner_user_id=uid))
+        s.commit()
+    script = _load_script("legacy_admin")
+    assert script.main(["--delete"]) == 1
+    assert _user("admin@example.com") is not None
+    assert script.main(["--lock"]) == 0
+    u = _user("admin@example.com")
+    assert u.role == "user" and u.token_version == 1
+    assert not verify_password("admin", u.password_hash)
+    with _session() as s:
+        assert len(s.exec(select(Library).where(Library.owner_user_id == uid)).all()) == 1

@@ -39,7 +39,7 @@ step_frontend() {
 }
 
 step_shell() {
-  local files=(deploy.sh manage.sh)
+  local files=(deploy.sh)
   local f
   for f in scripts/*.sh; do [[ -e $f ]] && files+=("$f"); done
   docker run --rm -v "$ROOT:/mnt" -w /mnt "$SHELLCHECK_IMAGE" "${files[@]}"

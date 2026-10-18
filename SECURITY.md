@@ -11,7 +11,7 @@ Please report security problems **privately**. Do not open a public issue.
 
 You will get a reply through the same GitHub thread. ChessLoop is maintained by one person in their spare time, so please allow some days for a first answer.
 
-**In scope:** the backend API, authentication (password, JWT, TOTP), the installer scripts (`deploy.sh`, `manage.sh`), the Docker/nginx configuration, and backup/restore.
+**In scope:** the backend API, authentication (password, JWT, TOTP), the installer and `chessloop` command (`deploy.sh`), the Docker/nginx configuration, and backup/restore.
 **Out of scope:** attacks that need an already-compromised server or admin account, missing hardening on a server you exposed to the internet without HTTPS, and vulnerabilities in third-party software that ChessLoop merely depends on (report those upstream).
 
 ## Security model
@@ -23,7 +23,7 @@ You will get a reply through the same GitHub thread. ChessLoop is maintained by 
 - Wrong current passwords on **Settings → Change password** are rate limited: 5 failures per account and per IP address in 15 minutes, held in memory (the counter resets when the backend restarts).
 - **Email verification** is on only when the server can send email (`EMAIL_VERIFICATION=auto`, the default; `on`/`off` force it). An admin cannot switch it on without SMTP, because nobody could then verify. Accounts an admin creates are verified.
 - Optional two-factor authentication uses TOTP (authenticator apps).
-- **Backups contain password hashes and MFA secrets.** Store them like passwords and do not share them or attach them to issues.
+- **Backups contain password hashes and MFA secrets.** Store them like passwords and do not share them or attach them to issues. `chessloop backup` writes them with mode 600 into `~/chessloop-backups` (folder mode 700), with a SHA-256 checksum file; the settings file (`.env`, with `JWT_SECRET`) is included only when you ask for it (`--with-settings`). Admin-panel backups are kept inside the data volume, folder mode 700, files mode 600. Restore checks the checksum and the database's integrity before it changes anything, and saves a safety backup of the current data first.
 - Never post your `.env` file, `JWT_SECRET`, or database in a public place.
 - **`JWT_SECRET` is checked at startup.** The backend container refuses to start when the secret is empty, shorter than 32 characters, the `.env.example` placeholder or another published example, or a shell command such as `$(openssl rand -base64 32)` (a `.env` file does not run commands).
 
