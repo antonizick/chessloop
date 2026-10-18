@@ -378,29 +378,6 @@ def get_all_libraries_for_user(user_id: UUID, session: Session) -> list[Library]
     ).all()
 
 
-# ── Canonical 16 starter openings ────────────────────────────────────────────
-# Format: (eco, name, initial_moves, color, difficulty)
-# Used by both the seed script and the /admin/openings/seed endpoint.
-
-STARTER_OPENINGS: list[tuple[str, str, list[str], str, str]] = [
-    ("C50", "Italian Game",             ["e4","e5","Nf3","Nc6","Bc4"],                                               "white", "beginner"),
-    ("C84", "Ruy López — Closed",       ["e4","e5","Nf3","Nc6","Bb5","a6"],                                          "white", "intermediate"),
-    ("A07", "King's Indian Attack",     ["Nf3","d5","g3"],                                                            "white", "intermediate"),
-    ("D02", "London System",            ["d4","d5","Nf3","Nf6","Bf4"],                                               "white", "beginner"),
-    ("D30", "Queen's Gambit Declined",  ["d4","d5","c4"],                                                             "white", "intermediate"),
-    ("B90", "Sicilian — Najdorf",       ["e4","c5","Nf3","d6","d4","cxd4","Nxd4","Nf6","Nc3","a6"],                  "black", "advanced"),
-    ("B70", "Sicilian — Dragon",        ["e4","c5","Nf3","d6","d4","cxd4","Nxd4","Nf6","Nc3","g6"],                  "black", "advanced"),
-    ("C11", "French Defence",           ["e4","e6","d4","d5","Nc3","Nf6"],                                            "black", "intermediate"),
-    ("B18", "Caro-Kann — Classical",    ["e4","c6","d4","d5","Nc3","dxe4","Nxe4","Bf5"],                             "black", "intermediate"),
-    ("E62", "King's Indian Defence",    ["d4","Nf6","c4","g6","Nc3","Bg7"],                                           "black", "intermediate"),
-    ("D70", "Grünfeld Defence",         ["d4","Nf6","c4","g6","Nc3","d5"],                                            "black", "advanced"),
-    ("B07", "Pirc Defence",             ["e4","d6","d4","Nf6","Nc3","g6"],                                            "black", "intermediate"),
-    ("D20", "Queen's Gambit Accepted",  ["d4","d5","c4","dxc4"],                                                      "black", "beginner"),
-    ("B01", "Scandinavian Defence",     ["e4","d5","exd5"],                                                           "black", "beginner"),
-    ("A80", "Dutch Defence",            ["d4","f5"],                                                                  "black", "intermediate"),
-]
-
-
 # ── Lichess GitHub TSV import ────────────────────────────────────────────────
 
 

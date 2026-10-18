@@ -131,7 +131,7 @@ Choose **1** unless you already know your mail provider's *SMTP* details. Withou
   Load the starter opening libraries? (recommended) [Y/n]:
 ```
 
-Press `Enter`. This adds 16 ready-made opening libraries (Ruy López, Sicilian and more) so ChessLoop is not empty. No Lichess account is needed.
+Press `Enter`. This adds 16 ready-made opening libraries (Ruy López, Sicilian and more), each with 7 to 9 named lines (127 lines in all), so ChessLoop is not empty. They come with ChessLoop: you need no Lichess account and no internet for this step.
 
 ### 6. Ready to install
 

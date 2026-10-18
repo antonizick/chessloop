@@ -222,6 +222,7 @@ on_exit() {
     # A half-written settings file holds the JWT secret: never leave one behind.
     [ -n "$SUBDIR" ] && rm -f "$SUBDIR"/.env.new.* 2>/dev/null
     [ "$rc" -eq 0 ] && return 0
+    [ "$FATAL_SHOWN" -eq 2 ] && return 0   # refused cleanly (no terminal): the two plain lines are enough
     blank
     if [ "$rc" -eq 130 ]; then
         err "Stopped (Ctrl+C) during: ${BOLD}$CURRENT_STEP${RST}"
@@ -2491,6 +2492,25 @@ install_command_link() {
 # legacy_admin [--delete|--lock]: seeds/legacy_admin.py in the running backend.
 legacy_admin() { dc exec -T backend python seeds/legacy_admin.py "$@" 2>&1; }
 
+# starter_lines_added OUTPUT: the number in "Added N lines to the starter libraries."
+# (seeds/seed_libraries.py), or 0.
+starter_lines_added() { sed -n 's/^Added \([0-9][0-9]*\) lines to the starter libraries\.$/\1/p' <<<"$1" | tail -n 1 | grep . || echo 0; }
+
+# After an update: a new version may ship more lines for the starter libraries.
+# Only touches an install that has them (the script does nothing otherwise).
+top_up_starter_content() {
+    local out n
+    if ! out="$(dc exec -T backend python seeds/seed_libraries.py --top-up-only 2>&1)"; then
+        _log "seed_libraries.py --top-up-only: $out"
+        warn "Couldn't add the new starter lines (your data is fine). To try again later: $(prog_name) update"
+        return 0
+    fi
+    _log "$out"
+    n="$(starter_lines_added "$out")"
+    [ "$n" -gt 0 ] && ok "Added $n lines to the starter libraries."
+    return 0
+}
+
 # After an update: the old default admin (Phase 06 notes), an install without
 # any admin (F-026), and email verification left on without email.
 check_accounts() {
@@ -2718,6 +2738,8 @@ do_update() {
         ok "ChessLoop is up to date: $old_desc."
         if [ "$UPDATE_FORCE" != 1 ] && { [ "$NONINTERACTIVE" = 1 ] || ! ask_yn "Rebuild it anyway?" N; }; then
             ensure_running
+            # An install updated by an older script has the new code but never ran its top-up.
+            top_up_starter_content
             check_accounts
             record_update "$ref"
             return 0
@@ -2772,6 +2794,7 @@ do_update() {
         roll_back "$old" 1 "the new version didn't start"
     fi
     ok "Updated: $old_desc → $(describe_commit "$new")"
+    top_up_starter_content
     check_accounts
     record_update "$ref"
     print_update_summary
@@ -3297,6 +3320,7 @@ main() {
             if [ "$NONINTERACTIVE" != 1 ] && ! tty_ok; then
                 echo "This installer asks questions, so it needs a terminal." >&2
                 echo "To run it without questions use --yes (see: bash deploy.sh --help)." >&2
+                FATAL_SHOWN=2   # nothing went wrong: on_exit prints nothing more (F-059)
                 exit 1
             fi
             ;;

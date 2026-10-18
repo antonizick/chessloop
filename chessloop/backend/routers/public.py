@@ -200,6 +200,7 @@ def get_public_library_lines(
             starting_fen=pl.starting_fen,
             moves=pl.moves,
             order_index=pl.order_index,
+            is_learned=False,  # a public library is read-only; nobody has learned its lines
             created_at=pl.created_at,
             updated_at=pl.created_at,
         )

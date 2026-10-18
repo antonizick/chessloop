@@ -50,12 +50,16 @@ Open `http://localhost:8090`. Vite sends `/api/*` to `http://localhost:8100`.
 | Development | FastAPI | 8100 | `--port` |
 | Development | Vite | 8090 | `server.port` in `vite.config.ts` |
 
+## Starter libraries and their lines
+
+The lines are bundled in `chessloop/backend/services/starter_data.json` and loaded by `services/starter_libraries.py`, so installing needs no network and no Lichess token. The file is built by `scripts/build-starter-lines.py` (development only, never run at install): it takes hand-written branch points, extends each with the most popular continuation from the Lichess Opening Explorer (which needs a free Lichess API token in `LICHESS_API_TOKEN`), checks every move with python-chess and writes the JSON. `tests/test_starter_content.py` replays every line. To change a line, edit the branch in the script and re-run it.
+
 ## Create an admin and load starter libraries
 
 ```bash
 cd chessloop/backend
 python seeds/create_admin.py --email you@example.com      # asks for a password
-python seeds/seed_libraries.py                            # 16 starter libraries
+python seeds/seed_libraries.py                            # 16 starter libraries, 127 lines (safe to re-run: adds missing lines)
 ```
 
 `create_admin.py` also accepts `--password-stdin`, `--username` and `--reset-password`. The password is never taken from the command line.

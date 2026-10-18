@@ -9,6 +9,8 @@ History before this changelog: see `git log`.
 ## [Unreleased]
 
 ### Added
+- **Starter libraries now hold real content:** each of the 16 starter openings has 7 to 9 named lines (127 in all), for example Chigorin, Breyer and Zaitsev under Ruy López — Closed. The lines are bundled in `services/starter_data.json`, so installing needs no network and no Lichess token. `scripts/build-starter-lines.py` (development only) builds the file; `tests/test_starter_content.py` replays every line.
+- `seeds/seed_libraries.py` now tops up libraries that already exist (adds missing lines, keeps your copies and edits), and `chessloop update` runs it (also when you are already on the newest version, for installs that were updated by an older script), printing "Added N lines to the starter libraries.".
 - User guides for people with no coding background: `docs/install/linux.md`, `docs/install/windows-wsl2.md` (from a PC with nothing installed to a working ChessLoop), `docs/using-chessloop.md`, `docs/backup-restore.md`, `docs/updating.md`, `docs/uninstall.md`, `docs/configuration.md` (every `.env` setting), `docs/troubleshooting.md`, `docs/faq.md`, `docs/glossary.md` and `docs/development.md`, with screenshots in `docs/images/`.
 - `scripts/check-doc-links.py` (offline check of links, anchors, images and banned words in the docs; CI job "Docs links", also `scripts/ci-local.sh docs`), `scripts/extract-doc-commands.sh` and `scripts/readability.py`.
 - `LICENSE` (GNU AGPL-3.0-or-later), `NOTICE` and `THIRD_PARTY_NOTICES.md`.
@@ -45,6 +47,7 @@ History before this changelog: see `git log`.
 - The CI "Install smoke" job also backs up, changes the data, restores and checks the row counts, and runs Update.
 
 ### Changed
+- Admin → Openings → **Seed** now loads the same 16 starter libraries and lines as the installer (it used a separate list of 15 openings with different names).
 - The README is rewritten for first-time users (what you need, a five-step quick start, guides, daily commands). The old HTTPS recipes (Caddy, Cloudflare Tunnel, host nginx, Tailscale Funnel) are removed: hosting ChessLoop on the internet is not covered (one of them, `caddyserver.com/get`, never worked). `chessloop/README.md` now points to the main README and `docs/development.md`.
 - The installer's "from anywhere on the internet" choice now links to the README's "Not covered" section instead of an HTTPS guide.
 - **Update rewritten:** shows the installed and the new version and the new `CHANGELOG.md` lines; follows the branch the install is on (or `CHESSLOOP_REF`) instead of always `main`; saves a real backup first and stops if that fails (`--no-backup` overrides); puts files you changed by hand aside with `git stash` instead of failing; builds, starts and waits until healthy; if the new version doesn't build or doesn't start, goes back to the previous version (and, if it had started, to the data from the pre-update backup) and says why. When there is nothing new it still starts a stopped ChessLoop. Works with `--yes` and `--force`. It also tidies up after older versions: removes the broken `chessloop` systemd service, turns on Docker's start at boot if it is off, offers to remove the extra empty `chessloop-data` volume (one with files in it is never touched, only explained), deletes the empty `backup-pre-update-*.tar.gz` files older updates left, offers to remove or lock the old default admin, offers to create an admin when there is none, and says when email verification is still on without email.
@@ -76,6 +79,8 @@ History before this changelog: see `git log`.
 - `.gitignore` now also ignores `*.db*`, `*.tsbuildinfo`, `passdata/`, `backups/`, `runs/` and `*.tar.gz`.
 
 ### Fixed
+- Opening a public library on Discover showed no lines (the server answered 500 because each line lacked its `is_learned` field). The lines now load.
+- `chessloop install|update|backup|restore|uninstall` run without a terminal and without `--yes` (cron, a script, `ssh host chessloop backup`) now stop with only the two "use --yes" lines, instead of adding "Something went wrong" and an issue link.
 - Update's "Backup saved" archive was empty (86 bytes) and created an extra, empty `chessloop-data` volume, because it looked for the wrong volume name; level-3 uninstall said "Could not remove volume" and left the database. Every path now uses the real volume `chessloop_chessloop-data` (compared by exact name).
 - Restoring a backup in Admin → Backups emptied the Backups list: entries whose files still exist are now kept.
 - The `chessloop` systemd service older installers wrote restarted every 10 seconds with an error; Update and Uninstall remove it (Docker brings ChessLoop back at boot without it). Uninstall now says that every level removes it.

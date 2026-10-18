@@ -1,0 +1,2823 @@
+{
+ "openings": {
+  "Italian Game — Main Line": {
+   "base": [
+    "e4",
+    "e5",
+    "Nf3",
+    "Nc6",
+    "Bc4"
+   ],
+   "lines": [
+    {
+     "name": "Main line: 3...Bc5 4.c3 Nf6 5.d4",
+     "moves": [
+      "e4",
+      "e5",
+      "Nf3",
+      "Nc6",
+      "Bc4",
+      "Bc5",
+      "c3",
+      "Nf6",
+      "d4",
+      "exd4",
+      "cxd4",
+      "Bb4+",
+      "Nc3",
+      "Nxe4"
+     ]
+    },
+    {
+     "name": "Two Knights: 4.Ng5 d5 5.exd5 Na5",
+     "moves": [
+      "e4",
+      "e5",
+      "Nf3",
+      "Nc6",
+      "Bc4",
+      "Nf6",
+      "Ng5",
+      "d5",
+      "exd5",
+      "Na5",
+      "Bb5+",
+      "c6",
+      "dxc6",
+      "bxc6"
+     ]
+    },
+    {
+     "name": "Two Knights: Fried Liver Attack",
+     "moves": [
+      "e4",
+      "e5",
+      "Nf3",
+      "Nc6",
+      "Bc4",
+      "Nf6",
+      "Ng5",
+      "d5",
+      "exd5",
+      "Nxd5",
+      "Nxf7",
+      "Kxf7",
+      "Qf3+",
+      "Ke6"
+     ]
+    },
+    {
+     "name": "Two Knights: 4.d4 exd4 5.e5",
+     "moves": [
+      "e4",
+      "e5",
+      "Nf3",
+      "Nc6",
+      "Bc4",
+      "Nf6",
+      "d4",
+      "exd4",
+      "e5",
+      "d5",
+      "Bb5",
+      "Ne4",
+      "Nxd4",
+      "Bd7"
+     ]
+    },
+    {
+     "name": "Giuoco Pianissimo",
+     "moves": [
+      "e4",
+      "e5",
+      "Nf3",
+      "Nc6",
+      "Bc4",
+      "Bc5",
+      "c3",
+      "Nf6",
+      "d3",
+      "d6",
+      "O-O",
+      "Bg4",
+      "Nbd2",
+      "O-O"
+     ]
+    },
+    {
+     "name": "Italian: 4.O-O (Giuoco Piano, slow)",
+     "moves": [
+      "e4",
+      "e5",
+      "Nf3",
+      "Nc6",
+      "Bc4",
+      "Bc5",
+      "O-O",
+      "Nf6",
+      "d3",
+      "d6",
+      "h3",
+      "h6",
+      "c3",
+      "O-O"
+     ]
+    },
+    {
+     "name": "Evans Gambit",
+     "moves": [
+      "e4",
+      "e5",
+      "Nf3",
+      "Nc6",
+      "Bc4",
+      "Bc5",
+      "b4",
+      "Bxb4",
+      "c3",
+      "Ba5",
+      "d4",
+      "exd4",
+      "O-O",
+      "dxc3"
+     ]
+    },
+    {
+     "name": "Hungarian Defence",
+     "moves": [
+      "e4",
+      "e5",
+      "Nf3",
+      "Nc6",
+      "Bc4",
+      "Be7",
+      "d4",
+      "exd4",
+      "Nxd4",
+      "d6",
+      "O-O",
+      "Nf6",
+      "Nc3",
+      "O-O"
+     ]
+    }
+   ]
+  },
+  "Italian Game — Giuoco Piano": {
+   "base": [
+    "e4",
+    "e5",
+    "Nf3",
+    "Nc6",
+    "Bc4",
+    "Bc5",
+    "c3",
+    "Nf6"
+   ],
+   "lines": [
+    {
+     "name": "Main line: 5.d4 Bb4+ 7.Nc3",
+     "moves": [
+      "e4",
+      "e5",
+      "Nf3",
+      "Nc6",
+      "Bc4",
+      "Bc5",
+      "c3",
+      "Nf6",
+      "d4",
+      "exd4",
+      "cxd4",
+      "Bb4+",
+      "Nc3",
+      "Nxe4"
+     ]
+    },
+    {
+     "name": "Moeller Attack",
+     "moves": [
+      "e4",
+      "e5",
+      "Nf3",
+      "Nc6",
+      "Bc4",
+      "Bc5",
+      "c3",
+      "Nf6",
+      "d4",
+      "exd4",
+      "cxd4",
+      "Bb4+",
+      "Nc3",
+      "Nxe4",
+      "O-O",
+      "Bxc3",
+      "d5"
+     ]
+    },
+    {
+     "name": "6.Bd2 Bxd2+ exchange",
+     "moves": [
+      "e4",
+      "e5",
+      "Nf3",
+      "Nc6",
+      "Bc4",
+      "Bc5",
+      "c3",
+      "Nf6",
+      "d4",
+      "exd4",
+      "cxd4",
+      "Bb4+",
+      "Bd2",
+      "Bxd2+",
+      "Nbxd2",
+      "d5"
+     ]
+    },
+    {
+     "name": "Centre attack 6.e5",
+     "moves": [
+      "e4",
+      "e5",
+      "Nf3",
+      "Nc6",
+      "Bc4",
+      "Bc5",
+      "c3",
+      "Nf6",
+      "d4",
+      "exd4",
+      "e5",
+      "d5",
+      "Bb5",
+      "Ne4",
+      "cxd4",
+      "Bb6"
+     ]
+    },
+    {
+     "name": "Giuoco Pianissimo 5.d3 d6",
+     "moves": [
+      "e4",
+      "e5",
+      "Nf3",
+      "Nc6",
+      "Bc4",
+      "Bc5",
+      "c3",
+      "Nf6",
+      "d3",
+      "d6",
+      "O-O",
+      "O-O",
+      "h3",
+      "h6"
+     ]
+    },
+    {
+     "name": "5.d3 a6",
+     "moves": [
+      "e4",
+      "e5",
+      "Nf3",
+      "Nc6",
+      "Bc4",
+      "Bc5",
+      "c3",
+      "Nf6",
+      "d3",
+      "a6",
+      "O-O",
+      "d6",
+      "Bb3",
+      "Ba7"
+     ]
+    },
+    {
+     "name": "5.d3 d6 6.Nbd2",
+     "moves": [
+      "e4",
+      "e5",
+      "Nf3",
+      "Nc6",
+      "Bc4",
+      "Bc5",
+      "c3",
+      "Nf6",
+      "d3",
+      "d6",
+      "Nbd2",
+      "O-O",
+      "Nf1",
+      "Bg4"
+     ]
+    }
+   ]
+  },
+  "Ruy López — Closed": {
+   "base": [
+    "e4",
+    "e5",
+    "Nf3",
+    "Nc6",
+    "Bb5",
+    "a6",
+    "Ba4",
+    "Nf6",
+    "O-O",
+    "Be7",
+    "Re1",
+    "b5",
+    "Bb3",
+    "d6",
+    "c3",
+    "O-O"
+   ],
+   "lines": [
+    {
+     "name": "Closed main line: 9.h3",
+     "moves": [
+      "e4",
+      "e5",
+      "Nf3",
+      "Nc6",
+      "Bb5",
+      "a6",
+      "Ba4",
+      "Nf6",
+      "O-O",
+      "Be7",
+      "Re1",
+      "b5",
+      "Bb3",
+      "d6",
+      "c3",
+      "O-O",
+      "h3"
+     ]
+    },
+    {
+     "name": "Chigorin: 9...Na5",
+     "moves": [
+      "e4",
+      "e5",
+      "Nf3",
+      "Nc6",
+      "Bb5",
+      "a6",
+      "Ba4",
+      "Nf6",
+      "O-O",
+      "Be7",
+      "Re1",
+      "b5",
+      "Bb3",
+      "d6",
+      "c3",
+      "O-O",
+      "h3",
+      "Na5",
+      "Bc2",
+      "c5",
+      "d4",
+      "Qc7"
+     ]
+    },
+    {
+     "name": "Chigorin: 11...Qd7",
+     "moves": [
+      "e4",
+      "e5",
+      "Nf3",
+      "Nc6",
+      "Bb5",
+      "a6",
+      "Ba4",
+      "Nf6",
+      "O-O",
+      "Be7",
+      "Re1",
+      "b5",
+      "Bb3",
+      "d6",
+      "c3",
+      "O-O",
+      "h3",
+      "Na5",
+      "Bc2",
+      "c5",
+      "d4",
+      "Qd7"
+     ]
+    },
+    {
+     "name": "Breyer: 9...Nb8",
+     "moves": [
+      "e4",
+      "e5",
+      "Nf3",
+      "Nc6",
+      "Bb5",
+      "a6",
+      "Ba4",
+      "Nf6",
+      "O-O",
+      "Be7",
+      "Re1",
+      "b5",
+      "Bb3",
+      "d6",
+      "c3",
+      "O-O",
+      "h3",
+      "Nb8",
+      "d4",
+      "Nbd7"
+     ]
+    },
+    {
+     "name": "Zaitsev: 9...Bb7",
+     "moves": [
+      "e4",
+      "e5",
+      "Nf3",
+      "Nc6",
+      "Bb5",
+      "a6",
+      "Ba4",
+      "Nf6",
+      "O-O",
+      "Be7",
+      "Re1",
+      "b5",
+      "Bb3",
+      "d6",
+      "c3",
+      "O-O",
+      "h3",
+      "Bb7",
+      "d4",
+      "Re8",
+      "Nbd2",
+      "Bf8"
+     ]
+    },
+    {
+     "name": "Smyslov: 9...h6",
+     "moves": [
+      "e4",
+      "e5",
+      "Nf3",
+      "Nc6",
+      "Bb5",
+      "a6",
+      "Ba4",
+      "Nf6",
+      "O-O",
+      "Be7",
+      "Re1",
+      "b5",
+      "Bb3",
+      "d6",
+      "c3",
+      "O-O",
+      "h3",
+      "h6",
+      "d4",
+      "Re8",
+      "Nbd2",
+      "Bf8"
+     ]
+    },
+    {
+     "name": "Karpov: 9...Nd7",
+     "moves": [
+      "e4",
+      "e5",
+      "Nf3",
+      "Nc6",
+      "Bb5",
+      "a6",
+      "Ba4",
+      "Nf6",
+      "O-O",
+      "Be7",
+      "Re1",
+      "b5",
+      "Bb3",
+      "d6",
+      "c3",
+      "O-O",
+      "h3",
+      "Nd7",
+      "d4",
+      "Bf6"
+     ]
+    },
+    {
+     "name": "9.d4 Bg4 (pin)",
+     "moves": [
+      "e4",
+      "e5",
+      "Nf3",
+      "Nc6",
+      "Bb5",
+      "a6",
+      "Ba4",
+      "Nf6",
+      "O-O",
+      "Be7",
+      "Re1",
+      "b5",
+      "Bb3",
+      "d6",
+      "c3",
+      "O-O",
+      "d4",
+      "Bg4"
+     ]
+    },
+    {
+     "name": "9.d3 slow plan",
+     "moves": [
+      "e4",
+      "e5",
+      "Nf3",
+      "Nc6",
+      "Bb5",
+      "a6",
+      "Ba4",
+      "Nf6",
+      "O-O",
+      "Be7",
+      "Re1",
+      "b5",
+      "Bb3",
+      "d6",
+      "c3",
+      "O-O",
+      "d3",
+      "Na5",
+      "Bc2",
+      "c5"
+     ]
+    }
+   ]
+  },
+  "London System": {
+   "base": [
+    "d4",
+    "d5",
+    "Nf3",
+    "Nf6",
+    "Bf4"
+   ],
+   "lines": [
+    {
+     "name": "Main line: ...e6 and ...Bd6",
+     "moves": [
+      "d4",
+      "d5",
+      "Nf3",
+      "Nf6",
+      "Bf4",
+      "e6",
+      "e3",
+      "Bd6",
+      "Bg3",
+      "O-O",
+      "Nbd2",
+      "c5",
+      "c3",
+      "Nc6"
+     ]
+    },
+    {
+     "name": "vs ...c5 with ...Nc6",
+     "moves": [
+      "d4",
+      "d5",
+      "Nf3",
+      "Nf6",
+      "Bf4",
+      "e6",
+      "e3",
+      "c5",
+      "c3",
+      "Nc6",
+      "Nbd2",
+      "Bd6",
+      "Bg3",
+      "O-O"
+     ]
+    },
+    {
+     "name": "vs ...c5 and ...Qb6",
+     "moves": [
+      "d4",
+      "d5",
+      "Nf3",
+      "Nf6",
+      "Bf4",
+      "c5",
+      "e3",
+      "Nc6",
+      "c3",
+      "Qb6",
+      "Qb3",
+      "c4",
+      "Qc2",
+      "Bf5"
+     ]
+    },
+    {
+     "name": "vs ...Bf5 (mirror)",
+     "moves": [
+      "d4",
+      "d5",
+      "Nf3",
+      "Nf6",
+      "Bf4",
+      "Bf5",
+      "e3",
+      "e6",
+      "Nbd2",
+      "Nbd7",
+      "c3",
+      "c5",
+      "Be2",
+      "Be7"
+     ]
+    },
+    {
+     "name": "vs ...g6 (Pirc style)",
+     "moves": [
+      "d4",
+      "d5",
+      "Nf3",
+      "Nf6",
+      "Bf4",
+      "g6",
+      "e3",
+      "Bg7",
+      "h3",
+      "O-O",
+      "Nbd2",
+      "c5",
+      "c3",
+      "Nc6"
+     ]
+    },
+    {
+     "name": "vs ...Bd6 with Bd3",
+     "moves": [
+      "d4",
+      "d5",
+      "Nf3",
+      "Nf6",
+      "Bf4",
+      "e6",
+      "e3",
+      "Bd6",
+      "Bg3",
+      "O-O",
+      "Bd3",
+      "b6",
+      "Nbd2",
+      "Bb7"
+     ]
+    },
+    {
+     "name": "vs ...c5 and ...cxd4",
+     "moves": [
+      "d4",
+      "d5",
+      "Nf3",
+      "Nf6",
+      "Bf4",
+      "e6",
+      "e3",
+      "c5",
+      "Nbd2",
+      "cxd4",
+      "exd4",
+      "Bd6",
+      "Bg3",
+      "Nc6"
+     ]
+    }
+   ]
+  },
+  "Queen's Gambit Declined": {
+   "base": [
+    "d4",
+    "d5",
+    "c4",
+    "e6"
+   ],
+   "lines": [
+    {
+     "name": "Orthodox main line: Bh4",
+     "moves": [
+      "d4",
+      "d5",
+      "c4",
+      "e6",
+      "Nc3",
+      "Nf6",
+      "Bg5",
+      "Be7",
+      "e3",
+      "O-O",
+      "Nf3",
+      "h6",
+      "Bh4",
+      "b6"
+     ]
+    },
+    {
+     "name": "Tartakower: ...b6",
+     "moves": [
+      "d4",
+      "d5",
+      "c4",
+      "e6",
+      "Nc3",
+      "Nf6",
+      "Bg5",
+      "Be7",
+      "e3",
+      "O-O",
+      "Nf3",
+      "h6",
+      "Bh4",
+      "b6",
+      "Bd3",
+      "Bb7"
+     ]
+    },
+    {
+     "name": "Lasker: ...Ne4",
+     "moves": [
+      "d4",
+      "d5",
+      "c4",
+      "e6",
+      "Nc3",
+      "Nf6",
+      "Bg5",
+      "Be7",
+      "e3",
+      "O-O",
+      "Nf3",
+      "h6",
+      "Bh4",
+      "Ne4",
+      "Bxe7",
+      "Qxe7"
+     ]
+    },
+    {
+     "name": "Manhattan: ...dxc4",
+     "moves": [
+      "d4",
+      "d5",
+      "c4",
+      "e6",
+      "Nc3",
+      "Nf6",
+      "Bg5",
+      "Be7",
+      "e3",
+      "O-O",
+      "Nf3",
+      "h6",
+      "Bh4",
+      "dxc4",
+      "Bxc4",
+      "Nbd7"
+     ]
+    },
+    {
+     "name": "Exchange Variation",
+     "moves": [
+      "d4",
+      "d5",
+      "c4",
+      "e6",
+      "Nc3",
+      "Nf6",
+      "cxd5",
+      "exd5",
+      "Bg5",
+      "Be7",
+      "e3",
+      "c6",
+      "Bd3",
+      "O-O"
+     ]
+    },
+    {
+     "name": "Exchange: Nf3, Bg5 and Qc2",
+     "moves": [
+      "d4",
+      "d5",
+      "c4",
+      "e6",
+      "cxd5",
+      "exd5",
+      "Nc3",
+      "Nf6",
+      "Nf3",
+      "Be7",
+      "Bg5",
+      "O-O",
+      "e3",
+      "Nbd7",
+      "Bd3",
+      "Re8",
+      "Qc2",
+      "c6"
+     ]
+    },
+    {
+     "name": "Ragozin: ...Bb4",
+     "moves": [
+      "d4",
+      "d5",
+      "c4",
+      "e6",
+      "Nc3",
+      "Nf6",
+      "Nf3",
+      "Bb4",
+      "Bg5",
+      "h6",
+      "Bh4",
+      "g5",
+      "Bg3",
+      "Ne4"
+     ]
+    },
+    {
+     "name": "Cambridge Springs",
+     "moves": [
+      "d4",
+      "d5",
+      "c4",
+      "e6",
+      "Nc3",
+      "Nf6",
+      "Bg5",
+      "Nbd7",
+      "e3",
+      "c6",
+      "Nf3",
+      "Qa5",
+      "Bxf6",
+      "Nxf6"
+     ]
+    },
+    {
+     "name": "Orthodox: Rc1 and ...c6",
+     "moves": [
+      "d4",
+      "d5",
+      "c4",
+      "e6",
+      "Nc3",
+      "Nf6",
+      "Bg5",
+      "Be7",
+      "e3",
+      "O-O",
+      "Nf3",
+      "Nbd7",
+      "Rc1",
+      "c6",
+      "Bd3",
+      "dxc4",
+      "Bxc4",
+      "Nd5"
+     ]
+    }
+   ]
+  },
+  "King's Indian Attack": {
+   "base": [
+    "Nf3",
+    "d5",
+    "g3"
+   ],
+   "lines": [
+    {
+     "name": "Main line vs ...c5 and ...e5",
+     "moves": [
+      "Nf3",
+      "d5",
+      "g3",
+      "Nf6",
+      "Bg2",
+      "c5",
+      "O-O",
+      "Nc6",
+      "d3",
+      "e5",
+      "Nbd2",
+      "Bd6",
+      "e4",
+      "d4"
+     ]
+    },
+    {
+     "name": "vs ...e6 (French set-up)",
+     "moves": [
+      "Nf3",
+      "d5",
+      "g3",
+      "Nf6",
+      "Bg2",
+      "e6",
+      "O-O",
+      "Be7",
+      "d3",
+      "O-O",
+      "Nbd2",
+      "c5",
+      "e4",
+      "Nc6"
+     ]
+    },
+    {
+     "name": "vs ...c5 and ...e6",
+     "moves": [
+      "Nf3",
+      "d5",
+      "g3",
+      "Nf6",
+      "Bg2",
+      "c5",
+      "O-O",
+      "Nc6",
+      "d3",
+      "e6",
+      "Nbd2",
+      "Be7",
+      "e4",
+      "O-O"
+     ]
+    },
+    {
+     "name": "vs ...c5 and ...Nc6 early",
+     "moves": [
+      "Nf3",
+      "d5",
+      "g3",
+      "c5",
+      "Bg2",
+      "Nc6",
+      "O-O",
+      "e5",
+      "d3",
+      "Nf6",
+      "Nbd2",
+      "Be7",
+      "e4",
+      "d4"
+     ]
+    },
+    {
+     "name": "vs ...g6",
+     "moves": [
+      "Nf3",
+      "d5",
+      "g3",
+      "g6",
+      "Bg2",
+      "Bg7",
+      "O-O",
+      "Nf6",
+      "d3",
+      "O-O",
+      "Nbd2",
+      "Nc6",
+      "e4",
+      "dxe4"
+     ]
+    },
+    {
+     "name": "vs ...Bg4",
+     "moves": [
+      "Nf3",
+      "d5",
+      "g3",
+      "Bg4",
+      "Bg2",
+      "Nd7",
+      "O-O",
+      "e6",
+      "d3",
+      "Ngf6",
+      "Nbd2",
+      "Be7",
+      "e4",
+      "O-O"
+     ]
+    },
+    {
+     "name": "vs ...c6 and ...Bg4",
+     "moves": [
+      "Nf3",
+      "d5",
+      "g3",
+      "c6",
+      "Bg2",
+      "Bg4",
+      "O-O",
+      "Nd7",
+      "d3",
+      "e6",
+      "Nbd2",
+      "Ngf6",
+      "e4",
+      "Be7"
+     ]
+    },
+    {
+     "name": "vs ...e6 and ...c5",
+     "moves": [
+      "Nf3",
+      "d5",
+      "g3",
+      "Nf6",
+      "Bg2",
+      "e6",
+      "O-O",
+      "c5",
+      "d3",
+      "Nc6",
+      "Nbd2",
+      "Be7",
+      "e4",
+      "O-O"
+     ]
+    }
+   ]
+  },
+  "Sicilian Defence — Najdorf": {
+   "base": [
+    "e4",
+    "c5",
+    "Nf3",
+    "d6",
+    "d4",
+    "cxd4",
+    "Nxd4",
+    "Nf6",
+    "Nc3",
+    "a6"
+   ],
+   "lines": [
+    {
+     "name": "English Attack: 6.Be3 e5",
+     "moves": [
+      "e4",
+      "c5",
+      "Nf3",
+      "d6",
+      "d4",
+      "cxd4",
+      "Nxd4",
+      "Nf6",
+      "Nc3",
+      "a6",
+      "Be3",
+      "e5",
+      "Nb3",
+      "Be6"
+     ]
+    },
+    {
+     "name": "English Attack: 6.Be3 e6",
+     "moves": [
+      "e4",
+      "c5",
+      "Nf3",
+      "d6",
+      "d4",
+      "cxd4",
+      "Nxd4",
+      "Nf6",
+      "Nc3",
+      "a6",
+      "Be3",
+      "e6",
+      "f3",
+      "b5",
+      "g4",
+      "h6",
+      "Qd2",
+      "Nbd7"
+     ]
+    },
+    {
+     "name": "6.Bg5 e6 7.f4 Be7",
+     "moves": [
+      "e4",
+      "c5",
+      "Nf3",
+      "d6",
+      "d4",
+      "cxd4",
+      "Nxd4",
+      "Nf6",
+      "Nc3",
+      "a6",
+      "Bg5",
+      "e6",
+      "f4",
+      "Be7",
+      "Qf3",
+      "Qc7"
+     ]
+    },
+    {
+     "name": "Poisoned Pawn: 7...Qb6",
+     "moves": [
+      "e4",
+      "c5",
+      "Nf3",
+      "d6",
+      "d4",
+      "cxd4",
+      "Nxd4",
+      "Nf6",
+      "Nc3",
+      "a6",
+      "Bg5",
+      "e6",
+      "f4",
+      "Qb6",
+      "Qd2",
+      "Qxb2",
+      "Rb1",
+      "Qa3"
+     ]
+    },
+    {
+     "name": "6.Be2 e5 (Scheveningen-style)",
+     "moves": [
+      "e4",
+      "c5",
+      "Nf3",
+      "d6",
+      "d4",
+      "cxd4",
+      "Nxd4",
+      "Nf6",
+      "Nc3",
+      "a6",
+      "Be2",
+      "e5",
+      "Nb3",
+      "Be7",
+      "O-O",
+      "O-O"
+     ]
+    },
+    {
+     "name": "6.Be2 e6",
+     "moves": [
+      "e4",
+      "c5",
+      "Nf3",
+      "d6",
+      "d4",
+      "cxd4",
+      "Nxd4",
+      "Nf6",
+      "Nc3",
+      "a6",
+      "Be2",
+      "e6",
+      "O-O",
+      "Be7",
+      "f4",
+      "O-O",
+      "Be3",
+      "Qc7"
+     ]
+    },
+    {
+     "name": "6.Bc4 e6 7.Bb3 b5",
+     "moves": [
+      "e4",
+      "c5",
+      "Nf3",
+      "d6",
+      "d4",
+      "cxd4",
+      "Nxd4",
+      "Nf6",
+      "Nc3",
+      "a6",
+      "Bc4",
+      "e6",
+      "Bb3",
+      "b5",
+      "O-O",
+      "Bb7"
+     ]
+    },
+    {
+     "name": "6.f3 e5 7.Nb3",
+     "moves": [
+      "e4",
+      "c5",
+      "Nf3",
+      "d6",
+      "d4",
+      "cxd4",
+      "Nxd4",
+      "Nf6",
+      "Nc3",
+      "a6",
+      "f3",
+      "e5",
+      "Nb3",
+      "Be6",
+      "Be3",
+      "Nbd7"
+     ]
+    },
+    {
+     "name": "6.Bg5 Nbd7 7.Bc4",
+     "moves": [
+      "e4",
+      "c5",
+      "Nf3",
+      "d6",
+      "d4",
+      "cxd4",
+      "Nxd4",
+      "Nf6",
+      "Nc3",
+      "a6",
+      "Bg5",
+      "Nbd7",
+      "Bc4",
+      "Qa5",
+      "Qd2",
+      "h6"
+     ]
+    }
+   ]
+  },
+  "Sicilian Defence — Dragon": {
+   "base": [
+    "e4",
+    "c5",
+    "Nf3",
+    "d6",
+    "d4",
+    "cxd4",
+    "Nxd4",
+    "Nf6",
+    "Nc3",
+    "g6"
+   ],
+   "lines": [
+    {
+     "name": "Yugoslav: 9.Qd2 Nc6",
+     "moves": [
+      "e4",
+      "c5",
+      "Nf3",
+      "d6",
+      "d4",
+      "cxd4",
+      "Nxd4",
+      "Nf6",
+      "Nc3",
+      "g6",
+      "Be3",
+      "Bg7",
+      "f3",
+      "O-O",
+      "Qd2",
+      "Nc6"
+     ]
+    },
+    {
+     "name": "Yugoslav: 9.Bc4 Bd7",
+     "moves": [
+      "e4",
+      "c5",
+      "Nf3",
+      "d6",
+      "d4",
+      "cxd4",
+      "Nxd4",
+      "Nf6",
+      "Nc3",
+      "g6",
+      "Be3",
+      "Bg7",
+      "f3",
+      "O-O",
+      "Qd2",
+      "Nc6",
+      "Bc4",
+      "Bd7",
+      "O-O-O",
+      "Rc8",
+      "Bb3",
+      "Ne5"
+     ]
+    },
+    {
+     "name": "Yugoslav: 9.O-O-O d5",
+     "moves": [
+      "e4",
+      "c5",
+      "Nf3",
+      "d6",
+      "d4",
+      "cxd4",
+      "Nxd4",
+      "Nf6",
+      "Nc3",
+      "g6",
+      "Be3",
+      "Bg7",
+      "f3",
+      "O-O",
+      "Qd2",
+      "Nc6",
+      "O-O-O",
+      "d5",
+      "Kb1",
+      "Nxd4"
+     ]
+    },
+    {
+     "name": "Yugoslav: Soltis h4 attack",
+     "moves": [
+      "e4",
+      "c5",
+      "Nf3",
+      "d6",
+      "d4",
+      "cxd4",
+      "Nxd4",
+      "Nf6",
+      "Nc3",
+      "g6",
+      "Be3",
+      "Bg7",
+      "f3",
+      "Nc6",
+      "Qd2",
+      "O-O",
+      "Bc4",
+      "Bd7",
+      "O-O-O",
+      "Rc8",
+      "Bb3",
+      "Ne5",
+      "h4",
+      "h5"
+     ]
+    },
+    {
+     "name": "Classical: 7.Be2",
+     "moves": [
+      "e4",
+      "c5",
+      "Nf3",
+      "d6",
+      "d4",
+      "cxd4",
+      "Nxd4",
+      "Nf6",
+      "Nc3",
+      "g6",
+      "Be2",
+      "Bg7",
+      "O-O",
+      "O-O",
+      "Nb3",
+      "Be6",
+      "f4",
+      "Nc6"
+     ]
+    },
+    {
+     "name": "Classical: 7.Bc4",
+     "moves": [
+      "e4",
+      "c5",
+      "Nf3",
+      "d6",
+      "d4",
+      "cxd4",
+      "Nxd4",
+      "Nf6",
+      "Nc3",
+      "g6",
+      "Bc4",
+      "Bg7",
+      "Be3",
+      "O-O",
+      "Bb3",
+      "Nc6",
+      "f3"
+     ]
+    },
+    {
+     "name": "Levenfish-style: 7.f4",
+     "moves": [
+      "e4",
+      "c5",
+      "Nf3",
+      "d6",
+      "d4",
+      "cxd4",
+      "Nxd4",
+      "Nf6",
+      "Nc3",
+      "g6",
+      "f4",
+      "Bg7",
+      "Nf3",
+      "O-O",
+      "Bd3",
+      "Nc6"
+     ]
+    }
+   ]
+  },
+  "French Defence — Classical": {
+   "base": [
+    "e4",
+    "e6",
+    "d4",
+    "d5",
+    "Nc3",
+    "Nf6"
+   ],
+   "lines": [
+    {
+     "name": "Classical: 4.Bg5 Be7 5.e5",
+     "moves": [
+      "e4",
+      "e6",
+      "d4",
+      "d5",
+      "Nc3",
+      "Nf6",
+      "Bg5",
+      "Be7",
+      "e5",
+      "Nfd7",
+      "Bxe7",
+      "Qxe7",
+      "f4",
+      "a6"
+     ]
+    },
+    {
+     "name": "Steinitz: 4.e5 Nfd7",
+     "moves": [
+      "e4",
+      "e6",
+      "d4",
+      "d5",
+      "Nc3",
+      "Nf6",
+      "e5",
+      "Nfd7",
+      "f4",
+      "c5",
+      "Nf3",
+      "Nc6",
+      "Be3",
+      "cxd4",
+      "Nxd4",
+      "Bc5"
+     ]
+    },
+    {
+     "name": "Burn: 4.Bg5 dxe4",
+     "moves": [
+      "e4",
+      "e6",
+      "d4",
+      "d5",
+      "Nc3",
+      "Nf6",
+      "Bg5",
+      "dxe4",
+      "Nxe4",
+      "Be7",
+      "Bxf6",
+      "Bxf6",
+      "Nf3",
+      "O-O"
+     ]
+    },
+    {
+     "name": "MacCutcheon: 4...Bb4",
+     "moves": [
+      "e4",
+      "e6",
+      "d4",
+      "d5",
+      "Nc3",
+      "Nf6",
+      "Bg5",
+      "Bb4",
+      "e5",
+      "h6",
+      "Bd2",
+      "Bxc3",
+      "bxc3",
+      "Ne4",
+      "Qg4",
+      "Kf8"
+     ]
+    },
+    {
+     "name": "Classical: 6.h4 attack",
+     "moves": [
+      "e4",
+      "e6",
+      "d4",
+      "d5",
+      "Nc3",
+      "Nf6",
+      "Bg5",
+      "Be7",
+      "e5",
+      "Nfd7",
+      "h4",
+      "h6",
+      "Bxe7",
+      "Qxe7"
+     ]
+    },
+    {
+     "name": "Classical: 7.Qd2 O-O 8.f4",
+     "moves": [
+      "e4",
+      "e6",
+      "d4",
+      "d5",
+      "Nc3",
+      "Nf6",
+      "Bg5",
+      "Be7",
+      "e5",
+      "Nfd7",
+      "Bxe7",
+      "Qxe7",
+      "Qd2",
+      "O-O",
+      "f4",
+      "c5"
+     ]
+    },
+    {
+     "name": "Steinitz: 5...c5 6.Nf3 Nc6",
+     "moves": [
+      "e4",
+      "e6",
+      "d4",
+      "d5",
+      "Nc3",
+      "Nf6",
+      "e5",
+      "Nfd7",
+      "Nce2",
+      "c5",
+      "c3",
+      "Nc6",
+      "f4",
+      "Qb6"
+     ]
+    }
+   ]
+  },
+  "Caro-Kann — Classical": {
+   "base": [
+    "e4",
+    "c6",
+    "d4",
+    "d5",
+    "Nc3",
+    "dxe4",
+    "Nxe4",
+    "Bf5",
+    "Ng3",
+    "Bg6"
+   ],
+   "lines": [
+    {
+     "name": "Main line: h4 and h5",
+     "moves": [
+      "e4",
+      "c6",
+      "d4",
+      "d5",
+      "Nc3",
+      "dxe4",
+      "Nxe4",
+      "Bf5",
+      "Ng3",
+      "Bg6",
+      "h4",
+      "h6",
+      "Nf3",
+      "Nd7",
+      "h5",
+      "Bh7",
+      "Bd3",
+      "Bxd3",
+      "Qxd3"
+     ]
+    },
+    {
+     "name": "7.h4 h6 8.Nf3 Nd7 9.Bd3",
+     "moves": [
+      "e4",
+      "c6",
+      "d4",
+      "d5",
+      "Nc3",
+      "dxe4",
+      "Nxe4",
+      "Bf5",
+      "Ng3",
+      "Bg6",
+      "h4",
+      "h6",
+      "Nf3",
+      "Nd7",
+      "Bd3",
+      "Bxd3",
+      "Qxd3",
+      "e6",
+      "Bd2",
+      "Ngf6"
+     ]
+    },
+    {
+     "name": "7.h4 h6 8.h5",
+     "moves": [
+      "e4",
+      "c6",
+      "d4",
+      "d5",
+      "Nc3",
+      "dxe4",
+      "Nxe4",
+      "Bf5",
+      "Ng3",
+      "Bg6",
+      "h4",
+      "h6",
+      "h5",
+      "Bh7",
+      "Bd3",
+      "Bxd3",
+      "Qxd3",
+      "e6",
+      "Bd2",
+      "Ngf6"
+     ]
+    },
+    {
+     "name": "7.Nf3 Nd7 8.Bd3",
+     "moves": [
+      "e4",
+      "c6",
+      "d4",
+      "d5",
+      "Nc3",
+      "dxe4",
+      "Nxe4",
+      "Bf5",
+      "Ng3",
+      "Bg6",
+      "Nf3",
+      "Nd7",
+      "Bd3",
+      "Bxd3",
+      "Qxd3",
+      "e6",
+      "Bf4",
+      "Ngf6"
+     ]
+    },
+    {
+     "name": "7.Bc4 e6",
+     "moves": [
+      "e4",
+      "c6",
+      "d4",
+      "d5",
+      "Nc3",
+      "dxe4",
+      "Nxe4",
+      "Bf5",
+      "Ng3",
+      "Bg6",
+      "Bc4",
+      "e6",
+      "Nf3",
+      "Nf6",
+      "Qe2",
+      "Nbd7"
+     ]
+    },
+    {
+     "name": "7.f4 h6",
+     "moves": [
+      "e4",
+      "c6",
+      "d4",
+      "d5",
+      "Nc3",
+      "dxe4",
+      "Nxe4",
+      "Bf5",
+      "Ng3",
+      "Bg6",
+      "f4",
+      "h6",
+      "Nf3",
+      "Nd7",
+      "Bd3",
+      "Bxd3",
+      "Qxd3",
+      "e6"
+     ]
+    },
+    {
+     "name": "9.h5 Bh7 10.Bd3 Bxd3 11.Qxd3 e6 12.Bf4 Qa5+",
+     "moves": [
+      "e4",
+      "c6",
+      "d4",
+      "d5",
+      "Nc3",
+      "dxe4",
+      "Nxe4",
+      "Bf5",
+      "Ng3",
+      "Bg6",
+      "h4",
+      "h6",
+      "Nf3",
+      "Nd7",
+      "h5",
+      "Bh7",
+      "Bd3",
+      "Bxd3",
+      "Qxd3",
+      "e6",
+      "Bf4",
+      "Qa5+"
+     ]
+    }
+   ]
+  },
+  "King's Indian Defence": {
+   "base": [
+    "d4",
+    "Nf6",
+    "c4",
+    "g6",
+    "Nc3",
+    "Bg7"
+   ],
+   "lines": [
+    {
+     "name": "Fianchetto: 4.Nf3 and g3",
+     "moves": [
+      "d4",
+      "Nf6",
+      "c4",
+      "g6",
+      "Nc3",
+      "Bg7",
+      "Nf3",
+      "O-O",
+      "g3",
+      "d6",
+      "Bg2",
+      "Nc6",
+      "O-O",
+      "e5"
+     ]
+    },
+    {
+     "name": "Classical: ...e5 and d5",
+     "moves": [
+      "d4",
+      "Nf6",
+      "c4",
+      "g6",
+      "Nc3",
+      "Bg7",
+      "e4",
+      "d6",
+      "Nf3",
+      "O-O",
+      "Be2",
+      "e5",
+      "O-O",
+      "Nc6",
+      "d5",
+      "Ne7"
+     ]
+    },
+    {
+     "name": "Mar del Plata: Ne1 and ...f5",
+     "moves": [
+      "d4",
+      "Nf6",
+      "c4",
+      "g6",
+      "Nc3",
+      "Bg7",
+      "e4",
+      "d6",
+      "Nf3",
+      "O-O",
+      "Be2",
+      "e5",
+      "O-O",
+      "Nc6",
+      "d5",
+      "Ne7",
+      "Ne1",
+      "Nd7",
+      "Be3",
+      "f5",
+      "f3",
+      "f4"
+     ]
+    },
+    {
+     "name": "Sämisch: 5.f3",
+     "moves": [
+      "d4",
+      "Nf6",
+      "c4",
+      "g6",
+      "Nc3",
+      "Bg7",
+      "e4",
+      "d6",
+      "f3",
+      "O-O",
+      "Be3",
+      "e5",
+      "Nge2",
+      "c6"
+     ]
+    },
+    {
+     "name": "Four Pawns Attack",
+     "moves": [
+      "d4",
+      "Nf6",
+      "c4",
+      "g6",
+      "Nc3",
+      "Bg7",
+      "e4",
+      "d6",
+      "f4",
+      "O-O",
+      "Nf3",
+      "c5",
+      "d5",
+      "e6"
+     ]
+    },
+    {
+     "name": "Averbakh: 5.Be2 and Bg5",
+     "moves": [
+      "d4",
+      "Nf6",
+      "c4",
+      "g6",
+      "Nc3",
+      "Bg7",
+      "e4",
+      "d6",
+      "Be2",
+      "O-O",
+      "Bg5",
+      "c5",
+      "d5",
+      "e6"
+     ]
+    },
+    {
+     "name": "Petrosian: 7.d5 a5",
+     "moves": [
+      "d4",
+      "Nf6",
+      "c4",
+      "g6",
+      "Nc3",
+      "Bg7",
+      "e4",
+      "d6",
+      "Nf3",
+      "O-O",
+      "Be2",
+      "e5",
+      "d5",
+      "a5",
+      "Bg5",
+      "h6"
+     ]
+    },
+    {
+     "name": "Exchange: 7.dxe5",
+     "moves": [
+      "d4",
+      "Nf6",
+      "c4",
+      "g6",
+      "Nc3",
+      "Bg7",
+      "e4",
+      "d6",
+      "Nf3",
+      "O-O",
+      "Be2",
+      "e5",
+      "dxe5",
+      "dxe5",
+      "Qxd8",
+      "Rxd8",
+      "Bg5"
+     ]
+    }
+   ]
+  },
+  "Grünfeld Defence": {
+   "base": [
+    "d4",
+    "Nf6",
+    "c4",
+    "g6",
+    "Nc3",
+    "d5"
+   ],
+   "lines": [
+    {
+     "name": "Exchange main line: ...c5",
+     "moves": [
+      "d4",
+      "Nf6",
+      "c4",
+      "g6",
+      "Nc3",
+      "d5",
+      "cxd5",
+      "Nxd5",
+      "e4",
+      "Nxc3",
+      "bxc3",
+      "Bg7",
+      "Nf3",
+      "c5"
+     ]
+    },
+    {
+     "name": "Exchange: 7.Bc4 and Ne2",
+     "moves": [
+      "d4",
+      "Nf6",
+      "c4",
+      "g6",
+      "Nc3",
+      "d5",
+      "cxd5",
+      "Nxd5",
+      "e4",
+      "Nxc3",
+      "bxc3",
+      "Bg7",
+      "Bc4",
+      "c5",
+      "Ne2",
+      "Nc6",
+      "Be3",
+      "O-O",
+      "O-O"
+     ]
+    },
+    {
+     "name": "Exchange: Rb1 line",
+     "moves": [
+      "d4",
+      "Nf6",
+      "c4",
+      "g6",
+      "Nc3",
+      "d5",
+      "cxd5",
+      "Nxd5",
+      "e4",
+      "Nxc3",
+      "bxc3",
+      "Bg7",
+      "Nf3",
+      "c5",
+      "Rb1",
+      "O-O",
+      "Be2",
+      "cxd4",
+      "cxd4",
+      "Qa5+"
+     ]
+    },
+    {
+     "name": "Exchange: Be3 and Qa5",
+     "moves": [
+      "d4",
+      "Nf6",
+      "c4",
+      "g6",
+      "Nc3",
+      "d5",
+      "cxd5",
+      "Nxd5",
+      "e4",
+      "Nxc3",
+      "bxc3",
+      "Bg7",
+      "Nf3",
+      "c5",
+      "Be3",
+      "Qa5",
+      "Qd2",
+      "Bg4"
+     ]
+    },
+    {
+     "name": "Russian System: Qb3",
+     "moves": [
+      "d4",
+      "Nf6",
+      "c4",
+      "g6",
+      "Nc3",
+      "d5",
+      "Nf3",
+      "Bg7",
+      "Qb3",
+      "dxc4",
+      "Qxc4",
+      "O-O",
+      "e4",
+      "Bg4",
+      "Be3",
+      "Nfd7"
+     ]
+    },
+    {
+     "name": "Bf4 System",
+     "moves": [
+      "d4",
+      "Nf6",
+      "c4",
+      "g6",
+      "Nc3",
+      "d5",
+      "Bf4",
+      "Bg7",
+      "e3",
+      "O-O",
+      "Rc1",
+      "c5",
+      "dxc5",
+      "Be6"
+     ]
+    },
+    {
+     "name": "Bg5 and ...Ne4",
+     "moves": [
+      "d4",
+      "Nf6",
+      "c4",
+      "g6",
+      "Nc3",
+      "d5",
+      "Bg5",
+      "Ne4",
+      "Bh4",
+      "Nxc3",
+      "bxc3",
+      "dxc4",
+      "e3",
+      "Be6"
+     ]
+    },
+    {
+     "name": "3.f3 and Qb3 systems",
+     "moves": [
+      "d4",
+      "Nf6",
+      "c4",
+      "g6",
+      "Nc3",
+      "d5",
+      "e3",
+      "Bg7",
+      "Qb3",
+      "c6",
+      "Nf3",
+      "O-O",
+      "Bd2",
+      "e6"
+     ]
+    }
+   ]
+  },
+  "Pirc Defence": {
+   "base": [
+    "e4",
+    "d6",
+    "d4",
+    "Nf6",
+    "Nc3",
+    "g6"
+   ],
+   "lines": [
+    {
+     "name": "Classical: Nf3 and Be2",
+     "moves": [
+      "e4",
+      "d6",
+      "d4",
+      "Nf6",
+      "Nc3",
+      "g6",
+      "Nf3",
+      "Bg7",
+      "Be2",
+      "O-O",
+      "O-O",
+      "Nc6",
+      "h3",
+      "e5"
+     ]
+    },
+    {
+     "name": "Classical: ...c6 and a4",
+     "moves": [
+      "e4",
+      "d6",
+      "d4",
+      "Nf6",
+      "Nc3",
+      "g6",
+      "Nf3",
+      "Bg7",
+      "Be2",
+      "O-O",
+      "O-O",
+      "c6",
+      "a4",
+      "Nbd7"
+     ]
+    },
+    {
+     "name": "Classical: ...Bg4",
+     "moves": [
+      "e4",
+      "d6",
+      "d4",
+      "Nf6",
+      "Nc3",
+      "g6",
+      "Nf3",
+      "Bg7",
+      "Be2",
+      "O-O",
+      "O-O",
+      "Bg4",
+      "Be3",
+      "Nc6",
+      "Qd3",
+      "e5"
+     ]
+    },
+    {
+     "name": "Austrian Attack: 4.f4",
+     "moves": [
+      "e4",
+      "d6",
+      "d4",
+      "Nf6",
+      "Nc3",
+      "g6",
+      "f4",
+      "Bg7",
+      "Nf3",
+      "O-O",
+      "Bd3",
+      "Na6",
+      "O-O",
+      "c5"
+     ]
+    },
+    {
+     "name": "150 Attack: Be3 and Qd2",
+     "moves": [
+      "e4",
+      "d6",
+      "d4",
+      "Nf6",
+      "Nc3",
+      "g6",
+      "Be3",
+      "c6",
+      "Qd2",
+      "b5",
+      "f3",
+      "Nbd7",
+      "O-O-O",
+      "Nb6"
+     ]
+    },
+    {
+     "name": "Bc4 system",
+     "moves": [
+      "e4",
+      "d6",
+      "d4",
+      "Nf6",
+      "Nc3",
+      "g6",
+      "Bc4",
+      "Bg7",
+      "Qe2",
+      "O-O",
+      "Bb3",
+      "c6"
+     ]
+    },
+    {
+     "name": "Bg5 system",
+     "moves": [
+      "e4",
+      "d6",
+      "d4",
+      "Nf6",
+      "Nc3",
+      "g6",
+      "Bg5",
+      "Bg7",
+      "Qd2",
+      "h6",
+      "Bh4",
+      "c5"
+     ]
+    },
+    {
+     "name": "Be3 and f3",
+     "moves": [
+      "e4",
+      "d6",
+      "d4",
+      "Nf6",
+      "Nc3",
+      "g6",
+      "f3",
+      "Bg7",
+      "Be3",
+      "O-O",
+      "Qd2",
+      "c6",
+      "O-O-O",
+      "b5"
+     ]
+    }
+   ]
+  },
+  "Queen's Gambit Accepted": {
+   "base": [
+    "d4",
+    "d5",
+    "c4",
+    "dxc4"
+   ],
+   "lines": [
+    {
+     "name": "Main line: 3.Nf3 Nf6 4.e3 e6",
+     "moves": [
+      "d4",
+      "d5",
+      "c4",
+      "dxc4",
+      "Nf3",
+      "Nf6",
+      "e3",
+      "e6",
+      "Bxc4",
+      "c5",
+      "O-O",
+      "a6",
+      "a4",
+      "Nc6"
+     ]
+    },
+    {
+     "name": "3.e3 Nf6 4.Bxc4 e6",
+     "moves": [
+      "d4",
+      "d5",
+      "c4",
+      "dxc4",
+      "e3",
+      "Nf6",
+      "Bxc4",
+      "e6",
+      "Nf3",
+      "c5",
+      "O-O",
+      "a6",
+      "Qe2",
+      "b5",
+      "Bb3",
+      "Bb7"
+     ]
+    },
+    {
+     "name": "Central: 3.e4 Nf6 4.e5",
+     "moves": [
+      "d4",
+      "d5",
+      "c4",
+      "dxc4",
+      "e4",
+      "Nf6",
+      "e5",
+      "Nd5",
+      "Bxc4",
+      "Nb6",
+      "Bb3",
+      "Nc6",
+      "Nf3",
+      "Bg4"
+     ]
+    },
+    {
+     "name": "Central: 3.e4 e5",
+     "moves": [
+      "d4",
+      "d5",
+      "c4",
+      "dxc4",
+      "e4",
+      "e5",
+      "Nf3",
+      "exd4",
+      "Bxc4",
+      "Nc6",
+      "O-O",
+      "Be6",
+      "Bxe6",
+      "fxe6"
+     ]
+    },
+    {
+     "name": "3.Nf3 a6 4.e3 Bg4",
+     "moves": [
+      "d4",
+      "d5",
+      "c4",
+      "dxc4",
+      "Nf3",
+      "a6",
+      "e3",
+      "Bg4",
+      "Bxc4",
+      "e6",
+      "h3",
+      "Bh5",
+      "Nc3",
+      "Nf6"
+     ]
+    },
+    {
+     "name": "3.Nf3 Nf6 4.Nc3 a6 5.e4 b5",
+     "moves": [
+      "d4",
+      "d5",
+      "c4",
+      "dxc4",
+      "Nf3",
+      "Nf6",
+      "Nc3",
+      "a6",
+      "e4",
+      "b5",
+      "e5",
+      "Nd5",
+      "a4",
+      "Nxc3"
+     ]
+    },
+    {
+     "name": "3.Nf3 Nf6 4.e3 Bg4",
+     "moves": [
+      "d4",
+      "d5",
+      "c4",
+      "dxc4",
+      "Nf3",
+      "Nf6",
+      "e3",
+      "Bg4",
+      "Bxc4",
+      "e6",
+      "h3",
+      "Bh5",
+      "Nc3",
+      "Nc6"
+     ]
+    },
+    {
+     "name": "3.e3 e5",
+     "moves": [
+      "d4",
+      "d5",
+      "c4",
+      "dxc4",
+      "e3",
+      "e5",
+      "Bxc4",
+      "exd4",
+      "exd4",
+      "Nf6",
+      "Nc3",
+      "Be7",
+      "Nf3",
+      "O-O"
+     ]
+    },
+    {
+     "name": "3.Nf3 Nf6 4.e3 e6 5.Bxc4 c5 6.O-O a6 7.Bb3",
+     "moves": [
+      "d4",
+      "d5",
+      "c4",
+      "dxc4",
+      "Nf3",
+      "Nf6",
+      "e3",
+      "e6",
+      "Bxc4",
+      "c5",
+      "O-O",
+      "a6",
+      "Bb3",
+      "cxd4",
+      "exd4",
+      "Nc6"
+     ]
+    }
+   ]
+  },
+  "Dutch Defence": {
+   "base": [
+    "d4",
+    "f5"
+   ],
+   "lines": [
+    {
+     "name": "Classical: ...e6, ...Be7, ...d6",
+     "moves": [
+      "d4",
+      "f5",
+      "Nf3",
+      "Nf6",
+      "g3",
+      "e6",
+      "Bg2",
+      "Be7",
+      "O-O",
+      "O-O",
+      "c4",
+      "d6",
+      "Nc3",
+      "Ne4"
+     ]
+    },
+    {
+     "name": "Stonewall: ...d5",
+     "moves": [
+      "d4",
+      "f5",
+      "g3",
+      "Nf6",
+      "Bg2",
+      "e6",
+      "Nf3",
+      "d5",
+      "O-O",
+      "Bd6",
+      "c4",
+      "c6",
+      "Nc3",
+      "O-O"
+     ]
+    },
+    {
+     "name": "Leningrad: ...g6",
+     "moves": [
+      "d4",
+      "f5",
+      "g3",
+      "Nf6",
+      "Bg2",
+      "g6",
+      "Nf3",
+      "Bg7",
+      "O-O",
+      "O-O",
+      "c4",
+      "d6",
+      "Nc3",
+      "Qe8"
+     ]
+    },
+    {
+     "name": "Leningrad: ...Nc6 and d5",
+     "moves": [
+      "d4",
+      "f5",
+      "g3",
+      "Nf6",
+      "Bg2",
+      "g6",
+      "Nf3",
+      "Bg7",
+      "O-O",
+      "O-O",
+      "c4",
+      "d6",
+      "Nc3",
+      "Nc6",
+      "d5",
+      "Na5"
+     ]
+    },
+    {
+     "name": "Staunton Gambit",
+     "moves": [
+      "d4",
+      "f5",
+      "e4",
+      "fxe4",
+      "Nc3",
+      "Nf6",
+      "Bg5",
+      "e6",
+      "Nxe4",
+      "Be7",
+      "Bxf6",
+      "Bxf6",
+      "Nf3",
+      "O-O"
+     ]
+    },
+    {
+     "name": "vs the London: Bf4",
+     "moves": [
+      "d4",
+      "f5",
+      "Bf4",
+      "Nf6",
+      "e3",
+      "e6",
+      "Nf3",
+      "Be7",
+      "h3",
+      "O-O",
+      "Bd3",
+      "b6",
+      "Nbd2",
+      "Bb7"
+     ]
+    },
+    {
+     "name": "2.Bg5 line",
+     "moves": [
+      "d4",
+      "f5",
+      "Bg5",
+      "Nf6",
+      "Bxf6",
+      "exf6",
+      "e3",
+      "d5",
+      "Nd2",
+      "c6"
+     ]
+    },
+    {
+     "name": "Classical: Qc2 and Nc3",
+     "moves": [
+      "d4",
+      "f5",
+      "Nf3",
+      "Nf6",
+      "g3",
+      "e6",
+      "Bg2",
+      "Be7",
+      "O-O",
+      "O-O",
+      "c4",
+      "d6",
+      "Nc3",
+      "Qe8",
+      "Qc2",
+      "Qh5"
+     ]
+    }
+   ]
+  },
+  "Scandinavian Defence": {
+   "base": [
+    "e4",
+    "d5",
+    "exd5"
+   ],
+   "lines": [
+    {
+     "name": "Main line: 3.Nc3 Qa5",
+     "moves": [
+      "e4",
+      "d5",
+      "exd5",
+      "Qxd5",
+      "Nc3",
+      "Qa5",
+      "d4",
+      "Nf6",
+      "Nf3",
+      "Bf5",
+      "Bc4",
+      "e6",
+      "O-O",
+      "c6"
+     ]
+    },
+    {
+     "name": "3...Qa5 with ...c6",
+     "moves": [
+      "e4",
+      "d5",
+      "exd5",
+      "Qxd5",
+      "Nc3",
+      "Qa5",
+      "d4",
+      "c6",
+      "Nf3",
+      "Nf6",
+      "Bc4",
+      "Bf5",
+      "Bd2",
+      "e6"
+     ]
+    },
+    {
+     "name": "3...Qd6",
+     "moves": [
+      "e4",
+      "d5",
+      "exd5",
+      "Qxd5",
+      "Nc3",
+      "Qd6",
+      "d4",
+      "Nf6",
+      "Nf3",
+      "a6",
+      "g3",
+      "Bg4",
+      "Bg2",
+      "Nc6"
+     ]
+    },
+    {
+     "name": "3...Qd8",
+     "moves": [
+      "e4",
+      "d5",
+      "exd5",
+      "Qxd5",
+      "Nc3",
+      "Qd8",
+      "d4",
+      "Nf6",
+      "Nf3",
+      "Bg4",
+      "h3",
+      "Bxf3",
+      "Qxf3",
+      "e6"
+     ]
+    },
+    {
+     "name": "Modern: 2...Nf6 3.Bb5+",
+     "moves": [
+      "e4",
+      "d5",
+      "exd5",
+      "Nf6",
+      "Bb5+",
+      "Bd7",
+      "Bc4",
+      "b5",
+      "Bb3",
+      "Nxd5"
+     ]
+    },
+    {
+     "name": "Modern: 3.d4 Nxd5",
+     "moves": [
+      "e4",
+      "d5",
+      "exd5",
+      "Nf6",
+      "d4",
+      "Nxd5",
+      "c4",
+      "Nb6",
+      "Nf3",
+      "g6",
+      "Nc3",
+      "Bg7",
+      "Be3",
+      "O-O"
+     ]
+    },
+    {
+     "name": "Icelandic Gambit: 3.c4 e6",
+     "moves": [
+      "e4",
+      "d5",
+      "exd5",
+      "Nf6",
+      "c4",
+      "e6",
+      "dxe6",
+      "Bxe6",
+      "Nf3",
+      "Nc6",
+      "d4",
+      "Bb4+",
+      "Nc3",
+      "Qe7"
+     ]
+    },
+    {
+     "name": "2...Qxd5 3.Nf3",
+     "moves": [
+      "e4",
+      "d5",
+      "exd5",
+      "Qxd5",
+      "Nf3",
+      "Nf6",
+      "d4",
+      "Bg4",
+      "Be2",
+      "e6",
+      "h3",
+      "Bh5",
+      "c4",
+      "Qd8"
+     ]
+    }
+   ]
+  }
+ }
+}

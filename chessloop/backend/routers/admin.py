@@ -32,7 +32,7 @@ from services.activity_log import log_activity
 from services import backup_service
 from services import opening_import
 # Special user ID for seeded opening libraries (so they don't appear in admin's account)
-from services.starter_libraries import SEEDBOT_USER_ID
+from services.starter_libraries import SEEDBOT_USER_ID, seed_starter_libraries
 
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -543,82 +543,17 @@ def seed_openings(
     session: Session = Depends(get_session),
 ):
     """
-    Seed all 16 standard starter opening libraries to public discovery.
-    Libraries are owned by a special seedbot user, not the admin's account.
-    Already-existing libraries are skipped. New ones are published automatically.
+    Load the 16 starter opening libraries and their bundled lines (the same data
+    the installer loads), published to Discover. Libraries are owned by the hidden
+    seedbot user. Missing libraries and missing lines are added; nothing is removed.
+    `seeded` counts libraries created, `skipped` those already complete.
     """
-    # Ensure seedbot user exists
-    seedbot = session.get(User, SEEDBOT_USER_ID)
-    if not seedbot:
-        try:
-            seedbot = User(
-                id=SEEDBOT_USER_ID,
-                username="seedbot",
-                email="seedbot@chessloop.local",
-                password_hash="",  # No password
-                role="user",
-            )
-            session.add(seedbot)
-            session.commit()
-        except Exception as e:
-            # User may already exist or there's a unique constraint issue
-            session.rollback()
-            seedbot = session.get(User, SEEDBOT_USER_ID)
-            if not seedbot:
-                # Try to create with unique email and username if they're taken
-                try:
-                    import uuid
-                    unique_id = str(uuid.uuid4())[:8]
-                    seedbot = User(
-                        id=SEEDBOT_USER_ID,
-                        username=f"seedbot-{unique_id}",
-                        email=f"seedbot-{unique_id}@chessloop.local",
-                        password_hash="",
-                        role="user",
-                    )
-                    session.add(seedbot)
-                    session.commit()
-                except Exception as e2:
-                    raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, f"Failed to create seedbot user: {e2}")
-
-    seeded = 0
-    skipped = 0
-    errors: list[str] = []
-
-    for eco_code, opening_name, initial_moves, color, difficulty in opening_import.STARTER_OPENINGS:
-        try:
-            entry = next(
-                (e for e in opening_import.ECO_DATABASE if e["name"] == opening_name),
-                None,
-            )
-            description = entry["description"] if entry else f"ECO {eco_code} — starter opening."
-            moves = entry["moves"] if entry else initial_moves
-
-            lib, status_str = opening_import.import_opening(
-                eco=eco_code,
-                name=opening_name,
-                color=color,
-                difficulty=difficulty,
-                description=description,
-                moves=moves,
-                user_id=admin.id,
-                session=session,
-                owner_user_id=SEEDBOT_USER_ID,
-            )
-
-            if status_str == "created":
-                try:
-                    opening_import.publish_library(lib.id, session)
-                    seeded += 1
-                except Exception as pub_err:
-                    errors.append(f"{opening_name}: Failed to publish - {pub_err}")
-            else:
-                skipped += 1
-
-        except Exception as e:
-            errors.append(f"{opening_name}: {e}")
-
-    return SeedOpeningsResponse(seeded=seeded, skipped=skipped, errors=errors)
+    try:
+        counts = seed_starter_libraries(session, log=lambda _msg: None)
+    except Exception as e:
+        session.rollback()
+        return SeedOpeningsResponse(seeded=0, skipped=0, errors=[str(e)])
+    return SeedOpeningsResponse(seeded=counts["created"], skipped=counts["skipped"], errors=[])
 
 
 @router.post("/openings/import", response_model=ImportOpeningResponse)
