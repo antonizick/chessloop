@@ -2736,7 +2736,7 @@ do_update() {
     if [ "$new" = "$old" ] || git_owner merge-base --is-ancestor "$new" "$old" 2>/dev/null; then
         newer=0
         ok "ChessLoop is up to date: $old_desc."
-        if [ "$UPDATE_FORCE" != 1 ] && { [ "$NONINTERACTIVE" = 1 ] || ! ask_yn "Rebuild it anyway?" N; }; then
+        if [ "$UPDATE_FORCE" != 1 ] && { [ "$NONINTERACTIVE" = 1 ] || ! ask_yn "Rebuild it anyway? (builds the same version again; only needed if something is broken)" N; }; then
             ensure_running
             # An install updated by an older script has the new code but never ran its top-up.
             top_up_starter_content

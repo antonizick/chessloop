@@ -21,6 +21,9 @@ Yes. Each person registers their own account, with their own progress. Share the
 **Can I use it from my phone?**
 Yes, if you chose "Also on other devices in my home network" when installing. Open the address the installer printed. On Windows there are [extra steps](install/windows-wsl2.md#optional-use-chessloop-from-your-phone).
 
+**Can I use it from my phone when I am away from home (on mobile data)?**
+No. A home-network install can be reached only from devices on your home network. These guides do not cover reaching it from outside. See the next question.
+
 **Can I put it on the internet?**
 These guides do not cover it, and ChessLoop is built for personal, private use. See [Not covered](../README.md#not-covered-hosting-chessloop-on-the-internet).
 

@@ -193,6 +193,7 @@ export function PracticeBoard() {
   const positionRef = useRef<NextPositionResponse | null>(null);
   const sessionIdRef = useRef<string | null>(null);
   const modeRef = useRef<UiMode>("weakest");
+  const learnedOnlyRef = useRef(false);
   const lineStepRef = useRef(0);
   const currentFenRef = useRef("");
   const wrongMoveCtxRef = useRef<WrongMoveCtx | null>(null);
@@ -315,6 +316,7 @@ export function PracticeBoard() {
     }
 
     setMode(uiMode);
+    learnedOnlyRef.current = learnedOnly === true;
     setError(null);
     setRunningStats({ correct: 0, wrong: 0, positions_seen: 0 });
     setPhase("loading");
@@ -368,6 +370,12 @@ export function PracticeBoard() {
             if (modeNow === "leech_drill") {
               setError(
                 "No leeches yet! Miss a position 4 times to promote it to leech status, then come back.",
+              );
+            } else if (learnedOnlyRef.current) {
+              // The switch is on by default and a new line is "Not Learned", so a
+              // first session finds nothing (Phase 11, fresh-eyes test).
+              setError(
+                "No lines are marked Learned yet, so there is nothing to practise. Turn off \u201cLearned/Active lines only\u201d below to practise your new lines, or open a library and click \u201cNot Learned\u201d on a line to mark it learned.",
               );
             } else {
               setError(

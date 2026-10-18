@@ -36,9 +36,13 @@ ChessLoop keeps running while it makes a consistent copy of its database. You se
 
 ```text
   ✓  Backup saved: /home/sam/chessloop-backups/chessloop-20261018-000125.tar.gz (19.0 KB)
-     It holds 2 accounts, 1 libraries, 1 lines.
+     It holds accounts: 3, libraries: 18, lines: 145.
      Its checksum is in chessloop-20261018-000125.tar.gz.sha256: keep the two files together.
 ```
+
+The number of accounts is one more than the people you made: it counts `seedbot`, the built-in account that owns the public starter libraries.
+
+Before it starts, ChessLoop asks **Also put the settings file in the backup? [y/N]**. The *settings file* (`.env`) holds your secret key and email password. Press `Enter` to say no. That is right for nearly everyone.
 
 Keep the `.tar.gz` file and its `.sha256` file together. The second one lets ChessLoop check that the first was not damaged.
 
