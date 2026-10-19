@@ -8,6 +8,9 @@ History before this changelog: see `git log`.
 
 ## [Unreleased]
 
+### Fixed
+- **Practice and other boards: pieces could not be picked up on large windows.** The board said "Make your move" but no piece moved. The chess board library remembers where the board is on the page and refreshes that only when the window is resized or scrolled. After the mode picker disappears, the board moves up the page without either event, so on a window tall enough not to scroll (for example 1920×1080) every click landed on the wrong square. The board now re-measures at the start of every click or touch.
+
 ### Added
 - **Sign-in is rate limited:** 10 wrong passwords per email address and 30 per IP address in 15 minutes, then HTTP 429 ("Too many failed sign-in attempts. Wait 15 minutes and try again."); a correct sign-in clears the account's count. Counters are in memory, like the other limits. This replaces the accepted "no sign-in limit" risk in the threat model.
 - **One-time hint for an empty library:** a new account with no libraries (the first admin starts with none) sees a pop-up on the dashboard, once per account and browser, that says to open **Public Opening Libraries** and press **Fork to my libraries**.
