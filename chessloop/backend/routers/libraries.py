@@ -252,13 +252,10 @@ def publish(
     if not lib:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Library not found")
 
-    # Allow: owner, any admin, or the user 'nick'
-    is_owner = lib.owner_user_id == user.id
-    is_admin = user.role == "admin"
-    is_nick = user.username == "nick"
-
-    if not (is_owner or is_admin or is_nick):
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Only owner, admins, or nick can publish libraries")
+    # Owner or any admin. (A hard-coded username used to count too, which anyone
+    # could register: F-050.)
+    if not (lib.owner_user_id == user.id or user.role == "admin"):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Only the owner or an admin can publish a library")
 
     publish_snapshot(lib, user.id, session)
     log_activity(session, user.id, user.username, "publish_library", target=lib.name)

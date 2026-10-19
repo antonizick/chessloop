@@ -8,7 +8,7 @@ from database import get_session
 from models import User
 from models.published_library import PublishedLibrary
 from auth.password import hash_password, verify_password
-from auth.policy import RateLimiter, password_problem, verification_required, PASSWORD_MIN_LENGTH
+from auth.policy import RateLimiter, client_ip, password_problem, verification_required, PASSWORD_MIN_LENGTH
 from config import settings
 from services.activity_log import log_activity
 from services.library_service import clone_library_for_user
@@ -42,6 +42,10 @@ logger = logging.getLogger(__name__)
 # Failed current-password attempts on /change-password, per user and per client IP.
 # lucent: ceiling is 5 failures per 15 minutes; a correct attempt does not count.
 CHANGE_PASSWORD_LIMIT = RateLimiter(max_events=5, window_seconds=15 * 60)
+# Wrong authenticator codes per account (sign-in and turning MFA off). Without a
+# limit, someone who knows the password could try all million codes.
+MFA_CODE_LIMIT = RateLimiter(max_events=5, window_seconds=15 * 60)
+MFA_LOCKED = "Too many wrong codes. Wait 15 minutes and try again."
 
 
 def _issue_tokens(user: User) -> TokenResponse:
@@ -147,7 +151,11 @@ def login_mfa(body: MfaLoginRequest, session: Session = Depends(get_session)):
     user = session.get(User, UUID(payload["sub"]))
     if not user or not user.mfa_enabled or not user.mfa_secret:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "MFA not configured")
+    key = f"mfa:{user.id}"
+    if MFA_CODE_LIMIT.blocked(key):
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, MFA_LOCKED)
     if not mfa.verify(user.mfa_secret, body.totp_code):
+        MFA_CODE_LIMIT.hit(key)
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid TOTP code")
 
     user.last_login = datetime.utcnow()
@@ -282,7 +290,7 @@ def change_password(
     user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
 ):
-    keys = [f"user:{user.id}", f"ip:{request.client.host if request.client else 'unknown'}"]
+    keys = [f"user:{user.id}", f"ip:{client_ip(request)}"]
     if any(CHANGE_PASSWORD_LIMIT.blocked(k) for k in keys):
         raise HTTPException(
             status.HTTP_429_TOO_MANY_REQUESTS, "Too many attempts. Wait 15 minutes and try again."
@@ -347,7 +355,11 @@ def mfa_disable(
 ):
     if not user.mfa_enabled:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "MFA not enabled")
+    key = f"mfa:{user.id}"
+    if MFA_CODE_LIMIT.blocked(key):
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, MFA_LOCKED)
     if not mfa.verify(user.mfa_secret, body.totp_code):
+        MFA_CODE_LIMIT.hit(key)
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid TOTP code")
     user.mfa_enabled = False
     user.mfa_secret = None

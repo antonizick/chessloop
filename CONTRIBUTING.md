@@ -33,7 +33,7 @@ scripts/test-deploy-helpers.sh
 Or run everything CI runs in one go. It needs only Docker, because each step runs in a container (so your local Python and Node versions don't matter):
 ```bash
 scripts/ci-local.sh            # all steps
-scripts/ci-local.sh backend    # or pick steps: backend frontend shell compose images secrets
+scripts/ci-local.sh backend    # or pick steps: backend frontend shell helpers compose dockerfiles images scan audit docs secrets
 ```
 
 ### Continuous integration
@@ -43,10 +43,16 @@ Every push to `main` and every pull request runs `.github/workflows/ci.yml`:
 |---|---|
 | Backend tests | `pytest` on Python 3.12 |
 | Frontend lint and build | `npm run lint` and `npm run build` on Node 24 LTS |
-| ShellCheck (advisory) | `deploy.sh`, `scripts/*.sh`. Advisory until it is made required |
+| ShellCheck | `deploy.sh`, `scripts/*.sh` |
 | Compose files validate | `docker compose config` for the production and development files |
-| Docker image build | Builds the backend and frontend images (nothing is pushed) |
-| Secret scan | gitleaks over the full git history, configured in `.gitleaks.toml` |
+| Dockerfile lint (hadolint) | the backend, frontend and nginx Dockerfiles |
+| Image build and scan (backend, frontend, nginx) | builds each image (nothing is pushed) and scans it with Trivy; fails on a HIGH or CRITICAL vulnerability that has a fix |
+| Dependency audit | `pip-audit` on the backend requirements (fails on any known vulnerability); `npm audit --omit=dev` for the frontend (reported, doesn't fail) |
+| Install smoke | runs `deploy.sh --yes` from the PR's commit on a fresh runner, the API smoke test, backup → change → restore, and Update |
+| Docs links | links, anchors, images and banned words in the user docs |
+| Secret scan (gitleaks) | the full git history, configured in `.gitleaks.toml` |
+
+**Required checks.** `main` is protected: a pull request can be merged only when every job above has passed (the three image jobs count separately), and nobody can force-push to `main` or delete it. Repository admins can still bypass this in an emergency. Please don't: people install straight from `main`.
 
 Workflow actions are pinned to a full commit SHA with the version in a comment; Dependabot proposes updates. CI uses no secrets or tokens.
 

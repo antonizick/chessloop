@@ -82,29 +82,29 @@ export function Login() {
         {!mfaChallenge ? (
           <form onSubmit={onSubmit} className="flex flex-col gap-3">
             <div>
-              <label className="label">Email</label>
-              <input className="input" type="email" value={email}
+              <label className="label" htmlFor="login-email">Email</label>
+              <input className="input" id="login-email" type="email" value={email}
                 onChange={(e) => setEmail(e.target.value)} autoComplete="email" required />
             </div>
             <div>
               <div className="flex items-center justify-between">
-                <label className="label">Password</label>
+                <label className="label" htmlFor="login-password">Password</label>
                 <Link to="/forgot-password" className="text-sm text-ink-300 hover:text-ink-100">
                   Forgot password?
                 </Link>
               </div>
-              <input className="input" type="password" value={password}
+              <input className="input" id="login-password" type="password" value={password}
                 onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" required />
             </div>
-            {err && <p className="text-sm text-red-400">{err}</p>}
+            {err && <p className="text-sm text-red-400" role="alert">{err}</p>}
             {unverified && !canEmail && (
-              <p className="text-sm text-red-400">
+              <p className="text-sm text-red-400" role="alert">
                 Your account is not verified yet, and this server can't send email.
                 Ask your ChessLoop admin to verify it (Admin → Users), then sign in again.
               </p>
             )}
             {unverified && canEmail && (
-              <p className="text-sm text-red-400">
+              <p className="text-sm text-red-400" role="alert">
                 Email not verified. Check your inbox for the link, or{" "}
                 <button
                   type="button"
@@ -124,15 +124,16 @@ export function Login() {
               {loading ? "Signing in…" : "Sign in"}
             </button>
             <p className="text-sm text-ink-300 text-center">
-              No account? <Link to="/register">Register</Link>
+              No account? <Link to="/register" className="underline">Register</Link>
             </p>
           </form>
         ) : (
           <form onSubmit={onSubmitMfa} className="flex flex-col gap-3">
             <p className="text-sm text-ink-200">Enter the 6-digit code from your authenticator app.</p>
-            <input className="input tracking-widest text-center" value={totp}
-              onChange={(e) => setTotp(e.target.value)} placeholder="123456" maxLength={6} required />
-            {err && <p className="text-sm text-red-400">{err}</p>}
+            <input className="input tracking-widest text-center" value={totp} aria-label="6-digit code"
+              onChange={(e) => setTotp(e.target.value)} placeholder="123456" inputMode="numeric" autoComplete="one-time-code"
+              maxLength={6} required />
+            {err && <p className="text-sm text-red-400" role="alert">{err}</p>}
             <button className="btn-primary" disabled={loading}>
               {loading ? "Verifying…" : "Verify"}
             </button>

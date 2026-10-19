@@ -194,6 +194,7 @@ export function Settings() {
             }`}
             role="switch"
             aria-checked={localBoostVisibility}
+            aria-label="Boost visibility"
           >
             <span
               className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${
@@ -275,6 +276,7 @@ export function Settings() {
             }`}
             role="switch"
             aria-checked={localSoundsOn}
+            aria-label="Sound effects"
           >
             <span
               className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${
@@ -302,6 +304,7 @@ export function Settings() {
             }`}
             role="switch"
             aria-checked={localTtsEnabled}
+            aria-label="Read move notes aloud"
           >
             <span
               className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${
@@ -314,8 +317,9 @@ export function Settings() {
         {/* Voice selector */}
         {localTtsEnabled && (
           <div>
-            <label className="label">Voice</label>
+            <label className="label" htmlFor="tts-voice">Voice</label>
             <select
+              id="tts-voice"
               value={localTtsVoice}
               onChange={(e) => setLocalTtsVoice(e.target.value)}
               className="w-full px-3 py-2 rounded bg-ink-700 border border-ink-600 text-ink-100 text-sm focus:outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-400"
@@ -466,19 +470,19 @@ function ChangePasswordForm() {
     <form onSubmit={onSubmit} className="mt-4 flex flex-col gap-3 max-w-sm">
       <h3 className="text-sm font-medium text-ink-100">Change password</h3>
       <div>
-        <label className="label">Current password</label>
-        <input className="input" type="password" value={current} autoComplete="current-password"
+        <label className="label" htmlFor="cp-current">Current password</label>
+        <input className="input" id="cp-current" type="password" value={current} autoComplete="current-password"
           onChange={(e) => setCurrent(e.target.value)} required autoFocus />
       </div>
       <div>
-        <label className="label">New password (at least {MIN_PASSWORD} characters)</label>
-        <input className="input" type="password" value={next} autoComplete="new-password" maxLength={128}
+        <label className="label" htmlFor="cp-new">New password (at least {MIN_PASSWORD} characters)</label>
+        <input className="input" id="cp-new" type="password" value={next} autoComplete="new-password" maxLength={128}
           onChange={(e) => setNext(e.target.value)} required />
         {strength && <p className="text-xs text-ink-400 mt-1">{strength}</p>}
       </div>
       <div>
-        <label className="label">Confirm new password</label>
-        <input className="input" type="password" value={confirm} autoComplete="new-password" maxLength={128}
+        <label className="label" htmlFor="cp-confirm">Confirm new password</label>
+        <input className="input" id="cp-confirm" type="password" value={confirm} autoComplete="new-password" maxLength={128}
           onChange={(e) => setConfirm(e.target.value)} required />
       </div>
       {err && <p className="text-sm text-red-400" role="alert">{err}</p>}

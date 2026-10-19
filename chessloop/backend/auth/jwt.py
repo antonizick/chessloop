@@ -2,7 +2,8 @@ import hashlib
 from datetime import datetime, timedelta
 from typing import Optional
 from uuid import UUID
-from jose import jwt, JWTError
+import jwt
+from jwt import PyJWTError as JWTError
 from config import settings
 
 

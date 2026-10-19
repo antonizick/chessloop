@@ -56,11 +56,8 @@ jobs:
         run: npm run build
 
   shell:
-    name: ShellCheck (advisory)
+    name: ShellCheck
     runs-on: ubuntu-24.04
-    # Advisory until Phase 12 makes it required. deploy.sh and scripts/ are
-    # clean since Phase 09 (manage.sh, which had warnings, was removed: F-017).
-    continue-on-error: true
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -88,8 +85,24 @@ jobs:
           JWT_SECRET: ci-dummy-not-a-secret
         run: docker compose -f chessloop/docker-compose.yml config -q
 
+  dockerfiles:
+    name: Dockerfile lint (hadolint)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Run hadolint v2.15.1
+        run: |
+          for f in chessloop/backend/Dockerfile chessloop/frontend/Dockerfile chessloop/nginx/Dockerfile; do
+            echo "== $f"
+            docker run --rm -i \
+              hadolint/hadolint@sha256:32dac94127fd60b7b7e3fbfc65e1383b9b5e25c9bfd7b8536de7a539fe68a12d \
+              hadolint - < "$f"
+          done
+
   images:
-    name: Docker image build (${{ matrix.image }})
+    name: Image build and scan (${{ matrix.image }})
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
@@ -105,14 +118,47 @@ jobs:
         with:
           context: chessloop/${{ matrix.image }}
           push: false
+          load: true
+          tags: chessloop-ci-scan-${{ matrix.image }}
           cache-from: type=gha,scope=${{ matrix.image }}
           cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+      # Fails on a HIGH or CRITICAL vulnerability that has a fix (a newer
+      # package or base image). Trivy v0.75.0 by image digest, not the
+      # trivy-action (its tags were hijacked in 2026).
+      - name: Scan ${{ matrix.image }} with Trivy v0.75.0
+        run: |
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+            aquasec/trivy@sha256:af6acf9a6b85dfe389a1941505c0ce9efef52a4719635e1a962f022a3d855daa \
+            image --scanners vuln --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 \
+            --no-progress chessloop-ci-scan-${{ matrix.image }}
+
+  audit:
+    name: Dependency audit
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24"
+      - name: pip-audit v2.10.1 (backend requirements)
+        run: |
+          python -m pip install --disable-pip-version-check pip-audit==2.10.1
+          python -m pip_audit -r chessloop/backend/requirements.txt --progress-spinner off
+      # Advisory: two moderate React Router advisories need a major upgrade
+      # and don't apply to this app (F-084). Read the output on each run.
+      - name: npm audit (frontend runtime packages, advisory)
+        continue-on-error: true
+        working-directory: chessloop/frontend
+        run: npm audit --omit=dev
 
   install:
-    name: Install smoke (advisory)
+    name: Install smoke
     runs-on: ubuntu-24.04
-    # Advisory until Phase 12 makes it required (R16).
-    continue-on-error: true
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

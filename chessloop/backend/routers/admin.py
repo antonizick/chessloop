@@ -1,5 +1,6 @@
 """Admin router — backup management + user management + opening import. Requires role='admin'."""
 
+import re
 from uuid import UUID
 from typing import Optional
 from pathlib import Path
@@ -379,7 +380,9 @@ def upload_backup(
     # Generate backup filename with timestamp
     backup_name = name or Path(file.filename or "uploaded-backup").stem
     ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
-    filename = f"{type}_{ts}_{backup_name[:40].replace(' ', '_')}.db"
+    # Only safe characters in the file name: the name comes from the browser.
+    safe = re.sub(r"[^A-Za-z0-9._-]+", "_", backup_name[:40]).strip("._") or "upload"
+    filename = f"{type}_{ts}_{safe}.db"
 
     # Save file to backup directory
     dest = backup_service._ensure_dir() / filename
@@ -480,6 +483,8 @@ class OpeningSearchResult(BaseModel):
     description: str
     moves: list[str]
     available_variations: int
+    # Why Lichess couldn't be asked (F-020); then available_variations is 0.
+    variations_note: Optional[str] = None
 
 
 class SeedOpeningsResponse(BaseModel):
@@ -522,19 +527,24 @@ def search_openings(
     _: User = Depends(require_admin),
 ):
     """Search the bundled ECO opening database. Returns up to 20 results."""
-    results = opening_import.search_openings(q)
-    return [
-        OpeningSearchResult(
+    out = []
+    note = None
+    for r in opening_import.search_openings(q):
+        # Once Lichess has refused or failed, don't wait on it for every result.
+        count = 0
+        if note is None:
+            count, note = opening_import.lichess_variation_count(r["moves"])
+        out.append(OpeningSearchResult(
             eco=r["eco"],
             name=r["name"],
             color=r["color"],
             difficulty=r["difficulty"],
             description=r["description"],
             moves=r["moves"],
-            available_variations=opening_import.count_lichess_variations(r["moves"]),
-        )
-        for r in results
-    ]
+            available_variations=count,
+            variations_note=note,
+        ))
+    return out
 
 
 @router.post("/openings/seed", response_model=SeedOpeningsResponse)

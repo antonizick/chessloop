@@ -336,6 +336,85 @@ check "lines added: none" 0 "$(starter_lines_added "")"
 check "lines added: noise" 0 "$(starter_lines_added $'Traceback...\nAdded lines')"
 check "lines added: after other output" 111 "$(starter_lines_added $'something\nAdded 111 lines to the starter libraries.')"
 
+# ── data-owner must not eat a backup streamed on stdin (Phase 12 lab find) ─
+dc() {
+    case "$1" in
+        config) echo backend; echo data-owner ;;
+        run) cat > /dev/null ;;   # like "compose run": reads whatever stdin it is given
+    esac
+}
+check "data-owner leaves stdin alone" "backup-bytes" "$(printf 'backup-bytes' | { fix_data_owner; cat; })"
+unset -f dc
+CHESSLOOP_SOURCE_ONLY=1 source "$ROOT/deploy.sh"; set +e; trap - ERR
+
+# ── build failures: Docker Hub's rate limit is not "check your internet" (F-088)
+LOG_FILE="$TMP/build.log"
+printf '%s\n' ' > [backend internal] load metadata for docker.io/library/python:3.12.15-slim-trixie:' \
+  'failed to resolve source metadata for docker.io/library/python:3.12.15-slim-trixie: unexpected status from HEAD request to https://registry-1.docker.io/v2/library/python/manifests/3.12.15-slim-trixie: 429 Too Many Requests' > "$LOG_FILE"
+check "build: rate limit" ratelimit "$(build_failure_reason)"
+echo 'dial tcp: lookup registry-1.docker.io: no such host' > "$LOG_FILE"
+check "build: network" network "$(build_failure_reason)"
+echo 'write /var/lib/docker/x: no space left on device' > "$LOG_FILE"
+check "build: disk" disk "$(build_failure_reason)"
+LOG_FILE=""
+
+# ── which compose package goes with the distribution's docker.io (F-087) ─
+fake_apt() {  # fake_apt DOCKER_IO_INSTALLED V2_CANDIDATE COMPOSE_CANDIDATE
+    FAKE_DIO=$1 FAKE_V2=$2 FAKE_DC=$3
+    dpkg-query() { [ "$FAKE_DIO" = 1 ] && echo 'install ok installed'; }
+    apt-cache() {
+        case "$2" in
+            docker-compose-v2) echo "  Candidate: ${FAKE_V2:-(none)}" ;;
+            docker-compose) echo "  Candidate: ${FAKE_DC:-(none)}" ;;
+        esac
+    }
+}
+fake_apt 1 2.40.3+ds1-0ubuntu1 2.40.3; check "compose: ubuntu" docker-compose-v2 "$(distro_compose_pkg)"
+fake_apt 1 "" 2.26.1-4;               check "compose: debian 13" docker-compose "$(distro_compose_pkg)"
+fake_apt 1 "" 1.29.2-3;               check "compose: debian 12 (1.x is not a plugin)" "" "$(distro_compose_pkg)"
+fake_apt 1 "" 1:2.5.0-1;              check "compose: epoch" docker-compose "$(distro_compose_pkg)"
+fake_apt 1 "" "";                     check "compose: none" "" "$(distro_compose_pkg)"
+fake_apt 0 2.40.3 2.26.1-4;           check "compose: no docker.io" "" "$(distro_compose_pkg)"
+unset -f dpkg-query apt-cache fake_apt
+
+# ── where to open ChessLoop after start/restore (F-070) ──────────────────
+mkdir -p "$TMP/oa"
+printf 'PUBLIC_PORT=8091\nBIND_ADDR=0.0.0.0\n' > "$TMP/oa/.env"
+detect_lan_ip() { echo 192.168.1.20; }
+is_wsl() { return 1; }
+out="$(SUBDIR=$TMP/oa PORT=8091 open_addresses 2>&1)"
+check "open: localhost" 1 "$(grep -c 'http://localhost:8091' <<<"$out")"
+check "open: lan" 1 "$(grep -c 'http://192.168.1.20:8091' <<<"$out")"
+is_wsl() { return 0; }
+out="$(SUBDIR=$TMP/oa PORT=8091 open_addresses 2>&1)"
+check "open: no lan address on wsl" 0 "$(grep -c '192.168' <<<"$out")"
+printf 'PUBLIC_PORT=8091\nBIND_ADDR=127.0.0.1\n' > "$TMP/oa/.env"
+is_wsl() { return 1; }
+out="$(SUBDIR=$TMP/oa PORT=8091 open_addresses 2>&1)"
+check "open: local only" 0 "$(grep -c '192.168' <<<"$out")"
+unset -f detect_lan_ip is_wsl
+CHESSLOOP_SOURCE_ONLY=1 source "$ROOT/deploy.sh"; set +e; trap - ERR
+
+# ── Docker's apt signing key is checked before apt trusts it ────────────
+# testdata/docker-apt-key.asc: download.docker.com/linux/debian/gpg, 2026-10-18.
+if command -v gpg > /dev/null; then
+    yes_ docker_key_ok "$ROOT/scripts/testdata/docker-apt-key.asc"
+    gh_home=$(mktemp -d)
+    GNUPGHOME="$gh_home" gpg --batch --quiet --passphrase '' --quick-gen-key 'Not Docker <x@example.org>' ed25519 sign never 2> /dev/null
+    GNUPGHOME="$gh_home" gpg --batch --armor --export > "$TMP/other.asc" 2> /dev/null
+    GNUPGHOME="$gh_home" gpgconf --kill gpg-agent 2> /dev/null || true
+    rm -rf "$gh_home"
+    no_ docker_key_ok "$TMP/other.asc"
+    cat "$ROOT/scripts/testdata/docker-apt-key.asc" "$TMP/other.asc" > "$TMP/both.asc"
+    no_ docker_key_ok "$TMP/both.asc"
+    echo "<html>captive portal</html>" > "$TMP/html.asc"
+    no_ docker_key_ok "$TMP/html.asc"
+    no_ docker_key_ok "$TMP/missing.asc"
+    check "docker key: no ~/.gnupg made" 0 "$(HOME=$TMP/h; mkdir -p "$HOME"; docker_key_ok "$ROOT/scripts/testdata/docker-apt-key.asc"; find "$HOME" -mindepth 1 | wc -l)"
+else
+    echo "(gpg not available: skipped the Docker key check)" >&2
+fi
+
 # ── no terminal and no --yes: refuse with two plain lines (F-059) ────────
 # setsid drops the controlling terminal, so /dev/tty cannot be opened.
 if command -v setsid > /dev/null; then

@@ -9,7 +9,15 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-RUN mkdir -p /data
+# The API runs as an unprivileged user (uid 10001), not root. A new data volume
+# takes /data's owner from the image; an older one, made when the API ran as
+# root, is handed over by the data-owner service in docker-compose.prod.yml.
+RUN groupadd --system --gid 10001 chessloop \
+ && useradd --system --uid 10001 --gid chessloop --home-dir /app --no-create-home \
+        --shell /usr/sbin/nologin chessloop \
+ && mkdir -p /data && chown chessloop:chessloop /data
+
+USER 10001:10001
 
 EXPOSE 8000
 

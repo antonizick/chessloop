@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from config import settings
+from auth.policy import RateLimiter, client_ip
 from database import init_db
 from services import backup_service
 from routers import auth, libraries, lines, games, practice, stats, public, admin, new_user_popup, banner
@@ -48,6 +49,35 @@ def _setup_logging() -> None:
 _setup_logging()
 
 _FRONTEND_LOG_PATH = Path(settings.db_path).parent / "logs" / "frontend.log"
+
+# POST /api/logs/client needs no sign-in (errors happen before it too), so
+# whatever reaches the file is capped: field lengths, entries per browser
+# address per minute, and the file size (rotated, 2 old files kept).
+_CLIENT_LOG_LIMITS = {"level": 16, "message": 2000, "stack": 8000, "url": 500}
+CLIENT_LOG_RATE = RateLimiter(max_events=30, window_seconds=60)
+_frontend_log: logging.Logger | None = None
+
+
+def _frontend_logger() -> logging.Logger:
+    global _frontend_log
+    if _frontend_log is None:
+        _FRONTEND_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+        handler = logging.handlers.RotatingFileHandler(
+            _FRONTEND_LOG_PATH, maxBytes=1024 * 1024, backupCount=2
+        )
+        handler.setFormatter(logging.Formatter("%(message)s"))
+        log = logging.getLogger("chessloop.frontend")
+        log.propagate = False
+        log.setLevel(logging.INFO)
+        log.addHandler(handler)
+        _frontend_log = log
+    return _frontend_log
+
+
+def _one_line(value: str, limit: int) -> str:
+    # A browser could send newlines to forge extra log lines; keep one line each.
+    text = "".join(ch if ch.isprintable() else " " for ch in value)
+    return text[:limit] + ("…" if len(text) > limit else "")
 
 
 def _log_email_setup() -> None:
@@ -123,14 +153,21 @@ class ClientLogEntry(BaseModel):
 
 @app.post("/api/logs/client", status_code=204)
 async def receive_client_log(entry: ClientLogEntry, request: Request):
+    ip = client_ip(request)
+    if CLIENT_LOG_RATE.blocked(ip):
+        return
+    CLIENT_LOG_RATE.hit(ip)
     try:
-        _FRONTEND_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
-        line = f"{datetime.utcnow().isoformat()} [{entry.level.upper()}] {entry.message}"
+        lim = _CLIENT_LOG_LIMITS
+        line = (
+            f"{datetime.utcnow().isoformat()} [{_one_line(entry.level, lim['level']).upper()}] "
+            f"{_one_line(entry.message, lim['message'])}"
+        )
         if entry.url:
-            line += f" | url={entry.url}"
+            line += f" | url={_one_line(entry.url, lim['url'])}"
         if entry.stack:
-            line += f"\n  {entry.stack}"
-        with _FRONTEND_LOG_PATH.open("a") as f:
-            f.write(line + "\n")
+            stack = entry.stack[: lim["stack"]]
+            line += "".join(f"\n  {_one_line(s, lim['stack'])}" for s in stack.splitlines())
+        _frontend_logger().info(line)
     except Exception:
         pass

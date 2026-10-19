@@ -869,6 +869,8 @@ check_packages() {
     for p in git curl; do command -v "$p" >/dev/null 2>&1 || NEED_PKGS+=("$p"); done
     if [ "$NEED_DOCKER_INSTALL" = 1 ] || [ "$NEED_COMPOSE_FIX" = 1 ]; then
         dpkg-query -W -f='${Status}' ca-certificates 2>/dev/null | grep -q 'install ok installed' || NEED_PKGS+=(ca-certificates)
+        # gpg checks Docker's signing key before apt trusts it (docker_key_ok).
+        command -v gpg >/dev/null 2>&1 || NEED_PKGS+=(gpg)
     fi
     if [ "${#NEED_PKGS[@]}" -gt 0 ] && [ "$OS_SUPPORT" = unsupported ]; then
         fatal "Please install ${NEED_PKGS[*]} with your system's package manager, then run the installer again."
@@ -934,6 +936,22 @@ check_existing_install() {
     if [ -d "$INSTALL_DIR" ] && [ -n "$(ls -A "$INSTALL_DIR" 2>/dev/null)" ]; then
         fatal "The folder $INSTALL_DIR already exists and isn't a ChessLoop install. Move it away, or choose another folder: CHESSLOOP_INSTALL_DIR=/path bash deploy.sh"
     fi
+}
+
+# open_addresses: where to open ChessLoop, from the install's own settings
+# (used after start and restore, when the install questions weren't asked).
+open_addresses() {
+    local env="$SUBDIR/.env" domain bind ip
+    domain="$(env_get "$env" DOMAIN)"
+    bind="$(env_get "$env" BIND_ADDR)"
+    note "Open ChessLoop: http://localhost:$PORT"
+    [ -n "$domain" ] && note "  or through your own web address: https://$domain"
+    # On WSL the address inside Linux is not one other devices can use (F-040).
+    if [ "$bind" = "0.0.0.0" ] && ! is_wsl; then
+        ip="$(detect_lan_ip)"
+        [ -n "$ip" ] && note "  or from other devices on your network: http://$ip:$PORT"
+    fi
+    return 0
 }
 
 load_resume_answers() {
@@ -1272,10 +1290,27 @@ install_packages() {
     run "Installing ${NEED_PKGS[*]}" apt_get install --no-install-recommends "${NEED_PKGS[@]}" || explain_network_failure
 }
 
+# Fingerprint of Docker's apt signing key ("Docker Release (CE deb)", created
+# 2017-02-22), as Docker's install docs published it (github.com/docker/docs,
+# install/linux/docker-ce/debian.md at faff4a3) and as download.docker.com
+# served it for Ubuntu and Debian on 2026-10-18. apt trusts whatever key is in
+# docker.asc, so a key from a tampered download would let it install anything.
+DOCKER_KEY_FPR=9DC858229FC7DD38854AE2D88D81803C0EBFCD88
+
+# docker_key_ok FILE: FILE holds exactly one key, and it is Docker's.
+docker_key_ok() {
+    local home fprs rc=0
+    home="$(mktemp -d)"   # gpg would otherwise create ~/.gnupg
+    fprs="$(GNUPGHOME="$home" gpg --batch --show-keys --with-colons "$1" 2>/dev/null \
+        | awk -F: '$1 == "pub" { want = 1; next } want && $1 == "fpr" { print $10; want = 0 }')" || rc=$?
+    rm -rf "$home"
+    [ "$rc" -eq 0 ] && [ "$fprs" = "$DOCKER_KEY_FPR" ]
+}
+
 # Docker's apt repository, as in docs.docker.com/engine/install/{ubuntu,debian}
 # (deb822 .sources file, key in /etc/apt/keyrings; checked 2026-10-17).
 add_docker_repo() {
-    local distro codename arch tmp
+    local distro codename arch tmp key
     [ -f /etc/apt/sources.list.d/docker.sources ] && return 0
     if [ "$OS_ID" = ubuntu ] || [ -n "$OS_UBUNTU_CODENAME" ]; then
         distro=ubuntu; codename="${OS_UBUNTU_CODENAME:-$OS_CODENAME}"
@@ -1285,9 +1320,15 @@ add_docker_repo() {
     [ -n "$codename" ] || fatal "Can't tell which $distro release this is (no VERSION_CODENAME in /etc/os-release)."
     arch="$(dpkg --print-architecture)"
     run "Creating /etc/apt/keyrings" "${AS_ROOT[@]}" install -m 0755 -d /etc/apt/keyrings
-    run "Downloading Docker's signing key" "${AS_ROOT[@]}" curl -fsSL "https://download.docker.com/linux/$distro/gpg" -o /etc/apt/keyrings/docker.asc \
-        || explain_network_failure
-    "${AS_ROOT[@]}" chmod a+r /etc/apt/keyrings/docker.asc
+    key="$(mktemp)"
+    run "Downloading Docker's signing key" curl -fsSL "https://download.docker.com/linux/$distro/gpg" -o "$key" \
+        || { rm -f "$key"; explain_network_failure; }
+    if ! docker_key_ok "$key"; then
+        rm -f "$key"
+        fatal "The signing key downloaded from download.docker.com is not Docker's known key (fingerprint $DOCKER_KEY_FPR), so the installer stopped before trusting it. Something between this computer and Docker may have changed the download. Try again later or on another network; if it keeps happening, please report it."
+    fi
+    "${AS_ROOT[@]}" install -m 0644 "$key" /etc/apt/keyrings/docker.asc
+    rm -f "$key"
     tmp="$(mktemp)"
     printf 'Types: deb\nURIs: https://download.docker.com/linux/%s\nSuites: %s\nComponents: stable\nArchitectures: %s\nSigned-By: /etc/apt/keyrings/docker.asc\n' \
         "$distro" "$codename" "$arch" > "$tmp"
@@ -1312,14 +1353,35 @@ install_docker_engine() {
         docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin || explain_network_failure
 }
 
+# apt_candidate PKG: the version apt would install, or nothing.
+apt_candidate() {
+    apt-cache policy "$1" 2>/dev/null | awk '/Candidate:/ && $2 != "(none)" {print $2; exit}'
+}
+
+# distro_compose_pkg: the distribution's compose v2 package for its docker.io:
+# docker-compose-v2 (Ubuntu) or docker-compose 2.x (Debian 13; Debian 12's is
+# the old 1.x tool, which is not "docker compose"). Nothing if none fits.
+distro_compose_pkg() {
+    local v
+    dpkg-query -W -f='${Status}' docker.io 2>/dev/null | grep -q 'install ok installed' || return 0
+    if [ -n "$(apt_candidate docker-compose-v2)" ]; then echo docker-compose-v2; return 0; fi
+    v="$(apt_candidate docker-compose)"
+    v="${v#*:}"   # drop an epoch
+    [ "${v%%.*}" -ge 2 ] 2>/dev/null && echo docker-compose
+    return 0
+}
+
 # Docker from the distribution (docker.io) without "docker compose" (F-013).
 install_compose_plugin() {
     step "Adding Docker's compose plugin"
     apt_update_once
-    if dpkg-query -W -f='${Status}' docker.io 2>/dev/null | grep -q 'install ok installed' \
-        && [ -n "$(apt-cache policy docker-compose-v2 2>/dev/null | awk '/Candidate:/ && $2 != "(none)" {print $2}')" ]; then
-        # Ubuntu packages compose for its own docker.io
-        run "Installing docker-compose-v2 (matches the docker.io package)" apt_get install docker-compose-v2 || explain_network_failure
+    local pkg
+    pkg="$(distro_compose_pkg)"
+    if [ -n "$pkg" ]; then
+        # The distribution packages compose v2 for its own docker.io. Docker's
+        # plugin would also pull in docker-buildx-plugin, which collides with the
+        # distribution's docker-buildx (Debian 13, F-087).
+        run "Installing $pkg (matches the docker.io package)" apt_get install "$pkg" || explain_network_failure
     else
         add_docker_repo
         run "Installing docker-compose-plugin from Docker's repository" apt_get install docker-compose-plugin || explain_network_failure
@@ -1445,7 +1507,10 @@ write_config() {
 build_failure_reason() {
     local tail
     tail="$(tail -n 60 "${LOG_FILE:-/dev/null}" 2>/dev/null || true)"
-    if grep -qiE 'registry-1\.docker\.io|TLS handshake timeout|no such host|i/o timeout|connection reset|temporary failure in name resolution|failed to (fetch|resolve|do request)|network is unreachable' <<<"$tail"; then
+    # Docker Hub answers 429 when one internet address downloads too much (F-088).
+    if grep -qiE '429 Too Many Requests|toomanyrequests|pull rate limit' <<<"$tail"; then
+        echo ratelimit
+    elif grep -qiE 'registry-1\.docker\.io|TLS handshake timeout|no such host|i/o timeout|connection reset|temporary failure in name resolution|failed to (fetch|resolve|do request)|network is unreachable' <<<"$tail"; then
         echo network
     elif grep -qiE 'no space left on device' <<<"$tail"; then
         echo disk
@@ -1455,8 +1520,18 @@ build_failure_reason() {
     return 0
 }
 
+explain_rate_limit() {
+    note "Docker Hub, where ChessLoop's building blocks come from, is limiting downloads"
+    note "from your internet address for now (\"429 Too Many Requests\"). This is not a"
+    note "problem with this computer. Wait about an hour, then run the same command again;"
+    note "nothing has to be undone."
+}
+
 explain_build_failure() {
     case "$(build_failure_reason)" in
+        ratelimit)
+            explain_rate_limit
+            FATAL_SHOWN=1; exit 1 ;;
         network)
             note "Downloading from the internet failed (Docker Hub or a package server)."
             explain_network_failure ;;
@@ -1965,8 +2040,20 @@ in_backend() {
     if backend_running; then
         dc exec -T "${envs[@]}" backend "$@"
     else
+        fix_data_owner
         dc run --rm --no-deps -T "${envs[@]}" backend "$@"
     fi
+}
+
+# The backend runs as uid 10001 (S7). `up` hands older, root-owned data to it
+# through the data-owner service; a one-off `run --no-deps` skips that, so do
+# it here first. Versions without the service need nothing.
+fix_data_owner() {
+    dc config --services 2>/dev/null | grep -qx data-owner || return 0
+    # stdin from /dev/null: the caller's stdin may be a backup being streamed
+    # into the next command (stage_restore), and "compose run" would read it.
+    dc run --rm --no-deps -T data-owner < /dev/null >> "${LOG_FILE:-/dev/null}" 2>&1 \
+        || warn "Couldn't hand the data files to the ChessLoop user; the next step may fail."
 }
 
 describe_commit() {
@@ -2227,6 +2314,7 @@ discard_staged_restore() {
 # With ChessLoop stopped, puts the staged data in place.
 swap_in_staged_data() {
     run "Stopping ChessLoop" dc stop || return 1
+    fix_data_owner
     run "Putting the backup's data in place" dc run --rm --no-deps -T backend python -c "$PY_SWAP"
 }
 
@@ -2372,7 +2460,7 @@ do_restore() {
         note "The backup also holds the old settings file. To read it:  tar -xzOf $file settings.env"
     fi
     [ -n "$safety" ] && note "The data from before the restore: $safety"
-    note "Open ChessLoop: http://localhost:$PORT"
+    open_addresses
 }
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -2411,7 +2499,7 @@ backend_image() {
 volume_state() {
     local v="$1" img out mp
     img="$(backend_image)"
-    if [ -n "$img" ] && out="$("${DOCKER[@]}" run --rm --network none -v "$v:/v:ro" "$img" \
+    if [ -n "$img" ] && out="$("${DOCKER[@]}" run --rm --network none --user 0 -v "$v:/v:ro" "$img" \
             find /v -mindepth 1 -maxdepth 2 2>/dev/null)"; then
         if [ -z "$out" ]; then echo empty; else echo data; fi
         return 0
@@ -2647,6 +2735,7 @@ roll_back() {
         note "When the problem is fixed (see the log), run: $(prog_name) update"
         FATAL_SHOWN=1; exit 1
     fi
+    local data_ok=1
     if [ "$restore_data" = 1 ] && [ -n "$PRE_UPDATE_BACKUP" ]; then
         info "Putting back the data from before the update…"
         # Stopped first: a backend that keeps crashing can't be used to stage the data.
@@ -2654,14 +2743,22 @@ roll_back() {
         if stage_restore "$PRE_UPDATE_BACKUP" archive && swap_in_staged_data; then
             ok "Data: back to the backup from before the update."
         else
+            data_ok=0
             err "Couldn't put back the data from before the update (${RESTORE_ERROR:-see the log})."
-            note "It is safe in $PRE_UPDATE_BACKUP: $(prog_name) restore $PRE_UPDATE_BACKUP"
         fi
     fi
     if start_chessloop "Starting the previous version"; then
-        [ -n "$PRE_UPDATE_COUNTS" ] && [ "$restore_data" = 1 ] && check_counts "$PRE_UPDATE_COUNTS" || true
+        if [ "$restore_data" = 1 ] && [ -n "$PRE_UPDATE_COUNTS" ] && [ "$data_ok" = 1 ]; then
+            check_counts "$PRE_UPDATE_COUNTS" || data_ok=0
+        fi
         blank
-        ok "ChessLoop is running the previous version again, $(describe_commit "$old"), with your data."
+        if [ "$data_ok" = 1 ]; then
+            ok "ChessLoop is running the previous version again, $(describe_commit "$old"), with your data."
+        else
+            warn "ChessLoop is running the previous version again, $(describe_commit "$old"), but its data may not be"
+            warn "what you had before the update. Your data from before the update is safe in the backup:"
+            note "  $(prog_name) restore $PRE_UPDATE_BACKUP"
+        fi
     else
         err "The previous version didn't start either."
         show_backend_messages
@@ -2771,6 +2868,11 @@ do_update() {
         PRE_UPDATE_BACKUP=""
         warn "The backup failed ($BACKUP_ERROR); continuing without one because of --no-backup."
     else
+        if grep -qiE '429 Too Many Requests|toomanyrequests' <<<"$BACKUP_ERROR"; then
+            err "The backup before the update couldn't start: Docker Hub refused a download. Nothing was changed."
+            explain_rate_limit
+            FATAL_SHOWN=1; exit 1
+        fi
         fatal "The backup before the update failed: $BACKUP_ERROR. Nothing was changed. (To update without a backup, add --no-backup.)"
     fi
 
@@ -2785,6 +2887,7 @@ do_update() {
     fi
     if ! run "Building the new version (usually 1 to 5 minutes)" dc build; then
         case "$(build_failure_reason)" in
+            ratelimit) roll_back "$old" 0 "Docker Hub is limiting downloads from your internet address for now (wait about an hour, then run the update again)" ;;
             network) roll_back "$old" 0 "downloading during the build failed (check the internet connection)" ;;
             disk) roll_back "$old" 0 "the disk is full (free up at least 3 GB)" ;;
             memory) roll_back "$old" 0 "the build ran out of memory" ;;
@@ -2795,7 +2898,11 @@ do_update() {
         show_backend_messages
         roll_back "$old" 1 "the new version didn't start"
     fi
-    ok "Updated: $old_desc → $(describe_commit "$new")"
+    if [ "$old" = "$new" ]; then
+        ok "Rebuilt $old_desc (it was already the newest version)."
+    else
+        ok "Updated: $old_desc → $(describe_commit "$new")"
+    fi
     top_up_starter_content
     check_accounts
     record_update "$ref"
@@ -3107,7 +3214,8 @@ do_status() {
     note "Version:  $(describe_commit HEAD)"
     note "Address:  http://localhost:$PORT"
     blank
-    dc ps --all --format 'table {{.Service}}\t{{.Status}}' 2>&1 | sed 's/^/      /' >&2 || true
+    # data-owner runs once at start and exits; it isn't one of the three parts.
+    dc ps --all --format 'table {{.Service}}\t{{.Status}}' backend frontend nginx 2>&1 | sed 's/^/      /' >&2 || true
     blank
     if http_ok; then ok "ChessLoop answers on port $PORT."; else err "ChessLoop doesn't answer on port $PORT. Try: $(prog_name) start"; fi
     if "${DOCKER[@]}" volume ls -q 2>/dev/null | volume_listed "$VOLUME_NAME"; then
@@ -3130,7 +3238,8 @@ do_start() {
     require_install
     docker_access
     start_chessloop "Starting ChessLoop" || { show_backend_messages; fatal "ChessLoop didn't start."; }
-    ok "Open ChessLoop: http://localhost:$PORT"
+    ok "ChessLoop is running."
+    open_addresses
 }
 
 do_stop() {
