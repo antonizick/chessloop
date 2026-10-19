@@ -336,6 +336,24 @@ check "lines added: none" 0 "$(starter_lines_added "")"
 check "lines added: noise" 0 "$(starter_lines_added $'Traceback...\nAdded lines')"
 check "lines added: after other output" 111 "$(starter_lines_added $'something\nAdded 111 lines to the starter libraries.')"
 
+# ── where to open ChessLoop after start/restore (F-070) ──────────────────
+mkdir -p "$TMP/oa"
+printf 'PUBLIC_PORT=8091\nBIND_ADDR=0.0.0.0\n' > "$TMP/oa/.env"
+detect_lan_ip() { echo 192.168.1.20; }
+is_wsl() { return 1; }
+out="$(SUBDIR=$TMP/oa PORT=8091 open_addresses 2>&1)"
+check "open: localhost" 1 "$(grep -c 'http://localhost:8091' <<<"$out")"
+check "open: lan" 1 "$(grep -c 'http://192.168.1.20:8091' <<<"$out")"
+is_wsl() { return 0; }
+out="$(SUBDIR=$TMP/oa PORT=8091 open_addresses 2>&1)"
+check "open: no lan address on wsl" 0 "$(grep -c '192.168' <<<"$out")"
+printf 'PUBLIC_PORT=8091\nBIND_ADDR=127.0.0.1\n' > "$TMP/oa/.env"
+is_wsl() { return 1; }
+out="$(SUBDIR=$TMP/oa PORT=8091 open_addresses 2>&1)"
+check "open: local only" 0 "$(grep -c '192.168' <<<"$out")"
+unset -f detect_lan_ip is_wsl
+CHESSLOOP_SOURCE_ONLY=1 source "$ROOT/deploy.sh"; set +e; trap - ERR
+
 # ── Docker's apt signing key is checked before apt trusts it ────────────
 # testdata/docker-apt-key.asc: download.docker.com/linux/debian/gpg, 2026-10-18.
 if command -v gpg > /dev/null; then

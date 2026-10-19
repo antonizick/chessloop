@@ -8,6 +8,8 @@ export interface OpeningSearchResult {
   description: string;
   moves: string[];
   available_variations: number;
+  /** Why Lichess couldn't be asked; then available_variations is 0. */
+  variations_note?: string | null;
 }
 
 export interface SeedOpeningsResponse {

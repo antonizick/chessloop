@@ -938,6 +938,22 @@ check_existing_install() {
     fi
 }
 
+# open_addresses: where to open ChessLoop, from the install's own settings
+# (used after start and restore, when the install questions weren't asked).
+open_addresses() {
+    local env="$SUBDIR/.env" domain bind ip
+    domain="$(env_get "$env" DOMAIN)"
+    bind="$(env_get "$env" BIND_ADDR)"
+    note "Open ChessLoop: http://localhost:$PORT"
+    [ -n "$domain" ] && note "  or through your own web address: https://$domain"
+    # On WSL the address inside Linux is not one other devices can use (F-040).
+    if [ "$bind" = "0.0.0.0" ] && ! is_wsl; then
+        ip="$(detect_lan_ip)"
+        [ -n "$ip" ] && note "  or from other devices on your network: http://$ip:$PORT"
+    fi
+    return 0
+}
+
 load_resume_answers() {
     local env="$SUBDIR/.env" bind
     PORT="$(env_get "$env" PUBLIC_PORT)"; PORT="${PORT:-$DEFAULT_PORT}"
@@ -2408,7 +2424,7 @@ do_restore() {
         note "The backup also holds the old settings file. To read it:  tar -xzOf $file settings.env"
     fi
     [ -n "$safety" ] && note "The data from before the restore: $safety"
-    note "Open ChessLoop: http://localhost:$PORT"
+    open_addresses
 }
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -2831,7 +2847,11 @@ do_update() {
         show_backend_messages
         roll_back "$old" 1 "the new version didn't start"
     fi
-    ok "Updated: $old_desc → $(describe_commit "$new")"
+    if [ "$old" = "$new" ]; then
+        ok "Rebuilt $old_desc (it was already the newest version)."
+    else
+        ok "Updated: $old_desc → $(describe_commit "$new")"
+    fi
     top_up_starter_content
     check_accounts
     record_update "$ref"
@@ -3167,7 +3187,8 @@ do_start() {
     require_install
     docker_access
     start_chessloop "Starting ChessLoop" || { show_backend_messages; fatal "ChessLoop didn't start."; }
-    ok "Open ChessLoop: http://localhost:$PORT"
+    ok "ChessLoop is running."
+    open_addresses
 }
 
 do_stop() {

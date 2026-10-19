@@ -112,7 +112,7 @@ def main(argv: list[str] | None = None) -> int:
                     is_verified=True,
                 ))
                 db.commit()
-                print(f"Admin account created: {email} (username '{username}').")
+                print(f"Admin account created: {email} (sign in with this email address).")
                 return EXIT_OK
 
             changes = []

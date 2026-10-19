@@ -237,6 +237,12 @@ function ImportOpeningSection() {
         <p className="text-xs text-ink-400">Searching…</p>
       )}
 
+      {results?.find((r) => r.variations_note) && (
+        <p role="status" className="text-xs text-amber-300 bg-ink-800 border border-ink-600 rounded px-3 py-2">
+          {results.find((r) => r.variations_note)?.variations_note}
+        </p>
+      )}
+
       {results && results.length > 0 && (
         <div className="flex flex-col gap-1.5 max-h-72 overflow-y-auto pr-1">
           {results.map((entry) => {
@@ -256,7 +262,8 @@ function ImportOpeningSection() {
                   </div>
                   <p className="text-xs text-ink-400 mt-0.5 line-clamp-1">{entry.description}</p>
                   <p className="text-[10px] text-ink-500 mt-0.5">
-                    {entry.moves.length} moves · {entry.available_variations} variations available
+                    {entry.moves.length} moves
+                    {entry.variations_note ? " · variations from Lichess unavailable" : ` · ${entry.available_variations} variations available`}
                   </p>
                 </div>
 

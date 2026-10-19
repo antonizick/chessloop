@@ -192,26 +192,51 @@ def search_openings(query: str) -> list[dict]:
     return results[:20]  # Cap at 20 results
 
 
-def count_lichess_variations(moves: list[str]) -> int:
-    """Count how many variations are available from Lichess for the given opening position."""
+# Shown to the admin instead of "0 variations" when Lichess can't be asked (F-020).
+LICHESS_NEEDS_TOKEN = (
+    "Lichess now asks for a sign-in token for this lookup, which ChessLoop doesn't send, "
+    "so no variations can be imported from it. The starter libraries and the bundled "
+    "opening data are not affected."
+)
+LICHESS_UNREACHABLE = (
+    "ChessLoop couldn't reach Lichess, so no variations can be imported right now. "
+    "The starter libraries and the bundled opening data are not affected."
+)
+
+
+def lichess_variation_count(moves: list[str]) -> tuple[int, str | None]:
+    """How many variations Lichess has for this opening position, and, if Lichess
+    couldn't answer, why (a message for the admin) instead of a misleading 0."""
     import chess
     try:
         board = chess.Board()
         for san in moves:
             board.push_san(san)
         fen = board.fen()
+    except ValueError:
+        return 0, None
+    try:
         with httpx.Client(timeout=5) as client:
             response = client.get(
                 LICHESS_EXPLORER_URL,
                 params={"fen": fen, "since": 2020, "until": 2026, "speeds": "blitz,rapid,classical", "ratings": "2000,2200,2400"},
             )
-            if response.status_code != 200:
-                return 0
-            data = response.json()
-            moves_list = data.get("moves", [])
-            return len(moves_list) if moves_list else 0
-    except Exception:
-        return 0
+    except httpx.HTTPError:
+        return 0, LICHESS_UNREACHABLE
+    if response.status_code in (401, 403):
+        return 0, LICHESS_NEEDS_TOKEN
+    if response.status_code != 200:
+        return 0, LICHESS_UNREACHABLE
+    try:
+        moves_list = response.json().get("moves", [])
+    except ValueError:
+        return 0, LICHESS_UNREACHABLE
+    return (len(moves_list) if moves_list else 0), None
+
+
+def count_lichess_variations(moves: list[str]) -> int:
+    """Count how many variations are available from Lichess for the given opening position."""
+    return lichess_variation_count(moves)[0]
 
 
 def fetch_lichess_variations(moves: list[str], count: int) -> list[list[str]] | None:

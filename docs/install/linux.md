@@ -177,7 +177,7 @@ The installer installs Docker (a program that runs ChessLoop in sealed boxes cal
   ✓  Installing Docker Engine (about 1 minute) (33 s)
   ✓  Building ChessLoop (44 s)
   ✓  Starting ChessLoop and waiting until it is healthy (12 s)
-  ✓  Admin account created: you@example.com (username 'admin').
+  ✓  Admin account created: you@example.com (sign in with this email address).
   ✓  Checked: you@example.com can sign in.
 ```
 

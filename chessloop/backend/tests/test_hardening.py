@@ -181,3 +181,49 @@ def test_upload_name_is_made_safe(client, tmp_path, monkeypatch):
     assert len(files) == 1
     assert "/" not in files[0] and ".." not in files[0]
     assert files[0].endswith("_etc_evil_name.db")
+
+
+# ── F-020: when Lichess refuses, the admin is told why ───────────────────
+import httpx as _httpx
+
+_REAL_CLIENT = _httpx.Client
+
+
+def _fake_lichess(monkeypatch, handler):
+    import httpx
+    from services import opening_import
+    calls = []
+
+    def wrapped(request):
+        calls.append(request.url)
+        return handler(request)
+
+    monkeypatch.setattr(opening_import.httpx, "Client",
+                        lambda **kw: _REAL_CLIENT(transport=httpx.MockTransport(wrapped), **kw))
+    return calls
+
+
+def test_opening_search_says_lichess_needs_a_token(client, monkeypatch):
+    import httpx
+    from services import opening_import
+    calls = _fake_lichess(monkeypatch, lambda r: httpx.Response(401, json={"error": "No such token"}))
+    admin = _signup(client, "boss@test.com", "boss", role="admin")
+    r = client.get("/api/admin/openings/search?q=Italian", headers=admin)
+    assert r.status_code == 200
+    rows = r.json()
+    assert rows and all(row["available_variations"] == 0 for row in rows)
+    assert rows[0]["variations_note"] == opening_import.LICHESS_NEEDS_TOKEN
+    assert len(calls) == 1  # not once per result
+
+
+def test_opening_search_unreachable_and_ok(client, monkeypatch):
+    import httpx
+    from services import opening_import
+
+    def down(request):
+        raise httpx.ConnectError("no route", request=request)
+
+    _fake_lichess(monkeypatch, down)
+    assert opening_import.lichess_variation_count(["e4", "e5"]) == (0, opening_import.LICHESS_UNREACHABLE)
+    _fake_lichess(monkeypatch, lambda r: httpx.Response(200, json={"moves": [{}, {}, {}]}))
+    assert opening_import.lichess_variation_count(["e4", "e5"]) == (3, None)
