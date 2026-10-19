@@ -1184,6 +1184,7 @@ function SystemSettingsSection() {
         <button
           role="switch"
           aria-checked={data.enforce_email_verification}
+          aria-label="Require email verification for new accounts"
           onClick={() => toggleMut.mutate(!data.enforce_email_verification)}
           disabled={toggleMut.isPending}
           className={`shrink-0 ml-4 w-11 h-6 rounded-full transition-colors relative ${
