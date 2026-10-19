@@ -239,3 +239,34 @@ def test_session_must_belong_to_user(client):
 
     r = client.get(f"/api/practice/session/{sid}/next", headers=H_b)
     assert r.status_code == 403
+
+
+def test_picked_library_only_even_with_other_positions_seeded(client):
+    """F-074: with an earlier session over every library, practising one picked
+    library must serve only that library's lines, in each mode."""
+    H, lib, line = _bootstrap(client)
+    other = client.post("/api/libraries", headers=H, json={"name": "Ruy Lopez", "color": "white"}).json()
+    other_line = client.post(f"/api/libraries/{other['id']}/lines", headers=H, json={"name": "Closed"}).json()
+    for move in ITALIAN_OPENING:
+        assert client.post(f"/api/lines/{other_line['id']}/moves", headers=H, json=move).status_code == 200
+    # An earlier session over everything seeds positions in both libraries.
+    client.post("/api/practice/session/start", headers=H, json={"mode": "weakest", "scope": {}})
+
+    # Several fresh sessions per mode (the pick is weighted at random); nothing
+    # is answered, so every position stays new and eligible.
+    for mode in ("weakest", "selected"):
+        seen = set()
+        for _ in range(12):
+            sid = client.post("/api/practice/session/start", headers=H, json={
+                "mode": mode, "scope": {"library_ids": [lib["id"]]},
+            }).json()["id"]
+            pos = client.get(f"/api/practice/session/{sid}/next", headers=H).json()
+            assert pos.get("done") is False, (mode, pos)
+            seen.add(pos["line_id"])
+        assert seen == {line["id"]}, (mode, seen)
+    # Without a pick, both libraries are in play (so the check above means something).
+    seen = set()
+    for _ in range(30):
+        sid = client.post("/api/practice/session/start", headers=H, json={"mode": "weakest", "scope": {}}).json()["id"]
+        seen.add(client.get(f"/api/practice/session/{sid}/next", headers=H).json()["line_id"])
+    assert seen == {line["id"], other_line["id"]}

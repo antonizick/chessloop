@@ -1353,14 +1353,35 @@ install_docker_engine() {
         docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin || explain_network_failure
 }
 
+# apt_candidate PKG: the version apt would install, or nothing.
+apt_candidate() {
+    apt-cache policy "$1" 2>/dev/null | awk '/Candidate:/ && $2 != "(none)" {print $2; exit}'
+}
+
+# distro_compose_pkg: the distribution's compose v2 package for its docker.io:
+# docker-compose-v2 (Ubuntu) or docker-compose 2.x (Debian 13; Debian 12's is
+# the old 1.x tool, which is not "docker compose"). Nothing if none fits.
+distro_compose_pkg() {
+    local v
+    dpkg-query -W -f='${Status}' docker.io 2>/dev/null | grep -q 'install ok installed' || return 0
+    if [ -n "$(apt_candidate docker-compose-v2)" ]; then echo docker-compose-v2; return 0; fi
+    v="$(apt_candidate docker-compose)"
+    v="${v#*:}"   # drop an epoch
+    [ "${v%%.*}" -ge 2 ] 2>/dev/null && echo docker-compose
+    return 0
+}
+
 # Docker from the distribution (docker.io) without "docker compose" (F-013).
 install_compose_plugin() {
     step "Adding Docker's compose plugin"
     apt_update_once
-    if dpkg-query -W -f='${Status}' docker.io 2>/dev/null | grep -q 'install ok installed' \
-        && [ -n "$(apt-cache policy docker-compose-v2 2>/dev/null | awk '/Candidate:/ && $2 != "(none)" {print $2}')" ]; then
-        # Ubuntu packages compose for its own docker.io
-        run "Installing docker-compose-v2 (matches the docker.io package)" apt_get install docker-compose-v2 || explain_network_failure
+    local pkg
+    pkg="$(distro_compose_pkg)"
+    if [ -n "$pkg" ]; then
+        # The distribution packages compose v2 for its own docker.io. Docker's
+        # plugin would also pull in docker-buildx-plugin, which collides with the
+        # distribution's docker-buildx (Debian 13, F-087).
+        run "Installing $pkg (matches the docker.io package)" apt_get install "$pkg" || explain_network_failure
     else
         add_docker_repo
         run "Installing docker-compose-plugin from Docker's repository" apt_get install docker-compose-plugin || explain_network_failure
@@ -1486,7 +1507,10 @@ write_config() {
 build_failure_reason() {
     local tail
     tail="$(tail -n 60 "${LOG_FILE:-/dev/null}" 2>/dev/null || true)"
-    if grep -qiE 'registry-1\.docker\.io|TLS handshake timeout|no such host|i/o timeout|connection reset|temporary failure in name resolution|failed to (fetch|resolve|do request)|network is unreachable' <<<"$tail"; then
+    # Docker Hub answers 429 when one internet address downloads too much (F-088).
+    if grep -qiE '429 Too Many Requests|toomanyrequests|pull rate limit' <<<"$tail"; then
+        echo ratelimit
+    elif grep -qiE 'registry-1\.docker\.io|TLS handshake timeout|no such host|i/o timeout|connection reset|temporary failure in name resolution|failed to (fetch|resolve|do request)|network is unreachable' <<<"$tail"; then
         echo network
     elif grep -qiE 'no space left on device' <<<"$tail"; then
         echo disk
@@ -1496,8 +1520,18 @@ build_failure_reason() {
     return 0
 }
 
+explain_rate_limit() {
+    note "Docker Hub, where ChessLoop's building blocks come from, is limiting downloads"
+    note "from your internet address for now (\"429 Too Many Requests\"). This is not a"
+    note "problem with this computer. Wait about an hour, then run the same command again;"
+    note "nothing has to be undone."
+}
+
 explain_build_failure() {
     case "$(build_failure_reason)" in
+        ratelimit)
+            explain_rate_limit
+            FATAL_SHOWN=1; exit 1 ;;
         network)
             note "Downloading from the internet failed (Docker Hub or a package server)."
             explain_network_failure ;;
@@ -2823,6 +2857,11 @@ do_update() {
         PRE_UPDATE_BACKUP=""
         warn "The backup failed ($BACKUP_ERROR); continuing without one because of --no-backup."
     else
+        if grep -qiE '429 Too Many Requests|toomanyrequests' <<<"$BACKUP_ERROR"; then
+            err "The backup before the update couldn't start: Docker Hub refused a download. Nothing was changed."
+            explain_rate_limit
+            FATAL_SHOWN=1; exit 1
+        fi
         fatal "The backup before the update failed: $BACKUP_ERROR. Nothing was changed. (To update without a backup, add --no-backup.)"
     fi
 
@@ -2837,6 +2876,7 @@ do_update() {
     fi
     if ! run "Building the new version (usually 1 to 5 minutes)" dc build; then
         case "$(build_failure_reason)" in
+            ratelimit) roll_back "$old" 0 "Docker Hub is limiting downloads from your internet address for now (wait about an hour, then run the update again)" ;;
             network) roll_back "$old" 0 "downloading during the build failed (check the internet connection)" ;;
             disk) roll_back "$old" 0 "the disk is full (free up at least 3 GB)" ;;
             memory) roll_back "$old" 0 "the build ran out of memory" ;;
