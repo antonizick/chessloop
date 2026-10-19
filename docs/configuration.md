@@ -76,7 +76,23 @@ Without email, ChessLoop sends nothing: new accounts can sign in at once, and th
 |---|---|
 | `ACCESS_TTL_MIN` | Minutes a sign-in lasts before it is quietly renewed. Default `15`. |
 | `REFRESH_TTL_DAYS` | Days before someone must sign in again. Default `30`. |
-| `LICHESS_API_TOKEN` | Reserved. This version does not use it: the starter libraries and "Import from Lichess" on a library work without it. It is a secret like a password if you ever set it. |
+| `LICHESS_API_TOKEN` | Optional. A free personal token from Lichess that turns on **Admin panel → Openings** "variations available" and importing them. See [Import more variations from Lichess](#import-more-variations-from-lichess). It is a secret like a password. |
+
+### Import more variations from Lichess
+
+**You do not need this.** The 16 starter libraries (127 lines) and **Import from Lichess** inside a library work without a token. The token adds one thing: in **Admin panel → Openings**, search for an opening and let ChessLoop pull the most-played extra variations from Lichess's opening explorer. Without a token, Lichess refuses that lookup, and the admin panel shows "variations from Lichess unavailable" with a note.
+
+To turn it on you need a free Lichess account:
+
+1. Sign in at <https://lichess.org>.
+2. Open <https://lichess.org/account/oauth/token> and use the button there to create a new personal access token.
+3. Type a description such as `ChessLoop`. Tick **no** boxes: ChessLoop only reads public data. Create it.
+4. Lichess shows the token once (it starts with `lip_`). Copy it now.
+5. Open the settings file (see [How to change a setting](#how-to-change-a-setting)), find the line `# LICHESS_API_TOKEN=`, remove the `# `, and paste the token after the `=` with no spaces or quotes. For example: `LICHESS_API_TOKEN=lip_xxxxxxxxxxxx`.
+6. Apply it with the `docker compose ... up -d` command from step 3 of that section.
+7. In **Admin panel → Openings**, search for an opening. You should now see "N variations available" instead of the amber note.
+
+If the note says Lichess **refused the token**, it was copied incompletely or deleted: make a new one and repeat steps 4 to 6. Keep the token private; anyone with it can read what you allowed it to (here: nothing private). You can delete it any time on the same Lichess page.
 
 ## Settings only the installer uses
 

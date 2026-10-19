@@ -227,3 +227,55 @@ def test_opening_search_unreachable_and_ok(client, monkeypatch):
     assert opening_import.lichess_variation_count(["e4", "e5"]) == (0, opening_import.LICHESS_UNREACHABLE)
     _fake_lichess(monkeypatch, lambda r: httpx.Response(200, json={"moves": [{}, {}, {}]}))
     assert opening_import.lichess_variation_count(["e4", "e5"]) == (3, None)
+
+
+# ── Sign-in rate limit and the Lichess token (Phase 13) ──────────────────────
+
+def test_login_is_limited_after_ten_wrong_passwords(client):
+    from routers.auth import LOGIN_ACCOUNT_LIMIT, LOGIN_IP_LIMIT, LOGIN_LOCKED
+    LOGIN_ACCOUNT_LIMIT.reset()
+    LOGIN_IP_LIMIT.reset()
+    _signup(client, "limit@test.com", "limiter")
+    bad = {"email": "limit@test.com", "password": "not-the-password-1"}
+    for _ in range(10):
+        assert client.post("/api/auth/login", json=bad).status_code == 401
+    r = client.post("/api/auth/login", json=bad)
+    assert r.status_code == 429 and r.json()["detail"] == LOGIN_LOCKED
+    # Locked even with the right password, until the window passes.
+    assert client.post("/api/auth/login", json={"email": "limit@test.com", "password": PW}).status_code == 429
+    LOGIN_ACCOUNT_LIMIT.reset()
+    LOGIN_IP_LIMIT.reset()
+
+
+def test_correct_login_resets_the_account_counter(client):
+    from routers.auth import LOGIN_ACCOUNT_LIMIT, LOGIN_IP_LIMIT
+    LOGIN_ACCOUNT_LIMIT.reset()
+    LOGIN_IP_LIMIT.reset()
+    _signup(client, "ok@test.com", "okuser")
+    bad = {"email": "ok@test.com", "password": "not-the-password-1"}
+    for _ in range(9):
+        client.post("/api/auth/login", json=bad)
+    assert client.post("/api/auth/login", json={"email": "ok@test.com", "password": PW}).status_code == 200
+    for _ in range(9):
+        assert client.post("/api/auth/login", json=bad).status_code == 401
+    LOGIN_ACCOUNT_LIMIT.reset()
+    LOGIN_IP_LIMIT.reset()
+
+
+def test_lichess_token_is_sent_and_notes_say_what_to_do(monkeypatch):
+    import httpx
+    from config import settings
+    from services import opening_import
+    seen = []
+
+    def handler(request):
+        seen.append(request.headers.get("authorization"))
+        return httpx.Response(401)
+
+    _fake_lichess(monkeypatch, handler)
+    monkeypatch.setattr(settings, "lichess_api_token", "")
+    assert opening_import.lichess_variation_count(["e4"]) == (0, opening_import.LICHESS_NEEDS_TOKEN)
+    assert "lichess.org/account/oauth/token" in opening_import.LICHESS_NEEDS_TOKEN
+    monkeypatch.setattr(settings, "lichess_api_token", " lip_abc ")
+    assert opening_import.lichess_variation_count(["e4"]) == (0, opening_import.LICHESS_TOKEN_REFUSED)
+    assert seen == [None, "Bearer lip_abc"]

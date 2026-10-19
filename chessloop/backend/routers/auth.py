@@ -46,6 +46,11 @@ CHANGE_PASSWORD_LIMIT = RateLimiter(max_events=5, window_seconds=15 * 60)
 # limit, someone who knows the password could try all million codes.
 MFA_CODE_LIMIT = RateLimiter(max_events=5, window_seconds=15 * 60)
 MFA_LOCKED = "Too many wrong codes. Wait 15 minutes and try again."
+# Wrong passwords on /login, per email address and per client IP. The IP ceiling is
+# higher because everyone on one Docker Desktop / WSL host can share an address.
+LOGIN_ACCOUNT_LIMIT = RateLimiter(max_events=10, window_seconds=15 * 60)
+LOGIN_IP_LIMIT = RateLimiter(max_events=30, window_seconds=15 * 60)
+LOGIN_LOCKED = "Too many failed sign-in attempts. Wait 15 minutes and try again."
 
 
 def _issue_tokens(user: User) -> TokenResponse:
@@ -122,10 +127,17 @@ def register(body: RegisterRequest, session: Session = Depends(get_session)):
 
 
 @router.post("/login", response_model=TokenResponse | MfaChallengeResponse)
-def login(body: LoginRequest, session: Session = Depends(get_session)):
+def login(body: LoginRequest, request: Request, session: Session = Depends(get_session)):
+    account_key = f"login:{body.email.strip().lower()}"
+    ip_key = f"login-ip:{client_ip(request)}"
+    if LOGIN_ACCOUNT_LIMIT.blocked(account_key) or LOGIN_IP_LIMIT.blocked(ip_key):
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, LOGIN_LOCKED)
     user = session.exec(select(User).where(User.email == body.email)).first()
     if not user or not verify_password(body.password, user.password_hash):
+        LOGIN_ACCOUNT_LIMIT.hit(account_key)
+        LOGIN_IP_LIMIT.hit(ip_key)
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid credentials")
+    LOGIN_ACCOUNT_LIMIT.reset(account_key)
     if not user.is_verified:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Email not verified")
 

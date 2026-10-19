@@ -16,6 +16,7 @@ import chess
 import httpx
 from sqlmodel import Session, select
 
+from config import settings
 from models.library import Library
 from models.line import Line, STARTING_FEN
 
@@ -194,14 +195,29 @@ def search_openings(query: str) -> list[dict]:
 
 # Shown to the admin instead of "0 variations" when Lichess can't be asked (F-020).
 LICHESS_NEEDS_TOKEN = (
-    "Lichess now asks for a sign-in token for this lookup, which ChessLoop doesn't send, "
-    "so no variations can be imported from it. The starter libraries and the bundled "
-    "opening data are not affected."
+    "Lichess only shares extra variations with a free personal token, and none is set. "
+    "To turn this on: create a token at https://lichess.org/account/oauth/token (tick no boxes), "
+    "put it in ChessLoop's settings file as LICHESS_API_TOKEN, then run "
+    "'docker compose -f docker-compose.prod.yml up -d' in /opt/chessloop/chessloop. "
+    "Full steps: docs/configuration.md, \"Import more variations from Lichess\". "
+    "Until then this lookup shows no variations. The starter libraries, the bundled opening "
+    "data and 'Import from Lichess' on a library work without a token."
+)
+LICHESS_TOKEN_REFUSED = (
+    "Lichess refused the token set as LICHESS_API_TOKEN. Check that it was copied whole "
+    "(no spaces or quotes) and has not been deleted at https://lichess.org/account/oauth/token; "
+    "create a new one if in doubt, then apply it as described in docs/configuration.md, "
+    "\"Import more variations from Lichess\"."
 )
 LICHESS_UNREACHABLE = (
     "ChessLoop couldn't reach Lichess, so no variations can be imported right now. "
     "The starter libraries and the bundled opening data are not affected."
 )
+
+
+def _lichess_headers() -> dict[str, str]:
+    token = settings.lichess_api_token.strip()
+    return {"Authorization": f"Bearer {token}"} if token else {}
 
 
 def lichess_variation_count(moves: list[str]) -> tuple[int, str | None]:
@@ -220,11 +236,12 @@ def lichess_variation_count(moves: list[str]) -> tuple[int, str | None]:
             response = client.get(
                 LICHESS_EXPLORER_URL,
                 params={"fen": fen, "since": 2020, "until": 2026, "speeds": "blitz,rapid,classical", "ratings": "2000,2200,2400"},
+                headers=_lichess_headers(),
             )
     except httpx.HTTPError:
         return 0, LICHESS_UNREACHABLE
     if response.status_code in (401, 403):
-        return 0, LICHESS_NEEDS_TOKEN
+        return 0, LICHESS_TOKEN_REFUSED if settings.lichess_api_token.strip() else LICHESS_NEEDS_TOKEN
     if response.status_code != 200:
         return 0, LICHESS_UNREACHABLE
     try:
@@ -251,6 +268,7 @@ def fetch_lichess_variations(moves: list[str], count: int) -> list[list[str]] | 
             response = client.get(
                 LICHESS_EXPLORER_URL,
                 params={"fen": fen, "since": 2020, "until": 2026, "speeds": "blitz,rapid,classical", "ratings": "2000,2200,2400"},
+                headers=_lichess_headers(),
             )
             if response.status_code != 200:
                 return None

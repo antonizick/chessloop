@@ -58,7 +58,7 @@ The installer loaded 16 starter opening libraries (Ruy López, Sicilian, Italian
 - **Learn / View** opens one read-only.
 - **Fork / Add to My Library** makes your own copy. You can change a copy, and practise it.
 
-Accounts that people register later (for example your family) also get a copy of "Ruy López — Closed" with all its lines. It is in their own libraries; the other 15 stay under **Public Opening Libraries** until they fork them. The first account, the admin the installer made, starts with no libraries of its own: fork one from **Public Opening Libraries**, or make your own (next section).
+Accounts that people register later (for example your family) also get a copy of "Ruy López — Closed" with all its lines. It is in their own libraries; the other 15 stay under **Public Opening Libraries** until they fork them. The first account, the admin the installer made, starts with no libraries of its own. The first time it signs in, ChessLoop shows a one-time message that says so: fork one from **Public Opening Libraries**, or make your own (next section).
 
 ## 6. Look at a library, then teach a line
 
@@ -130,7 +130,7 @@ In a library, **Publish** puts it in **Public Opening Libraries** for everyone o
 
 ## 10. For admins
 
-The **Admin panel** has tabs for Users, Backups, logs, activity, a banner message and System settings. In **Users** you can create accounts, verify them and set passwords. In **Backups** you create, download and restore backups ([Backup and restore](backup-restore.md)). **System settings** shows whether email is set up.
+The **Admin panel** has tabs for Users, Backups, logs, activity, a banner message and System settings. In **Users** you can create accounts, verify them and set passwords. In **Backups** you create, download and restore backups ([Backup and restore](backup-restore.md)). **System settings** shows whether email is set up. **Openings** can pull extra variations from Lichess once you add a free Lichess token ([how](configuration.md#import-more-variations-from-lichess)); without one it says so and everything else keeps working.
 
 ![Admin panel, Users](images/13-admin-users.png)
 
