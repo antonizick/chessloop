@@ -2050,7 +2050,9 @@ in_backend() {
 # it here first. Versions without the service need nothing.
 fix_data_owner() {
     dc config --services 2>/dev/null | grep -qx data-owner || return 0
-    dc run --rm --no-deps -T data-owner >> "${LOG_FILE:-/dev/null}" 2>&1 \
+    # stdin from /dev/null: the caller's stdin may be a backup being streamed
+    # into the next command (stage_restore), and "compose run" would read it.
+    dc run --rm --no-deps -T data-owner < /dev/null >> "${LOG_FILE:-/dev/null}" 2>&1 \
         || warn "Couldn't hand the data files to the ChessLoop user; the next step may fail."
 }
 
@@ -2733,6 +2735,7 @@ roll_back() {
         note "When the problem is fixed (see the log), run: $(prog_name) update"
         FATAL_SHOWN=1; exit 1
     fi
+    local data_ok=1
     if [ "$restore_data" = 1 ] && [ -n "$PRE_UPDATE_BACKUP" ]; then
         info "Putting back the data from before the update…"
         # Stopped first: a backend that keeps crashing can't be used to stage the data.
@@ -2740,14 +2743,22 @@ roll_back() {
         if stage_restore "$PRE_UPDATE_BACKUP" archive && swap_in_staged_data; then
             ok "Data: back to the backup from before the update."
         else
+            data_ok=0
             err "Couldn't put back the data from before the update (${RESTORE_ERROR:-see the log})."
-            note "It is safe in $PRE_UPDATE_BACKUP: $(prog_name) restore $PRE_UPDATE_BACKUP"
         fi
     fi
     if start_chessloop "Starting the previous version"; then
-        [ -n "$PRE_UPDATE_COUNTS" ] && [ "$restore_data" = 1 ] && check_counts "$PRE_UPDATE_COUNTS" || true
+        if [ "$restore_data" = 1 ] && [ -n "$PRE_UPDATE_COUNTS" ] && [ "$data_ok" = 1 ]; then
+            check_counts "$PRE_UPDATE_COUNTS" || data_ok=0
+        fi
         blank
-        ok "ChessLoop is running the previous version again, $(describe_commit "$old"), with your data."
+        if [ "$data_ok" = 1 ]; then
+            ok "ChessLoop is running the previous version again, $(describe_commit "$old"), with your data."
+        else
+            warn "ChessLoop is running the previous version again, $(describe_commit "$old"), but its data may not be"
+            warn "what you had before the update. Your data from before the update is safe in the backup:"
+            note "  $(prog_name) restore $PRE_UPDATE_BACKUP"
+        fi
     else
         err "The previous version didn't start either."
         show_backend_messages

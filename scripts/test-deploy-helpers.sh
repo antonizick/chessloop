@@ -336,6 +336,17 @@ check "lines added: none" 0 "$(starter_lines_added "")"
 check "lines added: noise" 0 "$(starter_lines_added $'Traceback...\nAdded lines')"
 check "lines added: after other output" 111 "$(starter_lines_added $'something\nAdded 111 lines to the starter libraries.')"
 
+# ── data-owner must not eat a backup streamed on stdin (Phase 12 lab find) ─
+dc() {
+    case "$1" in
+        config) echo backend; echo data-owner ;;
+        run) cat > /dev/null ;;   # like "compose run": reads whatever stdin it is given
+    esac
+}
+check "data-owner leaves stdin alone" "backup-bytes" "$(printf 'backup-bytes' | { fix_data_owner; cat; })"
+unset -f dc
+CHESSLOOP_SOURCE_ONLY=1 source "$ROOT/deploy.sh"; set +e; trap - ERR
+
 # ── build failures: Docker Hub's rate limit is not "check your internet" (F-088)
 LOG_FILE="$TMP/build.log"
 printf '%s\n' ' > [backend internal] load metadata for docker.io/library/python:3.12.15-slim-trixie:' \
