@@ -84,7 +84,7 @@ These are known and deliberately not fixed, because they don't matter for a priv
 - **React Router advisories** (two moderate, need v7): they concern user-controlled link targets and server rendering, and ChessLoop has neither. `npm audit` stays advisory in CI until the upgrade.
 - **Debian packages with no fix yet** in the backend base image are not counted by the image scan (`--ignore-unfixed`). They are fixed when Debian ships a fix and the image is rebuilt.
 - **Rate limits are in memory.** They reset when the backend restarts. ChessLoop runs one worker, so one counter is enough.
-- **`curl | bash` from `main`.** It is the quick path, and the guides show how to download, read and run instead. Installing a release tag instead of `main` is being considered for the first release.
+- **`curl | bash` runs the installer from `main`.** It is the quick path, and the guides show how to download, read and run instead. The installer itself installs the latest *release* (a reviewed, tagged version), not whatever is on `main` today, and falls back to `main` with a warning only if GitHub can't be asked. The installer script is still read from `main`, so a bad change to `deploy.sh` would reach new installs; `main` is protected by required CI checks.
 
 ## Source code (AGPL-3.0 section 13)
 

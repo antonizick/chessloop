@@ -10,7 +10,7 @@ If the `chessloop` command is not found (an install made before it existed), use
 
 ## What happens
 
-1. It shows the installed version, fetches the new one (from the branch your install follows, normally `main`) and prints what is new from `CHANGELOG.md`. If there is nothing new, it says "ChessLoop is up to date" and asks **Rebuild it anyway?** Press `Enter` to say no. (*Rebuild* means build the same version again. You only need that if something is broken.) Add `--force` to rebuild without being asked.
+1. It shows the installed version, fetches the new one (an install made from a release follows the newest release; an older install made from the development version follows its branch, normally `main`) and prints what is new from `CHANGELOG.md`. If there is nothing new, it says "ChessLoop is up to date" and asks **Rebuild it anyway?** Press `Enter` to say no. (*Rebuild* means build the same version again. You only need that if something is broken.) Add `--force` to rebuild without being asked.
 2. **It saves a backup first** in `~/chessloop-backups`. If that fails, nothing is changed. (`--no-backup` skips this; don't, unless you know why.)
 3. Files of ChessLoop that you edited by hand are put aside with `git stash`. Your settings file `.env` is never touched.
 4. It builds and starts the new version and waits until it is healthy.

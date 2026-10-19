@@ -513,10 +513,54 @@ ini_del() {
     ' | sed 's/$/\r/'
 }
 
-# update_ref_for CHESSLOOP_REF BRANCH: what Update follows (ADR-0028): the ref
-# asked for, else the branch the install is on, else main.
+# update_ref_for CHESSLOOP_REF BRANCH [CURRENT_TAG [LATEST_TAG]]: what Update
+# follows (ADR-0028, ADR-0036): the ref asked for, else the branch the install
+# is on, else (an install pinned to a release) the newest release, or the
+# release it has when that can't be looked up, else main.
 update_ref_for() {
-    if [ -n "$1" ]; then echo "$1"; elif [ -n "$2" ]; then echo "$2"; else echo main; fi
+    if [ -n "$1" ]; then echo "$1"
+    elif [ -n "$2" ]; then echo "$2"
+    elif [ -n "${3:-}" ]; then echo "${4:-$3}"
+    else echo main; fi
+}
+
+# release_tag_from_json: the tag (v1.2.3 only) in GitHub's "latest release"
+# answer on stdin, or nothing. No jq: one field of a small, fixed document.
+release_tag_from_json() {
+    sed -n 's/.*"tag_name"[[:space:]]*:[[:space:]]*"\(v[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\)".*/\1/p' | head -n 1
+}
+
+# latest_release_tag: looks up the newest release of ChessLoop. Sets LATEST_TAG
+# (v1.2.3, or empty) and RELEASE_LOOKUP (ok, none = the project has no release
+# yet, or failed). Only asks GitHub about the real repository, never about a
+# CHESSLOOP_REPO override. Sets globals (no output), so call it without $( ).
+LATEST_TAG="" RELEASE_LOOKUP=""
+latest_release_tag() {
+    local answer code body
+    LATEST_TAG="" RELEASE_LOOKUP=failed
+    [ "$CL_REPO" = "$GITHUB_URL" ] || { RELEASE_LOOKUP=none; return 0; }
+    answer="$(curl -sS --max-time 10 -H 'Accept: application/vnd.github+json' -w '\n%{http_code}' \
+        "https://api.github.com/repos/${GITHUB_URL#https://github.com/}/releases/latest" 2>/dev/null)" || return 0
+    code="${answer##*$'\n'}"
+    body="${answer%$'\n'*}"
+    case "$code" in
+        200) LATEST_TAG="$(release_tag_from_json <<<"$body")"; RELEASE_LOOKUP=ok ;;
+        404) RELEASE_LOOKUP=none ;;
+    esac
+    return 0
+}
+
+# use_latest_release: when no version was asked for (CHESSLOOP_REF), install the
+# newest release instead of whatever main is today (ADR-0036). If the lookup
+# fails, install main and say so.
+use_latest_release() {
+    [ -z "${CHESSLOOP_REF:-}" ] || return 0
+    latest_release_tag
+    if [ -n "$LATEST_TAG" ]; then
+        CL_REF="$LATEST_TAG"
+    elif [ "$RELEASE_LOOKUP" = failed ]; then
+        warn "Couldn't look up the latest ChessLoop release, so this installs the newest development version (main) instead."
+    fi
 }
 
 # volume_listed NAME < "docker volume ls -q": an exact match. (F-011: grep
@@ -1452,6 +1496,7 @@ get_source() {
         "${AS_ROOT[@]}" install -d -m 0755 -o "$OWNER" -g "$(id -gn "$OWNER" 2>/dev/null || echo "$OWNER")" "$INSTALL_DIR" \
             || fatal "Couldn't create $INSTALL_DIR."
     fi
+    use_latest_release
     run "Downloading ChessLoop ($CL_REF) into $INSTALL_DIR" as_owner git clone --quiet "$CL_REPO" "$INSTALL_DIR" \
         || { note "Couldn't download $CL_REPO."; explain_network_failure; }
     if [ "$CL_REF" != main ] || [ -n "${CHESSLOOP_REF:-}" ]; then
@@ -2822,12 +2867,17 @@ do_update() {
     setup_backup_dir
     local ref old new old_desc new_desc newer=1
     UPDATE_BRANCH="$(git_owner symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
-    ref="$(update_ref_for "${CHESSLOOP_REF:-}" "$UPDATE_BRANCH")"
+    local current_tag="" latest_tag=""
+    if [ -z "${CHESSLOOP_REF:-}" ] && [ -z "$UPDATE_BRANCH" ]; then
+        current_tag="$(git_owner describe --tags --exact-match HEAD 2>/dev/null | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -n 1 || true)"
+        if [ -n "$current_tag" ]; then latest_release_tag; latest_tag="$LATEST_TAG"; fi
+    fi
+    ref="$(update_ref_for "${CHESSLOOP_REF:-}" "$UPDATE_BRANCH" "$current_tag" "$latest_tag")"
     [ -n "${CHESSLOOP_REF:-}" ] && UPDATE_BRANCH=""   # set again below if the ref is a branch
     old="$(git_owner rev-parse HEAD)"
     old_desc="$(describe_commit "$old")"
     ok "Installed version: $old_desc"
-    run "Checking for a new version ($ref)" git_owner fetch --quiet origin "$ref" \
+    run "Checking for a new version ($ref)" git_owner fetch --quiet --tags origin "$ref" \
         || fatal "Couldn't get '$ref' from $(git_owner remote get-url origin 2>/dev/null || echo "the ChessLoop repository"). Check the internet connection, and that this branch or tag exists."
     new="$(git_owner rev-parse 'FETCH_HEAD^{commit}')"
     git_owner rev-parse -q --verify "refs/remotes/origin/$ref" >/dev/null 2>&1 && UPDATE_BRANCH="$ref"
@@ -3368,6 +3418,7 @@ Settings for install --yes (environment variables; the defaults are in brackets)
   CHESSLOOP_INSTALL_DIR      install folder [$DEFAULT_INSTALL_DIR]
   CHESSLOOP_REPO             git repository to install from [$GITHUB_URL]
   CHESSLOOP_REF              branch, tag or commit to install, or to update to
+                             (default: the latest release; main if that can't be looked up)
                              [main; update: the branch the install is on]
   CHESSLOOP_ALLOW_UNTESTED=1       continue on an untested system or processor
   CHESSLOOP_ALLOW_LOW_RESOURCES=1  continue with little memory or disk

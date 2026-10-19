@@ -199,6 +199,16 @@ check "no second backup when unchanged" 1 "$(find "$TMP" -maxdepth 1 -name '.wsl
 check "ref: asked for" v1.2.0 "$(update_ref_for v1.2.0 main)"
 check "ref: install's branch" deploy/x "$(update_ref_for "" deploy/x)"
 check "ref: detached" main "$(update_ref_for "" "")"
+check "ref: pinned, newer release" v1.1.0 "$(update_ref_for "" "" v1.0.0 v1.1.0)"
+check "ref: pinned, lookup failed" v1.0.0 "$(update_ref_for "" "" v1.0.0 "")"
+check "ref: branch beats tag" main "$(update_ref_for "" main v1.0.0 v1.1.0)"
+check "ref: asked beats tag" v2.0.0 "$(update_ref_for v2.0.0 "" v1.0.0 v1.1.0)"
+check "release: tag" v1.0.0 "$(printf '{\n  "tag_name": "v1.0.0",\n  "name": "x"\n}\n' | release_tag_from_json)"
+check "release: compact" v12.3.45 "$(printf '{"id":1,"tag_name":"v12.3.45","draft":false}' | release_tag_from_json)"
+check "release: not semver" "" "$(printf '{"tag_name": "nightly"}' | release_tag_from_json)"
+check "release: pre-release suffix" "" "$(printf '{"tag_name": "v1.0.0-rc1"}' | release_tag_from_json)"
+check "release: error body" "" "$(printf '{"message": "Not Found"}' | release_tag_from_json)"
+check "release: not the real repo" "" "$(CL_REPO=/tmp/local latest_release_tag; echo "$LATEST_TAG")"
 
 vols=$'chessloop_chessloop-data\nother'
 no_ volume_listed chessloop-data <<<"$vols"          # F-011: no substring match

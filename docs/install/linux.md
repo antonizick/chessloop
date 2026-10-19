@@ -76,13 +76,13 @@ less deploy.sh
 bash deploy.sh
 ```
 
-To install a fixed version instead of the newest one, pick a version name from the [releases page](https://github.com/antonizick/chessloop/releases) (it looks like `v1.2.3`) and put it in front of the last command:
+The installer already installs the latest release. To install a different version, pick a version name from the [releases page](https://github.com/antonizick/chessloop/releases) (it looks like `v1.2.3`) and put it in front of the last command:
 
 ```bash
 CHESSLOOP_REF=VERSION-NAME bash deploy.sh
 ```
 
-If there is no release yet, skip this and use the newest version.
+If you leave `CHESSLOOP_REF` out, you get the latest release. If the installer can't look it up, it says so and installs the newest development version instead.
 
 ## The installer's questions
 
