@@ -3,12 +3,22 @@ import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import App from "./App";
+import { useAuthStore } from "@/stores/auth";
 import "./index.css";
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: { retry: 1, refetchOnWindowFocus: false, staleTime: 30_000 },
   },
+});
+
+// Forget every cached answer when someone signs out or a different person signs in.
+// Without this, the next person on the same browser tab briefly sees the previous
+// person's libraries and stats (cached for 30 s) until the page is reloaded.
+useAuthStore.subscribe((state, prev) => {
+  if ((prev.accessToken && !state.accessToken) || (prev.user && state.user && prev.user.id !== state.user.id)) {
+    queryClient.clear();
+  }
 });
 
 function sendClientLog(level: string, message: string, stack?: string) {

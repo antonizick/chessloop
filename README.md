@@ -33,7 +33,7 @@ New to this? Every guide below is written for someone who has never used a termi
    Want to read the script first? Use the [careful way](docs/install/linux.md#the-careful-way-read-the-script-first).
 3. **Answer the questions.** The installer checks your computer, then asks where you will open ChessLoop, your admin email and a password. Press `Enter` to accept the choice in `[brackets]`. It changes nothing until you say `Continue`. [Every question explained](docs/install/linux.md#the-installers-questions).
 4. **Wait.** It downloads and builds ChessLoop. You see a progress line and no more questions. It ends with a box that says **ChessLoop is installed and running**.
-5. **Open it.** Go to <http://localhost:8090> in your web browser and sign in with the email and password from step 3.
+5. **Open it.** Go to <http://localhost:8090> in your web browser and sign in with the email and password from step 3. If you chose to use ChessLoop from other devices, type the address the installer printed at the end instead (it looks like `http://192.168.1.20:8090`).
 
 You are done. Next: [your first steps in ChessLoop](docs/using-chessloop.md).
 

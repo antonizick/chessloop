@@ -960,8 +960,10 @@ access_words() {
     esac
 }
 
+# Private by default: opening ChessLoop to other devices is a choice, because it uses
+# plain http:// (Phase 11, F-076). The guides say "if you are not sure, choose 1".
 default_access() {
-    if [ "$IS_WSL" = 1 ] || [ "$HAS_PUBLIC_IP" = 1 ]; then echo local; else echo lan; fi
+    echo local
 }
 
 ask_access() {
@@ -3245,7 +3247,7 @@ Settings for install --yes (environment variables; the defaults are in brackets)
   CHESSLOOP_ADMIN_PASSWORD   admin password, 12+ characters [generated and shown once]
   CHESSLOOP_ADMIN_USERNAME   admin display name [admin]
   CHESSLOOP_ACCESS           local (this computer), lan (home network) or domain
-                             [local on WSL or with a public IP address, else lan]
+                             [local]
   CHESSLOOP_PORT             web port [8090]
   CHESSLOOP_DOMAIN           domain name, for CHESSLOOP_ACCESS=domain
   CHESSLOOP_SEED             1 = load the starter opening libraries, 0 = don't [1]

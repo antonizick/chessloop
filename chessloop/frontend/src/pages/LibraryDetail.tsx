@@ -43,7 +43,12 @@ export function LibraryDetail() {
 
   const createLine = useMutation({
     mutationFn: () => linesApi.create(id!, {}),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["lines", id] }),
+    onSuccess: (line) => {
+      qc.invalidateQueries({ queryKey: ["lines", id] });
+      // Open the new line's name box so it is obvious where it went (it lands at the bottom).
+      setRenamingLineId(line.id);
+      setRenameValue(line.name ?? "");
+    },
   });
 
   const renameLine = useMutation({
