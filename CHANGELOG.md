@@ -2,11 +2,15 @@
 
 All notable changes to this project are documented in this file.
 
-The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/), and this project intends to follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html) from its first release.
+The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/), and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html) from its first release.
 
 History before this changelog: see `git log`.
 
 ## [Unreleased]
+
+## [1.0.0] - 2026-10-19
+
+The first release. It covers personal, private installs: this computer, a home network, or Windows 11 with WSL 2. Hosting ChessLoop on the internet is not covered (see the README).
 
 ### Changed
 - **The installer installs the latest release, not `main`.** `deploy.sh` asks GitHub for the newest release (`v1.2.3`) and installs it; `chessloop update` on such an install moves to the next release. If GitHub can't be asked, it installs `main` and says so; with no release yet it installs `main` quietly. `CHESSLOOP_REF` still picks any branch, tag or commit. Installs made earlier keep following their branch.
@@ -134,3 +138,6 @@ History before this changelog: see `git log`.
 - If email isn't set up but an admin once opened Admin → System settings, new accounts may still be asked to confirm their email; Update says so. Fix it in Admin → System settings with "Use the server setting".
 - The first start after this update hands the data files to the backend's new, unprivileged user (the `data-owner` service; a second or so). If you roll back to an older version, it still reads the files.
 - `manage.sh` is gone; use the `chessloop` command. Archives made with the old README's `docker run … tar` command of `chessloop-data` were empty (they named the wrong volume); make a new backup with `chessloop backup`.
+
+[Unreleased]: https://github.com/antonizick/chessloop/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/antonizick/chessloop/releases/tag/v1.0.0
