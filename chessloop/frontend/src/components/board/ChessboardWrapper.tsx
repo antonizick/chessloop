@@ -39,6 +39,7 @@ export function ChessboardWrapper({
 }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const apiRef = useRef<Api | null>(null);
+  const outerRef = useRef<HTMLDivElement | null>(null);
   const onMoveRef = useRef(onMove);
   onMoveRef.current = onMove;
 
@@ -106,6 +107,30 @@ export function ChessboardWrapper({
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  /**
+   * Chessground works out which square a click landed on from the board's
+   * position on the page, which it measures once and keeps. It re-measures only
+   * when the window is resized or scrolled, or when the board's own size changes.
+   * If anything above the board changes height (the mode picker going away, a
+   * banner, the header filling in) the board moves without any of those events,
+   * the saved position is wrong, and every click lands on the wrong square: the
+   * pieces cannot be picked up (F-094). Flipping the board happens to re-measure,
+   * which is why it mostly hit white openings.
+   *
+   * So throw the saved position away at the start of every press. The capture
+   * phase runs before Chessground's own handler on the board.
+   */
+  useEffect(() => {
+    const el = outerRef.current;
+    if (!el) return;
+    const refresh = () => apiRef.current?.state.dom.bounds.clear();
+    const events = ["pointerdown", "mousedown", "touchstart"] as const;
+    for (const ev of events) el.addEventListener(ev, refresh, { capture: true, passive: true });
+    return () => {
+      for (const ev of events) el.removeEventListener(ev, refresh, { capture: true });
+    };
+  }, []);
+
   // Sync orientation and viewOnly when props change.
   //
   // CRITICAL ORDER: set viewOnly:false BEFORE changing orientation.
@@ -148,7 +173,7 @@ export function ChessboardWrapper({
     .join(" ") || undefined;
 
   return (
-    <div style={{ width: size, height: size }} className={themeClasses}>
+    <div ref={outerRef} style={{ width: size, height: size }} className={themeClasses}>
       {/* Chessground owns this div — never set className on it from React */}
       <div ref={containerRef} style={{ width: "100%", height: "100%" }} />
     </div>
