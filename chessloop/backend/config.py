@@ -23,6 +23,11 @@ class Settings(BaseSettings):
     # hosts and adds nothing when nobody is going to be emailed.
     email_mx_check: bool = False
 
+    # Optional personal Lichess token (CHESSLOOP_LICHESS_API_TOKEN). Lichess's opening
+    # explorer answers 401 without one, so Admin → Openings can only pull extra
+    # variations when it is set.
+    lichess_api_token: str = ""
+
     smtp_host: str = ""
     smtp_port: int = 587
     smtp_user: str = ""

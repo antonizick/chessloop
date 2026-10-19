@@ -40,7 +40,7 @@ ChessLoop is for **personal, private installs**. The installer offers three plac
 | Docker socket | root and `docker` group members on the host | Full control of the host |
 | Backups | Whoever can read the backup folder or a copied file | Restoring a backup replaces every account |
 | SMTP (outgoing only) | The mail server and the network path to it | Verification and reset links; `SMTP_USE_TLS=true` by default |
-| Lichess Explorer (outgoing, admin search only) | Lichess and the network path | No token is sent; failures are shown, not silent |
+| Lichess Explorer (outgoing, admin search only) | Lichess and the network path | Sent only if the admin sets `LICHESS_API_TOKEN` (a no-permission token, as a Bearer header, never logged); failures are shown, not silent |
 
 ## Trust boundaries
 
@@ -63,7 +63,7 @@ ChessLoop is for **personal, private installs**. The installer offers three plac
 | T6 | Stolen backup | Backups are mode 600 in a 700 folder; `.env` only on request; the docs say they hold password hashes and TOTP secrets. | Done (S5) |
 | T7 | Tampered download (installer, Docker packages, images) | Verify-before-run steps in the install guides; Docker key fingerprint pinned; apt signatures; HTTPS for the clone; base images pinned to a supported line and scanned in CI. `curl \| bash` from `main` is still the documented quick path. | Done, with the rest accepted (S6) |
 | T8 | Compromised container or app bug escalating | Backend non-root, no capabilities, `no-new-privileges`; nginx and frontend use the official nginx images (master process root, workers unprivileged) with `no-new-privileges`. | Done (S7); nginx-as-root accepted |
-| T9 | Online password guessing | bcrypt, the 12-character rule. Change-password: 5 wrong attempts per account and per address in 15 minutes. Two-factor codes: 5 wrong codes per account in 15 minutes, at sign-in and when turning it off. | Done, except the sign-in limit (accepted below) |
+| T9 | Online password guessing | bcrypt, the 12-character rule. Sign-in: 10 wrong passwords per email address and 30 per address in 15 minutes (a correct sign-in clears the account count). Change-password: 5 wrong attempts per account and per address in 15 minutes. Two-factor codes: 5 wrong codes per account in 15 minutes, at sign-in and when turning it off. | Done |
 | T10 | Session theft lasting forever | Access tokens 15 min, refresh 30 days; a password change or reset bumps the account's token version, so every older token stops working. | Done |
 | T11 | Privilege by username | A user named `nick` used to be able to read and publish anyone's libraries. Removed: only the owner or an admin. | Done |
 | T12 | Path tricks in uploads and restores | Admin upload names are reduced to `[A-Za-z0-9._-]`; `chessloop restore` extracts only `manifest.json`, `chessloop.db` and `backups/<name>` (no `/` or `..`); it checks the checksum and integrity, and makes a safety backup first. `rm -rf` of the install folder is refused for system or home folders. | Done |
@@ -76,7 +76,6 @@ ChessLoop is for **personal, private installs**. The installer offers three plac
 These are known and deliberately not fixed, because they don't matter for a private install, or because fixing them costs more than it saves.
 
 - **Plain HTTP on the home network.** Anyone on that network can read sign-in traffic. A trusted home network is the premise of that mode. Use "only this computer" if the network isn't trusted.
-- **No rate limit on `/api/auth/login`.** With bcrypt and a 12-character minimum, guessing over a home network is impractically slow. Internet exposure, where this would matter, is out of scope.
 - **`/auth/verify-email` signs the user in.** The link is single-use (an already-verified account is refused), expires after 24 hours, and goes only to the account's inbox.
 - **A password reset by email can switch off two-factor.** The user chooses that on the reset page. It means access to the inbox is enough to take the account. This keeps people who lost their phone from being locked out on a server without recovery codes.
 - **TOTP secrets are stored readable.** They must be, to check codes. Backups are protected instead (T6).

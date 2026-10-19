@@ -198,13 +198,59 @@ function NewUserPopup() {
   );
 }
 
+// ── Empty library hint ────────────────────────────────────────────────────────
+
+/** Shown once per account and browser to someone whose library is empty (a new
+ * admin starts with nothing): points them at the public libraries to copy one. */
+function EmptyLibraryPopup({ userId }: { userId: string }) {
+  const key = `chessloop-empty-library-hint:${userId}`;
+  const [dismissed, setDismissed] = useState(() => {
+    try {
+      return localStorage.getItem(key) !== null;
+    } catch {
+      return false;
+    }
+  });
+  if (dismissed) return null;
+
+  function close() {
+    try {
+      localStorage.setItem(key, "1");
+    } catch {
+      /* storage blocked: the hint may show again next visit */
+    }
+    setDismissed(true);
+  }
+
+  return (
+    <Modal onClose={close}>
+      <h2 className="text-lg font-semibold text-ink-100">Your library is empty</h2>
+      <p className="text-sm text-ink-300 mt-2">
+        You don&apos;t have any openings to practise yet. To get some:
+      </p>
+      <ol className="list-decimal list-inside text-sm text-ink-300 mt-2 flex flex-col gap-1">
+        <li>Open <strong>Public Opening Libraries</strong> in the menu.</li>
+        <li>Pick an opening you like.</li>
+        <li>Press <strong>Fork to my libraries</strong> to copy it into your own library.</li>
+      </ol>
+      <p className="text-sm text-ink-400 mt-2">
+        Repeat for as many openings as you want. This message only appears once.
+      </p>
+      <div className="flex items-center justify-end gap-3 mt-4">
+        <button className="btn-ghost" onClick={close}>Not now</button>
+        <Link to="/public" className="btn-primary" onClick={close}>Go to public libraries</Link>
+      </div>
+    </Modal>
+  );
+}
+
 // ── Main Dashboard ────────────────────────────────────────────────────────────
 
 export function Dashboard() {
   const user = useAuthStore((s) => s.user);
   const navigate = useNavigate();
 
-  const { data: libraries } = useQuery({
+  const { data: libraries, isSuccess: librariesLoaded } = useQuery({
     queryKey: ["libraries"],
     queryFn: librariesApi.list,
   });
@@ -234,6 +280,7 @@ export function Dashboard() {
   return (
     <div className="flex flex-col gap-8">
       <NewUserPopup />
+      {user && librariesLoaded && libraries.length === 0 && <EmptyLibraryPopup userId={user.id} />}
 
       {/* Header */}
       <div>
