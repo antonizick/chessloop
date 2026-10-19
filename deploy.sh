@@ -869,6 +869,8 @@ check_packages() {
     for p in git curl; do command -v "$p" >/dev/null 2>&1 || NEED_PKGS+=("$p"); done
     if [ "$NEED_DOCKER_INSTALL" = 1 ] || [ "$NEED_COMPOSE_FIX" = 1 ]; then
         dpkg-query -W -f='${Status}' ca-certificates 2>/dev/null | grep -q 'install ok installed' || NEED_PKGS+=(ca-certificates)
+        # gpg checks Docker's signing key before apt trusts it (docker_key_ok).
+        command -v gpg >/dev/null 2>&1 || NEED_PKGS+=(gpg)
     fi
     if [ "${#NEED_PKGS[@]}" -gt 0 ] && [ "$OS_SUPPORT" = unsupported ]; then
         fatal "Please install ${NEED_PKGS[*]} with your system's package manager, then run the installer again."
@@ -1272,10 +1274,27 @@ install_packages() {
     run "Installing ${NEED_PKGS[*]}" apt_get install --no-install-recommends "${NEED_PKGS[@]}" || explain_network_failure
 }
 
+# Fingerprint of Docker's apt signing key ("Docker Release (CE deb)", created
+# 2017-02-22), as Docker's install docs published it (github.com/docker/docs,
+# install/linux/docker-ce/debian.md at faff4a3) and as download.docker.com
+# served it for Ubuntu and Debian on 2026-10-18. apt trusts whatever key is in
+# docker.asc, so a key from a tampered download would let it install anything.
+DOCKER_KEY_FPR=9DC858229FC7DD38854AE2D88D81803C0EBFCD88
+
+# docker_key_ok FILE: FILE holds exactly one key, and it is Docker's.
+docker_key_ok() {
+    local home fprs rc=0
+    home="$(mktemp -d)"   # gpg would otherwise create ~/.gnupg
+    fprs="$(GNUPGHOME="$home" gpg --batch --show-keys --with-colons "$1" 2>/dev/null \
+        | awk -F: '$1 == "pub" { want = 1; next } want && $1 == "fpr" { print $10; want = 0 }')" || rc=$?
+    rm -rf "$home"
+    [ "$rc" -eq 0 ] && [ "$fprs" = "$DOCKER_KEY_FPR" ]
+}
+
 # Docker's apt repository, as in docs.docker.com/engine/install/{ubuntu,debian}
 # (deb822 .sources file, key in /etc/apt/keyrings; checked 2026-10-17).
 add_docker_repo() {
-    local distro codename arch tmp
+    local distro codename arch tmp key
     [ -f /etc/apt/sources.list.d/docker.sources ] && return 0
     if [ "$OS_ID" = ubuntu ] || [ -n "$OS_UBUNTU_CODENAME" ]; then
         distro=ubuntu; codename="${OS_UBUNTU_CODENAME:-$OS_CODENAME}"
@@ -1285,9 +1304,15 @@ add_docker_repo() {
     [ -n "$codename" ] || fatal "Can't tell which $distro release this is (no VERSION_CODENAME in /etc/os-release)."
     arch="$(dpkg --print-architecture)"
     run "Creating /etc/apt/keyrings" "${AS_ROOT[@]}" install -m 0755 -d /etc/apt/keyrings
-    run "Downloading Docker's signing key" "${AS_ROOT[@]}" curl -fsSL "https://download.docker.com/linux/$distro/gpg" -o /etc/apt/keyrings/docker.asc \
-        || explain_network_failure
-    "${AS_ROOT[@]}" chmod a+r /etc/apt/keyrings/docker.asc
+    key="$(mktemp)"
+    run "Downloading Docker's signing key" curl -fsSL "https://download.docker.com/linux/$distro/gpg" -o "$key" \
+        || { rm -f "$key"; explain_network_failure; }
+    if ! docker_key_ok "$key"; then
+        rm -f "$key"
+        fatal "The signing key downloaded from download.docker.com is not Docker's known key (fingerprint $DOCKER_KEY_FPR), so the installer stopped before trusting it. Something between this computer and Docker may have changed the download. Try again later or on another network; if it keeps happening, please report it."
+    fi
+    "${AS_ROOT[@]}" install -m 0644 "$key" /etc/apt/keyrings/docker.asc
+    rm -f "$key"
     tmp="$(mktemp)"
     printf 'Types: deb\nURIs: https://download.docker.com/linux/%s\nSuites: %s\nComponents: stable\nArchitectures: %s\nSigned-By: /etc/apt/keyrings/docker.asc\n' \
         "$distro" "$codename" "$arch" > "$tmp"
@@ -1965,8 +1990,18 @@ in_backend() {
     if backend_running; then
         dc exec -T "${envs[@]}" backend "$@"
     else
+        fix_data_owner
         dc run --rm --no-deps -T "${envs[@]}" backend "$@"
     fi
+}
+
+# The backend runs as uid 10001 (S7). `up` hands older, root-owned data to it
+# through the data-owner service; a one-off `run --no-deps` skips that, so do
+# it here first. Versions without the service need nothing.
+fix_data_owner() {
+    dc config --services 2>/dev/null | grep -qx data-owner || return 0
+    dc run --rm --no-deps -T data-owner >> "${LOG_FILE:-/dev/null}" 2>&1 \
+        || warn "Couldn't hand the data files to the ChessLoop user; the next step may fail."
 }
 
 describe_commit() {
@@ -2227,6 +2262,7 @@ discard_staged_restore() {
 # With ChessLoop stopped, puts the staged data in place.
 swap_in_staged_data() {
     run "Stopping ChessLoop" dc stop || return 1
+    fix_data_owner
     run "Putting the backup's data in place" dc run --rm --no-deps -T backend python -c "$PY_SWAP"
 }
 
@@ -2411,7 +2447,7 @@ backend_image() {
 volume_state() {
     local v="$1" img out mp
     img="$(backend_image)"
-    if [ -n "$img" ] && out="$("${DOCKER[@]}" run --rm --network none -v "$v:/v:ro" "$img" \
+    if [ -n "$img" ] && out="$("${DOCKER[@]}" run --rm --network none --user 0 -v "$v:/v:ro" "$img" \
             find /v -mindepth 1 -maxdepth 2 2>/dev/null)"; then
         if [ -z "$out" ]; then echo empty; else echo data; fi
         return 0
@@ -3107,7 +3143,8 @@ do_status() {
     note "Version:  $(describe_commit HEAD)"
     note "Address:  http://localhost:$PORT"
     blank
-    dc ps --all --format 'table {{.Service}}\t{{.Status}}' 2>&1 | sed 's/^/      /' >&2 || true
+    # data-owner runs once at start and exits; it isn't one of the three parts.
+    dc ps --all --format 'table {{.Service}}\t{{.Status}}' backend frontend nginx 2>&1 | sed 's/^/      /' >&2 || true
     blank
     if http_ok; then ok "ChessLoop answers on port $PORT."; else err "ChessLoop doesn't answer on port $PORT. Try: $(prog_name) start"; fi
     if "${DOCKER[@]}" volume ls -q 2>/dev/null | volume_listed "$VOLUME_NAME"; then

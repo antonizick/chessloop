@@ -71,6 +71,17 @@ def verification_required(session: Session) -> bool:
     return settings.smtp_configured
 
 
+def client_ip(request) -> str:
+    """The browser's address. Behind ChessLoop's nginx every request comes from
+    the nginx container, which sets X-Real-IP to the real peer (overwriting any
+    value the client sent); the backend port is not published, so the header
+    can't be forged from outside."""
+    real = request.headers.get("x-real-ip", "").strip()
+    if real:
+        return real
+    return request.client.host if request.client else "unknown"
+
+
 class RateLimiter:
     """Sliding-window counter keyed by an arbitrary string (user id, IP).
 

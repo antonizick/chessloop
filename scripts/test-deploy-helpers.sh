@@ -336,6 +336,26 @@ check "lines added: none" 0 "$(starter_lines_added "")"
 check "lines added: noise" 0 "$(starter_lines_added $'Traceback...\nAdded lines')"
 check "lines added: after other output" 111 "$(starter_lines_added $'something\nAdded 111 lines to the starter libraries.')"
 
+# ── Docker's apt signing key is checked before apt trusts it ────────────
+# testdata/docker-apt-key.asc: download.docker.com/linux/debian/gpg, 2026-10-18.
+if command -v gpg > /dev/null; then
+    yes_ docker_key_ok "$ROOT/scripts/testdata/docker-apt-key.asc"
+    gh_home=$(mktemp -d)
+    GNUPGHOME="$gh_home" gpg --batch --quiet --passphrase '' --quick-gen-key 'Not Docker <x@example.org>' ed25519 sign never 2> /dev/null
+    GNUPGHOME="$gh_home" gpg --batch --armor --export > "$TMP/other.asc" 2> /dev/null
+    GNUPGHOME="$gh_home" gpgconf --kill gpg-agent 2> /dev/null || true
+    rm -rf "$gh_home"
+    no_ docker_key_ok "$TMP/other.asc"
+    cat "$ROOT/scripts/testdata/docker-apt-key.asc" "$TMP/other.asc" > "$TMP/both.asc"
+    no_ docker_key_ok "$TMP/both.asc"
+    echo "<html>captive portal</html>" > "$TMP/html.asc"
+    no_ docker_key_ok "$TMP/html.asc"
+    no_ docker_key_ok "$TMP/missing.asc"
+    check "docker key: no ~/.gnupg made" 0 "$(HOME=$TMP/h; mkdir -p "$HOME"; docker_key_ok "$ROOT/scripts/testdata/docker-apt-key.asc"; find "$HOME" -mindepth 1 | wc -l)"
+else
+    echo "(gpg not available: skipped the Docker key check)" >&2
+fi
+
 # ── no terminal and no --yes: refuse with two plain lines (F-059) ────────
 # setsid drops the controlling terminal, so /dev/tty cannot be opened.
 if command -v setsid > /dev/null; then

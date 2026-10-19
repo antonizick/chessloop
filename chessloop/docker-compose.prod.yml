@@ -26,13 +26,36 @@ name: chessloop
 
 services:
 
+  # ─── Data owner (runs once, then exits) ───────────────────────────────────
+  # The backend runs as uid 10001, not root. Installs from before 2026-10 have
+  # data files owned by root; this hands them to that user before the backend
+  # starts. It changes nothing when they already belong to it.
+  data-owner:
+    image: chessloop-backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    user: "0:0"
+    command: ["find", "/data", "(", "!", "-user", "10001", "-o", "!", "-group", "10001", ")", "-exec", "chown", "-h", "10001:10001", "{}", "+"]
+    restart: "no"
+    network_mode: none
+    cap_drop: [ALL]
+    cap_add: [CHOWN, DAC_READ_SEARCH]
+    security_opt: ["no-new-privileges:true"]
+    volumes:
+      - chessloop-data:/data
+
   # ─── Backend (FastAPI) ────────────────────────────────────────────────────
   backend:
+    image: chessloop-backend
     build:
       context: ./backend
       dockerfile: Dockerfile
     container_name: chessloop-backend
     restart: always
+    # Unprivileged user from the image; no Linux capabilities needed.
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
     environment:
       - CHESSLOOP_DB_PATH=/data/chessloop.db
       - CHESSLOOP_BACKUP_DIR=/data/backups
@@ -58,6 +81,9 @@ services:
       - CHESSLOOP_LICHESS_API_TOKEN=${LICHESS_API_TOKEN:-}
     volumes:
       - chessloop-data:/data
+    depends_on:
+      data-owner:
+        condition: service_completed_successfully
     # Backend is NOT exposed to the host; nginx proxies /api/* to it.
     healthcheck:
       # python:*-slim has no curl or wget
@@ -75,6 +101,7 @@ services:
       dockerfile: Dockerfile
     container_name: chessloop-frontend
     restart: always
+    security_opt: ["no-new-privileges:true"]
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/"]
       interval: 30s
@@ -92,6 +119,7 @@ services:
       dockerfile: Dockerfile
     container_name: chessloop-nginx
     restart: always
+    security_opt: ["no-new-privileges:true"]
     ports:
       # BIND_ADDR: 127.0.0.1 (this computer only, or behind a reverse proxy; default)
       #            0.0.0.0  (other devices on the network can connect)

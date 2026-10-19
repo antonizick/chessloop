@@ -1,5 +1,6 @@
 """Admin router — backup management + user management + opening import. Requires role='admin'."""
 
+import re
 from uuid import UUID
 from typing import Optional
 from pathlib import Path
@@ -379,7 +380,9 @@ def upload_backup(
     # Generate backup filename with timestamp
     backup_name = name or Path(file.filename or "uploaded-backup").stem
     ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
-    filename = f"{type}_{ts}_{backup_name[:40].replace(' ', '_')}.db"
+    # Only safe characters in the file name: the name comes from the browser.
+    safe = re.sub(r"[^A-Za-z0-9._-]+", "_", backup_name[:40]).strip("._") or "upload"
+    filename = f"{type}_{ts}_{safe}.db"
 
     # Save file to backup directory
     dest = backup_service._ensure_dir() / filename

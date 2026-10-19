@@ -33,16 +33,12 @@ def _owned_library_or_404(session: Session, lib_id: UUID, user: User) -> Library
 
 
 def _accessible_library_or_404(session: Session, lib_id: UUID, user: User) -> Library:
-    """Allow access to: owner, any admin, or user 'nick'"""
+    """Allow access to: owner or any admin."""
     lib = session.get(Library, lib_id)
     if not lib:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Library not found")
 
-    is_owner = lib.owner_user_id == user.id
-    is_admin = user.role == "admin"
-    is_nick = user.username == "nick"
-
-    if not (is_owner or is_admin or is_nick):
+    if not (lib.owner_user_id == user.id or user.role == "admin"):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Not authorized to access this library")
     return lib
 
@@ -55,11 +51,7 @@ def _owned_line_or_404(session: Session, line_id: UUID, user: User) -> Line:
     if not lib:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Library not found")
 
-    is_owner = lib.owner_user_id == user.id
-    is_admin = user.role == "admin"
-    is_nick = user.username == "nick"
-
-    if not (is_owner or is_admin or is_nick):
+    if not (lib.owner_user_id == user.id or user.role == "admin"):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Not authorized to access this line")
     return line
 

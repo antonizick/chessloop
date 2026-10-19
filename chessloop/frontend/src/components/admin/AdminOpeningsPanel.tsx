@@ -353,7 +353,7 @@ function PublishUserLibrarySection() {
     <div className="flex flex-col gap-2">
       <div className="flex items-center gap-1">
         <span className="text-sm font-medium text-ink-200">Publish to Public Opening Libraries</span>
-        <Tooltip text="Publish one of your private libraries to the public opening libraries. This makes it available to all users in the Public Discovery section. Only admins and nick can publish libraries.">
+        <Tooltip text="Publish one of your private libraries to the public opening libraries. This makes it available to all users in the Public Discovery section. Only admins can publish libraries.">
           <InfoIcon />
         </Tooltip>
       </div>
