@@ -95,7 +95,7 @@ You answer a few plain questions. The choice in `[brackets]` is the default: pre
     1) Only on this computer
     2) Also on other devices in my home network (phone, tablet, laptop)
     3) From anywhere on the internet, with my own domain name (HTTPS)
-  Access [1-3] [2]:
+  Access [1-3] [1]:
 ```
 
 | Choice | Pick it when | Example |
