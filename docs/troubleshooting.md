@@ -96,6 +96,9 @@ The update goes back by itself and tells you. See [Updating](updating.md). Attac
 ### A restore fails
 Restore checks the file first and stops before changing anything if the file is damaged, does not match its `.sha256` checksum, or is not a ChessLoop backup. Copy the file again from where you keep it. Keep the `.tar.gz` and `.sha256` files together. If it fails after the switch, the message names the safety backup (`…-before-restore.tar.gz`) that has your previous data.
 
+### `docker ps -a` lists `chessloop-data-owner-1` as "Exited (0)"
+That is normal. It is a small helper that runs for a second each time ChessLoop starts. It makes sure the data files belong to the user ChessLoop runs as, then stops. "Exited (0)" means it finished without a problem.
+
 ### I can't find my backups
 They are in `~/chessloop-backups` of the user who ran the command. On Windows that is inside Ubuntu: `explorer.exe ~/chessloop-backups` opens it in Windows.
 

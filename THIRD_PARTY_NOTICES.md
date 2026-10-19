@@ -13,23 +13,24 @@ ChessLoop is licensed under AGPL-3.0-or-later (see `LICENSE`). It depends on the
 
 | Package | Version | Licence | Use |
 |---|---|---|---|
-| fastapi | 0.115.6 | MIT | Web framework |
+| fastapi | 0.142.2 | MIT | Web framework |
+| starlette | 1.7.0 | BSD-3-Clause | ASGI toolkit under FastAPI (pinned for security fixes) |
 | uvicorn | 0.32.1 | BSD | ASGI server |
 | sqlmodel | 0.0.22 | MIT | ORM / models |
 | pydantic | 2.10.3 | MIT | Data validation |
 | pydantic-settings | 2.7.0 | MIT | Settings loading |
 | email_validator | 2.2.0 | Unlicense | Email address validation |
-| python-jose | 3.3.0 | MIT | JWT signing |
+| PyJWT | 2.15.1 | MIT | JWT signing |
 | passlib | 1.7.4 | BSD | Password hashing API |
 | bcrypt | 4.0.1 | Apache-2.0 | Password hashing |
 | pyotp | 2.9.0 | MIT | TOTP two-factor codes |
 | qrcode | 8.0 | BSD-3-Clause | QR codes for MFA setup |
 | httpx | 0.28.1 | BSD | HTTP client (Lichess, email) |
 | chess | 1.10.0 | GPL-3.0-or-later | Move validation, PGN/FEN (python-chess) |
-| python-multipart | 0.0.19 | Apache-2.0 | Form/file uploads |
-| python-dotenv | 1.0.1 | BSD | `.env` loading |
+| python-multipart | 0.0.32 | Apache-2.0 | Form/file uploads |
+| python-dotenv | 1.2.2 | BSD-3-Clause | `.env` loading |
 
-Transitive Python packages installed with them (version resolved 2026-10-16, licence from metadata) are: annotated-types (MIT), anyio (MIT), certifi (Mozilla Public 2.0 (MPL 2.0)), cffi (MIT-0), click (BSD-3-Clause), cryptography (Apache-2.0 OR BSD-3-Clause), dnspython (ISC), ecdsa (MIT), greenlet (MIT AND PSF-2.0), h11 (MIT), httpcore (BSD-3-Clause), httptools (MIT), idna (BSD-3-Clause), pillow (MIT-CMU), pyasn1 (BSD-2-Clause), pycparser (BSD-3-Clause), pydantic_core (MIT), PyYAML (MIT), rsa (Apache Software), six (MIT), SQLAlchemy (MIT), starlette (BSD), typing_extensions (PSF-2.0), uvloop (Apache Software; MIT), watchfiles (MIT), websockets (BSD-3-Clause).
+Transitive Python packages installed with them (version resolved 2026-10-18, licence from metadata) are: annotated-doc (MIT), annotated-types (MIT), anyio (MIT), certifi (Mozilla Public License 2.0 (MPL 2.0)), click (BSD-3-Clause), dnspython (ISC), greenlet (MIT AND PSF-2.0), h11 (MIT), httpcore (BSD-3-Clause), httptools (MIT), idna (BSD-3-Clause), opentelemetry-api (Apache-2.0), pillow (MIT-CMU), pydantic_core (MIT), PyYAML (MIT), SQLAlchemy (MIT), typing-inspection (MIT), typing_extensions (PSF-2.0), uvloop (Apache Software License; MIT), watchfiles (MIT), websockets (BSD-3-Clause).
 
 Note: `qrcode` metadata also carries a stray "Other/Proprietary" classifier; its `LICENSE` file is the 3-clause BSD text (checked 2026-10-16), so it is listed as BSD-3-Clause. Where this table says plain `BSD`, the package metadata does not name the clause count.
 
@@ -42,11 +43,11 @@ Note: `qrcode` metadata also carries a stray "Other/Proprietary" classifier; its
 | @tanstack/react-query | 5.100.14 | MIT | Server-state fetching/cache |
 | chess.js | 1.4.0 | BSD-2-Clause | Client-side move logic |
 | chessground | 9.2.1 | GPL-3.0-or-later | Chess board UI (and the cburnett piece artwork) |
-| dompurify | 3.4.12 | (MPL-2.0 OR Apache-2.0) | HTML sanitising |
+| dompurify | 3.4.17 | (MPL-2.0 OR Apache-2.0) | HTML sanitising |
 | marked | 18.0.7 | MIT | Markdown rendering |
 | react | 18.3.1 | MIT | UI library |
 | react-dom | 18.3.1 | MIT | UI library |
-| react-router-dom | 6.30.3 | MIT | Routing |
+| react-router-dom | 6.30.6 | MIT | Routing |
 | zustand | 5.0.13 | MIT | State store |
 
 ### Build-time development dependencies (not shipped in the runtime image)
