@@ -8,6 +8,9 @@ History before this changelog: see `git log`.
 
 ## [Unreleased]
 
+### Changed
+- **The installer installs the latest release, not `main`.** `deploy.sh` asks GitHub for the newest release (`v1.2.3`) and installs it; `chessloop update` on such an install moves to the next release. If GitHub can't be asked, it installs `main` and says so; with no release yet it installs `main` quietly. `CHESSLOOP_REF` still picks any branch, tag or commit. Installs made earlier keep following their branch.
+
 ### Fixed
 - **Practice and other boards: pieces could not be picked up on large windows.** The board said "Make your move" but no piece moved. The chess board library remembers where the board is on the page and refreshes that only when the window is resized or scrolled. After the mode picker disappears, the board moves up the page without either event, so on a window tall enough not to scroll (for example 1920×1080) every click landed on the wrong square. The board now re-measures at the start of every click or touch.
 
