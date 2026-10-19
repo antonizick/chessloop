@@ -95,6 +95,10 @@ History before this changelog: see `git log`.
 - `docs/THREAT-MODEL.md`: assets, entry points, trust boundaries per access mode, controls and accepted risks.
 
 ### Fixed
+- **Debian 13 with Debian's own Docker:** the installer stopped with a dpkg error ("trying to overwrite … docker-buildx") because Docker's compose plugin pulled in a buildx package that collides with Debian's. It now uses Debian's own `docker-compose` (version 2) there, as it already did with Ubuntu's `docker-compose-v2`.
+- **Docker Hub download limits are explained.** When Docker Hub answers "429 Too Many Requests", the installer and `chessloop update` now say that Docker Hub is limiting downloads from your internet address and to try again in about an hour, instead of telling you to check your internet connection.
+- **An update that couldn't restore your data no longer says it did.** If the rollback after a failed update can't put the data back, or the row counts don't match, Update warns and prints the `chessloop restore` command for the backup it made, instead of "running the previous version again, with your data".
+- **Screen readers:** the sign-in, change-password and voice fields are labelled, the switches in Settings and Admin → System settings have names, and sign-in errors are announced.
 - **Admin → Openings search explains when Lichess can't help.** Lichess now asks for a token for that lookup, so every opening showed "0 variations available" with no reason. The search now says why, and asks Lichess only once per search instead of once per result.
 - The installer said "(username 'admin')" after creating the admin, but you sign in with the email address; it now says so. A forced update of the same version says "Rebuilt …" instead of "Updated: X → X". After `chessloop start` and `chessloop restore`, a home-network install also shows its network address.
 - **"+ Add line" now opens the new line's name box**, focused and in view. Before, a blank line appeared at the bottom of the list with no sign of where it went. Found by Phase 11 testers (F-077).
