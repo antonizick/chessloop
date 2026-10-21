@@ -1,6 +1,6 @@
 # Node 24 is the active LTS line (supported until 2028-04-30):
 # https://github.com/nodejs/Release/blob/main/schedule.json
-FROM node:24-alpine AS build
+FROM node:26-alpine AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
