@@ -1,5 +1,5 @@
 # Python 3.12 gets security fixes until 2028-10 (https://devguide.python.org/versions/)
-FROM python:3.12.15-slim-trixie
+FROM python:3.14.7-slim-trixie
 
 WORKDIR /app
 
