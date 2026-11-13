@@ -8,7 +8,7 @@ COPY . .
 RUN npm run build
 
 # nginx stable branch; see https://nginx.org/en/download.html
-FROM nginx:1.30-alpine
+FROM nginx:1.31-alpine
 # Alpine's security fixes reach its packages before the next nginx image.
 RUN apk upgrade --no-cache
 COPY --from=build /app/dist /usr/share/nginx/html
